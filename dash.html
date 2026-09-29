@@ -80,6 +80,7 @@ td:first-child{font:600 13px "IBM Plex Sans"}
 .msg.ok{color:var(--ok)}
 .muted{color:var(--ink-3)}
 @media(max-width:900px){.tiles{grid-template-columns:repeat(2,1fr)}.grid,.two{grid-template-columns:1fr}.person{grid-template-columns:1fr auto}.person .route{grid-column:1/-1;order:3}}
+.src{font:600 11px/1 system-ui,sans-serif;color:var(--ink-3);border:1px solid currentColor;border-radius:4px;padding:1px 4px;vertical-align:1px}
 </style></head><body>
 <div class="wrap" id="app"><p class="muted">Loading…</p></div>
 
@@ -175,6 +176,9 @@ function start(){
 }
 async function loadMonth(){
   const first = nightDay().slice(0, 8) + "01";
+  // Last night's rounds, for the doses the technicians recorded in the tracker
+  // (the sheet's dosing column is typed in separately and is sometimes blank).
+  try{ const y = await db.collection("dosing_rounds").where("date", "==", yesterday(calDay())).get(); S.yRounds = []; y.forEach(d => S.yRounds.push(d.data())); render(); }catch(e){}
   try{ const s = await db.collection("dosing_rounds").where("date", ">=", first).get(); S.month = {}; s.forEach(d => { S.month[d.id] = d.data(); }); render(); }catch(e){}
 }
 async function loadHistory(){
@@ -184,6 +188,19 @@ async function loadHistory(){
 }
 const num = v => (v === null || v === undefined || v === "" || isNaN(Number(v))) ? null : Number(v);
 function poolDay(p, day){ const recs = S.hist[p]; if(!recs) return null; return recs.find(r => r.date === day) || null; }
+// Chlorine the tracker recorded for a pool on last night's rounds (grams), or null.
+function trackerDose(p){
+  let g = null;
+  (S.yRounds || []).forEach(r => (r.stops || []).forEach(s => (s.tasks || []).forEach(t => {
+    const d = t.dosed; if(!d || d.chlorineG === null || d.chlorineG === undefined || isNaN(Number(d.chlorineG))) return;
+    const pool = String(t.pool || s.outlet || "");
+    if(pool.toUpperCase() !== p.toUpperCase()) return;
+    g = (g || 0) + Number(d.chlorineG);
+  })));
+  return g;
+}
+const fmtG = g => g >= 1000 ? (Math.round(g / 100) / 10) + "kg" : Math.round(g) + "g";
+const toG = v => { const m = String(v || "").trim().match(/^([\d.]+)\s*(kg|g)?$/i); if(!m) return null; return Number(m[1]) * (/kg/i.test(m[2] || "") ? 1000 : 1); };
 function fcClass(v){ if(v === null) return "na"; return v < FC_LOW ? "lo" : v > FC_HIGH ? "hi" : "ok"; }
 
 /* ---------------- derived views ---------------- */
@@ -288,7 +305,16 @@ function draw(){
     const f = v => `<span class="fc ${fcClass(v)}">${v === null || v === undefined ? "–" : v}</span>`;
     const am = rec && num(rec.fc && rec.fc.morning), pm = rec && num(rec.fc && rec.fc.afternoon), ni = rec && num(rec.fc && rec.fc.night);
     const ph = rec && rec.ph && num(rec.ph.night);
-    const dose = yr && yr.dosing && yr.dosing.chlorine ? esc(yr.dosing.chlorine) : "";
+    const sheetDose = yr && yr.dosing && yr.dosing.chlorine ? String(yr.dosing.chlorine) : "";
+    const appG = trackerDose(p);
+    let dose = "";
+    if(sheetDose){
+      dose = esc(sheetDose);
+      const sg = toG(sheetDose);
+      if(appG !== null && sg !== null && Math.abs(sg - appG) >= 50) dose += ` <span class="src" title="The tracker recorded a different amount">(app ${fmtG(appG)})</span>`;
+    } else if(appG !== null){
+      dose = `${fmtG(appG)} <span class="src" title="From the tracker — not in the sheet yet">app</span>`;
+    }
     let hit = "";
     if(dose && am !== null && am !== undefined) hit = am >= TARGET_LO && am <= TARGET_HI ? " · ✓ hit target" : am > TARGET_HI ? " · ✗ too high" : " · ✗ low";
     return `<tr><td>${p}${SALT.includes(p) ? ' <span class="muted" title="salt chlorinator">⚡</span>' : ""}</td><td>${f(am ?? null)}</td><td>${f(pm ?? null)}</td><td>${f(ni ?? null)}</td><td>${ph ?? "–"}</td><td>${dose || "–"}${hit}</td></tr>`;
@@ -319,7 +345,7 @@ function draw(){
   </div><div class="stack">
     <div class="card"><h2>Water quality today <small>${S.histLoading ? "updating…" : S.histAt ? "as of " + clock(S.histAt) : ""} · <button class="btnlink" id="rf">Refresh</button></small></h2>
       <table><thead><tr><th>Pool</th><th>AM</th><th>PM</th><th>Night</th><th>pH</th><th>Last night dose</th></tr></thead><tbody>${water}</tbody></table>
-      <div class="legend"><span><span class="fc lo">1</span> below ${FC_LOW}</span><span><span class="fc ok">2.5</span> ${FC_LOW}–${FC_HIGH}</span><span><span class="fc hi">5</span> above ${FC_HIGH}</span><span>⚡ salt chlorinator · “hit target” = this morning ${TARGET_LO}–${TARGET_HI}</span></div></div>
+      <div class="legend"><span><span class="fc lo">1</span> below ${FC_LOW}</span><span><span class="fc ok">2.5</span> ${FC_LOW}–${FC_HIGH}</span><span><span class="fc hi">5</span> above ${FC_HIGH}</span><span>⚡ salt chlorinator · “hit target” = this morning ${TARGET_LO}–${TARGET_HI} · <span class="src">app</span> = dose from the tracker, not in the sheet yet</span></div></div>
     <div class="two">
       <div class="card"><h2>Off today</h2><div class="mini">${off.length ? off.map(o => `<div><span>${esc(o.name)}</span><span class="chip c-mute">${esc(o.type)}</span></div>`).join("") : '<div><span class="muted">Everyone in</span></div>'}</div></div>
       <div class="card"><h2>App version</h2><div class="mini"><div><span>Latest</span><b>${team.length - oldV.length} of ${team.length}</b></div>${oldV.length ? `<div><span>Old</span><span class="chip c-info">${esc(oldV.join(", "))}</span></div>` : ""}</div></div>
