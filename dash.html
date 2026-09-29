@@ -231,6 +231,8 @@ async function loadMonth(){
   const first = nightDay().slice(0, 8) + "01", back = addDays(calDay(), -35);
   const from = first < back ? first : back;
   try{ const s = await db.collection("dosing_rounds").where("date", ">=", from).get(); S.month = {}; s.forEach(d => { S.month[d.id] = Object.assign({id:d.id}, d.data()); }); render(); }catch(e){ console.warn(e); }
+  // Weekend dose on a weekday (asked by a technician, OK'd by Kay or William).
+  try{ const t = await db.collection("dosing_topups").where("date", ">=", from).get(); S.topups = []; t.forEach(d => S.topups.push(Object.assign({id:d.id}, d.data()))); render(); }catch(e){}
 }
 async function loadHistory(){
   if(S.histLoading) return; S.histLoading = true; render();
@@ -439,6 +441,8 @@ function attention(){
       if(open.length) out.push({lvl:"urg", chip:"⚠ Left open", t:`${r.person} left ${s.outlet} with ${open.length} must-do open`, m:open.map(t => t.name).join(", "), href:"#work"});
     });
   });
+  const waitTu = (S.topups || []).filter(x => x.status === "pending" && x.date === nightDay());
+  if(waitTu.length) out.push({lvl:"warn", chip:"🧪 Weekend dose", t:`${waitTu.length} weekend dose request${waitTu.length > 1 ? "s" : ""} waiting for your OK`, m:waitTu.map(x => `${x.pool} (${x.person}): ${x.reason}`).join(" · ") + " — approve on Telegram or the tracker's Overview.", href:"/tasklists/dosing-round-tracker.html#overview"});
   const stuck = addedJobs().filter(x => x.stuck);
   if(stuck.length) out.push({lvl:"warn", chip:"✕ Your jobs", t:`${stuck.length} added job${stuck.length > 1 ? "s" : ""} couldn't be finished`, m:stuck.slice(0, 3).map(x => `${x.o}: ${x.e.name}`).join(" · ") + " — decide on Overview.", href:"#work"});
   const late = addedJobs().filter(x => x.state === "late" && !x.stuck);
@@ -596,10 +600,20 @@ function drawWater(){
     <div class="card"><h2>Last weekend · did the dose hit ${TARGET_LO}–${TARGET_HI}? <small>${checked ? hits + " of " + checked + " ✓" : ""}</small></h2>
       <p class="lead">Night dose → next morning FC. Weekends are checked because they're the peak.</p>
       <div class="scroll"><table><thead><tr><th>Pool</th><th>${shortDate(sat)} night</th><th>${shortDate(sun)} night</th></tr></thead><tbody>${wkRows}</tbody></table></div></div>
+    <div class="card"><h2>Weekend dose on weekdays <small>this month · asked when a pool turned cloudy</small></h2>${topupHtml()}</div>
     <div class="card"><h2>Sheet vs tracker <small>last two nights</small></h2>
       <p class="lead">The night report sheet and the tracker should say the same thing. "Check" rows are worth a look; "note" rows are usually harmless.</p>
       ${mmHtml}</div>
   </div></div>`;
+}
+
+function topupHtml(){
+  const list = (S.topups || []).filter(x => x.status !== "cancelled" && x.date >= nightDay().slice(0, 8) + "01").sort((a, b) => String(b.requestedAt).localeCompare(String(a.requestedAt)));
+  if(!list.length) return `<div class="empty">✓ None this month.</div>`;
+  const byPool = {}; list.filter(x => x.status === "approved").forEach(x => byPool[x.pool] = (byPool[x.pool] || 0) + 1);
+  const often = Object.entries(byPool).filter(([p, n]) => n >= 3).map(([p, n]) => `${p} ×${n}`);
+  return `<div class="scroll"><table><thead><tr><th>Night</th><th>Pool</th><th>Staff</th><th>Why</th><th>Decision</th></tr></thead><tbody>${list.map(x => `<tr><td>${shortDate(x.date)}</td><td class="txt"><b>${esc(x.pool)}</b></td><td class="txt">${esc(x.person || "")}</td><td class="txt">${esc(x.reason || "")}${x.note ? `<div class="muted" style="font-size:12px">${esc(x.note)}</div>` : ""}</td><td>${x.status === "approved" ? `<span class="chip c-ok">✓ ${esc(x.decidedBy || "")}</span>` : x.status === "declined" ? `<span class="chip c-urg">✗ ${esc(x.decidedBy || "")}</span>` : `<span class="chip c-warn">waiting</span>`}</td></tr>`).join("")}</tbody></table></div>
+    ${often.length ? `<div class="legend">Needed 3+ times this month: ${esc(often.join(", "))} — its weekday dose may be too low.</div>` : ""}`;
 }
 
 /* ---- Work & Routes ---- */
