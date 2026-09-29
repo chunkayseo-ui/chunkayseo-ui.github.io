@@ -1,0 +1,338 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>HF Pools · Dashboard</title>
+<meta name="robots" content="noindex">
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700&family=IBM+Plex+Mono:wght@400;600&family=IBM+Plex+Sans:wght@400;600&display=swap" rel="stylesheet">
+<style>
+:root{--ground:#EEF3F3;--surface:#fff;--surface-2:#F6F9F9;--line:#C7D6D6;--line-soft:#DCE6E6;--ink:#0A1417;--ink-2:#33474D;--ink-3:#5B7378;
+--accent:#00676F;--accent-soft:#DCEEEE;--ok:#256B4C;--ok-soft:#DDEEE5;--warn:#8A590D;--warn-soft:#F6EAD4;--urgent:#B23A2E;--urgent-soft:#F8DEDA;--travel:#42509B;--travel-soft:#E3E5F5}
+*{box-sizing:border-box}
+body{margin:0;background:var(--ground);color:var(--ink);font:15px/1.45 "IBM Plex Sans",system-ui,sans-serif}
+.wrap{max-width:1240px;margin:0 auto;padding:16px}
+header{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:14px}
+h1{font:700 26px/1 "Barlow Condensed",sans-serif;text-transform:uppercase;letter-spacing:.02em;margin:0}
+.date{font:13px "IBM Plex Mono",monospace;color:var(--ink-3)}
+.me{margin-left:auto;font-size:13px;color:var(--ink-3)}
+.me button{border:0;background:none;color:var(--accent);text-decoration:underline;font:inherit;cursor:pointer;margin-left:8px;padding:0}
+h2{font:700 15px/1 "Barlow Condensed",sans-serif;text-transform:uppercase;letter-spacing:.06em;color:var(--ink-2);margin:0 0 10px;display:flex;align-items:center;gap:8px}
+h2 small{font:400 12px "IBM Plex Sans";text-transform:none;letter-spacing:0;color:var(--ink-3);margin-left:auto}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:14px}
+.tiles{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:12px}
+.tile .n{font:700 34px/1 "IBM Plex Mono",monospace}
+.tile .n small{font-size:16px;color:var(--ink-3)}
+.tile .l{font:600 12px "Barlow Condensed",sans-serif;text-transform:uppercase;letter-spacing:.07em;color:var(--ink-3);margin-top:6px}
+.tile .s{font-size:12.5px;color:var(--ink-3);margin-top:4px}
+.tile.alert{border-color:var(--urgent);background:var(--urgent-soft)}
+.tile.alert .n{color:var(--urgent)}
+.grid{display:grid;grid-template-columns:1.1fr 1fr;gap:12px;align-items:start}
+.stack{display:flex;flex-direction:column;gap:12px}
+.att{display:flex;gap:10px;align-items:flex-start;padding:9px 0;border-top:1px solid var(--line-soft)}
+.att:first-of-type{border-top:0}
+.chip{flex:none;font:700 11px/1.6 "Barlow Condensed",sans-serif;text-transform:uppercase;letter-spacing:.06em;padding:1px 7px;border-radius:4px;white-space:nowrap}
+.c-urg{background:var(--urgent-soft);color:var(--urgent)}
+.c-warn{background:var(--warn-soft);color:var(--warn)}
+.c-ok{background:var(--ok-soft);color:var(--ok)}
+.c-info{background:var(--travel-soft);color:var(--travel)}
+.c-mute{background:var(--surface-2);color:var(--ink-3);border:1px solid var(--line)}
+.att b{display:block;font-weight:600}
+.att .m{font-size:13px;color:var(--ink-3)}
+.att .go{margin-left:auto;font-size:13px;color:var(--accent);white-space:nowrap}
+.empty{font-size:14px;color:var(--ok);padding:6px 0}
+.person{display:grid;grid-template-columns:130px 1fr auto;gap:10px;align-items:center;padding:10px 0;border-top:1px solid var(--line-soft)}
+.person:first-of-type{border-top:0}
+.person .who b{display:block}
+.person .who span{font-size:12px;color:var(--ink-3)}
+.route{display:flex;gap:4px;flex-wrap:wrap}
+.stop{font:600 12px "IBM Plex Mono",monospace;padding:3px 7px;border-radius:5px;border:1px solid var(--line);background:var(--surface-2);color:var(--ink-3)}
+.stop.done{background:var(--ok-soft);border-color:transparent;color:var(--ok)}
+.stop.now{background:var(--warn-soft);border-color:var(--warn);color:var(--warn)}
+.stop.partial{background:var(--urgent-soft);border-color:transparent;color:var(--urgent)}
+.jobs{font:600 13px "IBM Plex Mono",monospace;text-align:right}
+.jobs span{display:block;font:400 12px "IBM Plex Sans";color:var(--ink-3)}
+table{width:100%;border-collapse:collapse;font-size:13.5px}
+th{font:600 11.5px "Barlow Condensed",sans-serif;text-transform:uppercase;letter-spacing:.06em;color:var(--ink-3);text-align:left;padding:5px 6px;border-bottom:1px solid var(--line)}
+td{padding:6px;border-bottom:1px solid var(--line-soft);font-family:"IBM Plex Mono",monospace;font-size:13px}
+td:first-child{font:600 13px "IBM Plex Sans"}
+.fc{display:inline-block;min-width:34px;text-align:center;border-radius:4px;padding:0 4px}
+.fc.lo{background:var(--urgent-soft);color:var(--urgent);font-weight:600}
+.fc.hi{background:var(--warn-soft);color:var(--warn);font-weight:600}
+.fc.ok{background:var(--ok-soft);color:var(--ok)}
+.fc.na{color:var(--ink-3)}
+.legend{font-size:12px;color:var(--ink-3);margin-top:8px;display:flex;gap:12px;flex-wrap:wrap;align-items:center}
+.bars .row{display:grid;grid-template-columns:80px 1fr 40px;gap:8px;align-items:center;font-size:13px;margin:5px 0}
+.bars .bar{height:10px;background:var(--line-soft);border-radius:4px;overflow:hidden}
+.bars .bar i{display:block;height:100%;background:var(--accent);border-radius:0 4px 4px 0}
+.bars .v{font:600 12.5px "IBM Plex Mono",monospace;text-align:right}
+.two{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.mini{font-size:13px}
+.mini div{display:flex;justify-content:space-between;gap:8px;padding:5px 0;border-top:1px solid var(--line-soft)}
+.mini div:first-child{border-top:0}
+.links{display:flex;gap:8px;flex-wrap:wrap}
+.links a{font:600 13px "IBM Plex Sans";padding:8px 12px;border-radius:8px;border:1px solid var(--line);background:var(--surface);color:var(--accent);text-decoration:none}
+.btnlink{border:0;background:none;color:var(--accent);text-decoration:underline;cursor:pointer;font:inherit;padding:0}
+.login{max-width:380px;margin:12vh auto 0}
+.login input{width:100%;padding:11px 12px;border:1px solid var(--line);border-radius:8px;font:15px "IBM Plex Sans";margin-top:4px}
+.login label{display:block;font-size:13px;color:var(--ink-3);margin-top:12px}
+.btn{display:block;width:100%;margin-top:16px;padding:12px;border:0;border-radius:8px;background:var(--accent);color:#fff;font:600 15px "IBM Plex Sans";cursor:pointer}
+.btn:disabled{opacity:.6}
+.msg{font-size:13px;margin-top:10px;min-height:18px}
+.msg.err{color:var(--urgent)}
+.msg.ok{color:var(--ok)}
+.muted{color:var(--ink-3)}
+@media(max-width:900px){.tiles{grid-template-columns:repeat(2,1fr)}.grid,.two{grid-template-columns:1fr}.person{grid-template-columns:1fr auto}.person .route{grid-column:1/-1;order:3}}
+</style></head><body>
+<div class="wrap" id="app"><p class="muted">Loading…</p></div>
+
+<script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore-compat.js"></script>
+<script>
+/* HF Pools dashboard -- Chun Kay's own view of the facility team (29 Sep 2026).
+ * Sign-in: Firebase email + password (accounts are created by Chun Kay in the
+ * Firebase console; self sign-up is switched off there). Reads the same
+ * Firestore data the tracker writes, plus the pool-history Apps Script for
+ * morning/afternoon/night FC. Read-only: nothing here changes any data. */
+const firebaseConfig = {
+  apiKey: "AIzaSyANFCZbvRGO9aMRtG9MF_qONO3FL85CzSo",
+  authDomain: "maintenance-board-f931a.firebaseapp.com",
+  projectId: "maintenance-board-f931a",
+  storageBucket: "maintenance-board-f931a.firebasestorage.app",
+  messagingSenderId: "169864970579",
+  appId: "1:169864970579:web:bfb7490d0aebcfed17e1a6"
+};
+const HISTORY_API = "https://script.google.com/macros/s/AKfycbwYJLfkw5lwKnjwqmEtuRiREzbahnf2l63YhmX_7jMR9uqM9MpeqoxeVTTVw5rc76eZ6g/exec";
+const POOLS = ["BK","CC","DR","HB","HS","JEIP1","JEIP2","JEOP1","JEOP2","Lentor","Tengah","TPY","WWW"];
+const SALT = ["BK","Lentor","Tengah","TPY","DR","HS","WWW"];
+const FC_LOW = 2, FC_HIGH = 3.5, TARGET_LO = 2.5, TARGET_HI = 3.5;
+const LONG_JOB_MIN = 90, LONG_VAC_MIN = 120, NO_MORNING_TEST_HOUR = 11;
+
+firebase.initializeApp(firebaseConfig);
+const auth = firebase.auth(), db = firebase.firestore();
+const $ = s => document.querySelector(s);
+const esc = s => String(s == null ? "" : s).replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const pad = n => String(n).padStart(2, "0");
+const dateKey = d => d.getFullYear() + "-" + pad(d.getMonth() + 1) + "-" + pad(d.getDate());
+const slug = s => String(s || "").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
+const clock = iso => { if(!iso) return "–"; const d = new Date(iso); return pad(d.getHours()) + ":" + pad(d.getMinutes()); };
+const mins = ms => { const m = Math.round(ms / 60000); return m < 60 ? m + "m" : Math.floor(m / 60) + "h " + pad(m % 60) + "m"; };
+const cmpBuild = (a, b) => String(a || "").localeCompare(String(b || ""), undefined, {numeric:true});
+// Night rounds keep "yesterday" until 06:30 (they run past midnight); Fik's morning round flips at 04:00.
+function nightDay(){ const d = new Date(); if(d.getHours() < 6 || (d.getHours() === 6 && d.getMinutes() < 30)) d.setDate(d.getDate() - 1); return dateKey(d); }
+function calDay(){ const d = new Date(); if(d.getHours() < 4) d.setDate(d.getDate() - 1); return dateKey(d); }
+const yesterday = k => { const [y, m, d] = k.split("-").map(Number); const t = new Date(y, m - 1, d); t.setDate(t.getDate() - 1); return dateKey(t); };
+
+const S = {user:null, rounds:{}, month:{}, issues:{}, roster:[], leave:{}, versions:{}, hist:{}, histAt:null, histLoading:false, unsubs:[]};
+
+/* ---------------- sign-in ---------------- */
+function loginView(msg, cls){
+  $("#app").innerHTML = `<div class="card login">
+    <h1 style="font-size:24px">HF Pools</h1>
+    <div class="date" style="margin-top:4px">Dashboard · sign in</div>
+    <form id="lf">
+      <label>Email<input id="em" type="email" autocomplete="username" required></label>
+      <label>Password<input id="pw" type="password" autocomplete="current-password" required></label>
+      <button class="btn" id="go" type="submit">Sign in</button>
+    </form>
+    <div class="msg ${cls || ""}" id="msg">${esc(msg || "")}</div>
+    <p style="font-size:13px;color:var(--ink-3);margin:8px 0 0">Stays signed in on this device. <button class="btnlink" id="forgot" type="button">Forgot password?</button></p>
+  </div>`;
+  $("#lf").addEventListener("submit", async e => {
+    e.preventDefault(); $("#go").disabled = true; $("#msg").textContent = "Signing in…"; $("#msg").className = "msg";
+    try{ await auth.signInWithEmailAndPassword($("#em").value.trim(), $("#pw").value); }
+    catch(err){ $("#go").disabled = false; $("#msg").className = "msg err";
+      $("#msg").textContent = /wrong-password|invalid-credential|user-not-found|invalid-login/.test(err.code || err.message) ? "Email or password is not right." : /too-many/.test(err.code || "") ? "Too many tries — wait a few minutes." : "Couldn't sign in: " + (err.message || err); }
+  });
+  $("#forgot").addEventListener("click", async () => {
+    const em = $("#em").value.trim();
+    if(!em){ $("#msg").className = "msg err"; $("#msg").textContent = "Type your email first, then tap Forgot password."; return; }
+    try{ await auth.sendPasswordResetEmail(em); $("#msg").className = "msg ok"; $("#msg").textContent = "If that email has an account, a reset link is on its way."; }
+    catch(err){ $("#msg").className = "msg ok"; $("#msg").textContent = "If that email has an account, a reset link is on its way."; }
+  });
+}
+auth.onAuthStateChanged(u => {
+  S.unsubs.forEach(f => { try{ f(); }catch(e){} }); S.unsubs = [];
+  S.user = u;
+  if(!u){ loginView(); return; }
+  start();
+});
+
+/* ---------------- data ---------------- */
+function start(){
+  render();
+  const days = [...new Set([nightDay(), calDay()])];
+  S.unsubs.push(db.collection("dosing_rounds").where("date", "in", days).onSnapshot(s => {
+    S.rounds = {}; s.forEach(d => { S.rounds[d.id] = Object.assign({id:d.id}, d.data()); }); render();
+  }, err => console.warn(err)));
+  S.unsubs.push(db.collection("dosing_issues").orderBy("raisedAt", "desc").limit(300).onSnapshot(s => {
+    S.issues = {}; s.forEach(d => { S.issues[d.id] = Object.assign({id:d.id}, d.data()); }); render();
+  }, () => {}));
+  S.unsubs.push(db.doc("dosing_config/roster").onSnapshot(s => { S.roster = (s.exists && s.data().members) || []; render(); }, () => {}));
+  S.unsubs.push(db.doc("dosing_config/leave").onSnapshot(s => { S.leave = (s.exists && s.data().entries) || {}; render(); }, () => {}));
+  S.unsubs.push(db.doc("dosing_config/versions").onSnapshot(s => { S.versions = (s.exists && s.data().people) || {}; render(); }, () => {}));
+  loadMonth(); loadHistory();
+  const t1 = setInterval(loadHistory, 10 * 60e3), t2 = setInterval(loadMonth, 15 * 60e3), t3 = setInterval(render, 60e3);
+  S.unsubs.push(() => { clearInterval(t1); clearInterval(t2); clearInterval(t3); });
+}
+async function loadMonth(){
+  const first = nightDay().slice(0, 8) + "01";
+  try{ const s = await db.collection("dosing_rounds").where("date", ">=", first).get(); S.month = {}; s.forEach(d => { S.month[d.id] = d.data(); }); render(); }catch(e){}
+}
+async function loadHistory(){
+  if(S.histLoading) return; S.histLoading = true; render();
+  await Promise.all(POOLS.map(p => fetch(HISTORY_API + "?pool=" + encodeURIComponent(p)).then(r => r.json()).then(j => { S.hist[p] = j[p] || []; }).catch(() => { if(!S.hist[p]) S.hist[p] = false; })));
+  S.histLoading = false; S.histAt = new Date().toISOString(); render();
+}
+const num = v => (v === null || v === undefined || v === "" || isNaN(Number(v))) ? null : Number(v);
+function poolDay(p, day){ const recs = S.hist[p]; if(!recs) return null; return recs.find(r => r.date === day) || null; }
+function fcClass(v){ if(v === null) return "na"; return v < FC_LOW ? "lo" : v > FC_HIGH ? "hi" : "ok"; }
+
+/* ---------------- derived views ---------------- */
+function todaysRounds(){
+  return Object.values(S.rounds).filter(r => !/^test/i.test(r.person || "")).map(r => {
+    const tasks = (r.stops || []).flatMap(s => (s.tasks || []).map(t => Object.assign({outlet:s.outlet}, t)));
+    const done = tasks.filter(t => t.doneAt).length;
+    const onsite = (r.stops || []).find(s => s.arriveAt && !s.departAt);
+    const running = tasks.filter(t => t.startedAt && !t.doneAt && !t.cancelledAt);
+    const finished = (r.stops || []).length > 0 && (r.stops || []).every(s => !s.arriveAt || s.departAt) && !r.headingTo && (r.stops || []).some(s => s.departAt);
+    return {r, tasks, done, total:tasks.length, onsite, running, finished, vac:r.kind === "vacuum" || /__vac$/.test(r.id)};
+  }).sort((a, b) => (a.finished - b.finished) || String(a.r.person).localeCompare(String(b.r.person)));
+}
+function attention(){
+  const out = [], now = Date.now(), hour = new Date().getHours(), today = calDay();
+  // water
+  POOLS.forEach(p => {
+    const rec = poolDay(p, today);
+    const am = rec && num(rec.fc && rec.fc.morning), pm = rec && num(rec.fc && rec.fc.afternoon), ni = rec && num(rec.fc && rec.fc.night);
+    const latest = [ni, pm, am].find(v => v !== null && v !== undefined);
+    if(latest !== undefined && latest !== null){
+      if(latest > FC_HIGH) out.push({lvl:"urg", chip:"▲ FC high", t:`${p} FC ${latest}`, m:`Latest test today is above ${FC_HIGH}. Check the dose and the scale.`, href:"/dosing-app/pool-history.html"});
+      else if(latest < FC_LOW) out.push({lvl:"urg", chip:"▼ FC low", t:`${p} FC ${latest}`, m: SALT.includes(p) ? "Below 2 — the salt chlorinator should be ON." : "Below 2 — needs dosing.", href:"/dosing-app/pool-history.html"});
+    } else if(S.hist[p] && hour >= NO_MORNING_TEST_HOUR && (!rec || am === null)){
+      out.push({lvl:"warn", chip:"? No test", t:`${p} — no morning test yet`, m:`Nothing recorded by ${NO_MORNING_TEST_HOUR}:00.`, href:"/dosing-app/pool-history.html"});
+    }
+  });
+  // jobs
+  todaysRounds().forEach(({r, tasks}) => {
+    tasks.forEach(t => {
+      if(t.startedAt && !t.doneAt && !t.cancelledAt && !t.paused){
+        const lim = /vacuum/i.test(t.name) ? LONG_VAC_MIN : LONG_JOB_MIN, ran = now - new Date(t.startedAt).getTime();
+        if(ran > lim * 60e3) out.push({lvl:"warn", chip:"◷ Long job", t:`${r.person} · ${t.name} at ${t.outlet} — ${mins(ran)}`, m:`Running longer than ${lim} min.${t.vac && t.vac.photos ? " " + Object.keys(t.vac.photos).length + " photos in." : ""}`, href:"/tasklists/dosing-round-tracker.html"});
+      }
+      if(t.cantFinish && !t.doneAt) out.push({lvl:"warn", chip:"✕ Can't finish", t:`${r.person} · ${t.name} at ${t.outlet}`, m:`${t.cantFinish.reason || ""}${t.cantFinish.note ? " — " + t.cantFinish.note : ""}. Decide on Overview.`, href:"/tasklists/dosing-round-tracker.html"});
+    });
+    (r.stops || []).forEach(s => {
+      if(!s.departAt) return;
+      const open = (s.tasks || []).filter(t => t.kind === "required" && !t.doneAt && !t.cantFinish && !t.cancelledAt);
+      if(open.length) out.push({lvl:"urg", chip:"⚠ Left open", t:`${r.person} left ${s.outlet} with ${open.length} must-do open`, m:open.map(t => t.name).join(", "), href:"/tasklists/dosing-round-tracker.html"});
+    });
+  });
+  // issues waiting for a plan
+  const openIss = Object.values(S.issues).filter(i => i.status === "open");
+  if(openIss.length) out.push({lvl:"info", chip:"● Issues", t:`${openIss.length} open issue${openIss.length > 1 ? "s" : ""} waiting for a plan`, m:openIss.slice(0, 3).map(i => `${i.outlet}: ${(i.description || "").slice(0, 40)}`).join(" · "), href:"/tasklists/dosing-round-tracker.html"});
+  // old app versions, only for people working today
+  const newest = Object.values(S.versions).map(v => v && v.build).filter(Boolean).sort(cmpBuild).pop();
+  const working = [...new Set(todaysRounds().map(x => x.r.person))];
+  const old = working.filter(n => { const v = S.versions[slug(n)]; return !v || cmpBuild(v.build, newest) < 0; });
+  if(old.length) out.push({lvl:"info", chip:"⟳ Old app", t:`${old.join(", ")} on an old version`, m:"Old pages can undo saved jobs — ask them to reopen the link.", href:"/tasklists/dosing-round-tracker.html"});
+  const rank = {urg:0, warn:1, info:2};
+  return out.sort((a, b) => rank[a.lvl] - rank[b.lvl]);
+}
+function offToday(){
+  const d = calDay();
+  return Object.values(S.leave).filter(e => e && e.date === d && !e.removed).map(e => ({name:e.person, type:({mc:"MC", al:"Annual leave", off:"Off", other:"Other"})[e.type] || e.type, note:e.note || ""}));
+}
+function monthCounts(){
+  const days = {};
+  Object.values(S.month).forEach(r => {
+    if(!r.person || /^test/i.test(r.person)) return;
+    if(!(r.stops || []).some(s => s.arriveAt)) return;
+    const key = r.person + (r.kind === "vacuum" ? " ☀" : "");
+    (days[key] = days[key] || new Set()).add(r.date);
+  });
+  return Object.entries(days).map(([n, s]) => ({n, v:s.size})).sort((a, b) => b.v - a.v);
+}
+
+/* ---------------- render ---------------- */
+let renderQueued = false;
+function render(){ if(renderQueued) return; renderQueued = true; requestAnimationFrame(() => { renderQueued = false; draw(); }); }
+function draw(){
+  if(!S.user) return;
+  const tr = todaysRounds(), att = attention(), today = calDay(), yest = yesterday(today), now = new Date();
+  const working = tr.filter(x => !x.finished);
+  const jobsDone = tr.reduce((a, x) => a + x.done, 0), jobsTotal = tr.reduce((a, x) => a + x.total, 0);
+  const mustOpen = tr.reduce((a, x) => a + x.tasks.filter(t => t.kind === "required" && !t.doneAt).length, 0);
+  let inRange = 0, tested = 0;
+  POOLS.forEach(p => { const rec = poolDay(p, today); const am = rec && num(rec.fc && rec.fc.morning); if(am !== null && am !== undefined){ tested++; if(am >= TARGET_LO && am <= TARGET_HI) inRange++; } });
+
+  const people = tr.map(x => {
+    const stops = (x.r.stops || []).map(s => {
+      const req = (s.tasks || []).filter(t => t.kind === "required");
+      const left = req.filter(t => !t.doneAt).length;
+      if(s.arriveAt && !s.departAt){
+        const run = (s.tasks || []).find(t => t.startedAt && !t.doneAt);
+        return `<span class="stop now">${esc(s.outlet)} · ${run ? esc(run.name.split(/[ (]/)[0].toLowerCase()) + " " + mins(now - new Date(run.startedAt)) : "on site " + mins(now - new Date(s.arriveAt))}</span>`;
+      }
+      if(s.departAt) return left ? `<span class="stop partial">${esc(s.outlet)} ⚠ ${left} left</span>` : `<span class="stop done">${esc(s.outlet)} ✓</span>`;
+      return `<span class="stop">${esc(s.outlet)}</span>`;
+    }).join("");
+    const heading = x.r.headingTo ? `<span class="stop">→ ${esc(x.r.headingTo)}</span>` : "";
+    const sub = (x.vac ? "morning" : "night") + " · " + (x.finished ? "done" : "since " + clock(x.r.createdAt));
+    return `<div class="person"><div class="who"><b>${esc(x.r.person)}${x.vac ? " ☀" : ""}</b><span>${sub}</span></div>
+      <div class="route">${stops}${heading}</div><div class="jobs">${x.done}/${x.total}<span>jobs</span></div></div>`;
+  }).join("") || `<div class="empty muted">No rounds started today yet.</div>`;
+
+  const water = POOLS.map(p => {
+    if(S.hist[p] === undefined) return `<tr><td>${p}</td><td colspan="5" class="muted">loading…</td></tr>`;
+    if(S.hist[p] === false) return `<tr><td>${p}</td><td colspan="5" class="muted">couldn't load</td></tr>`;
+    const rec = poolDay(p, today), yr = poolDay(p, yest);
+    const f = v => `<span class="fc ${fcClass(v)}">${v === null || v === undefined ? "–" : v}</span>`;
+    const am = rec && num(rec.fc && rec.fc.morning), pm = rec && num(rec.fc && rec.fc.afternoon), ni = rec && num(rec.fc && rec.fc.night);
+    const ph = rec && rec.ph && num(rec.ph.night);
+    const dose = yr && yr.dosing && yr.dosing.chlorine ? esc(yr.dosing.chlorine) : "";
+    let hit = "";
+    if(dose && am !== null && am !== undefined) hit = am >= TARGET_LO && am <= TARGET_HI ? " · ✓ hit target" : am > TARGET_HI ? " · ✗ too high" : " · ✗ low";
+    return `<tr><td>${p}${SALT.includes(p) ? ' <span class="muted" title="salt chlorinator">⚡</span>' : ""}</td><td>${f(am ?? null)}</td><td>${f(pm ?? null)}</td><td>${f(ni ?? null)}</td><td>${ph ?? "–"}</td><td>${dose || "–"}${hit}</td></tr>`;
+  }).join("");
+
+  const attHtml = att.length ? att.map(a => `<div class="att"><span class="chip c-${a.lvl}">${esc(a.chip)}</span><div><b>${esc(a.t)}</b><div class="m">${esc(a.m)}</div></div><a class="go" href="${a.href}">Open</a></div>`).join("")
+    : `<div class="empty">✓ Nothing needs you right now.</div>`;
+
+  const off = offToday();
+  const newest = Object.values(S.versions).map(v => v && v.build).filter(Boolean).sort(cmpBuild).pop();
+  const team = S.roster.filter(n => !/^test/i.test(n));
+  const oldV = team.filter(n => { const v = S.versions[slug(n)]; return !v || cmpBuild(v.build, newest) < 0; });
+  const mc = monthCounts(), maxM = Math.max(1, ...mc.map(x => x.v));
+
+  $("#app").innerHTML = `
+  <header><h1>HF Pools · Dashboard</h1><span class="date">${now.toLocaleDateString("en-SG", {weekday:"short", day:"numeric", month:"short"})} · ${pad(now.getHours())}:${pad(now.getMinutes())} · live</span>
+    <span class="me">Signed in as ${esc(S.user.email)}<button id="out">Sign out</button></span></header>
+  <div class="tiles">
+    <div class="card tile"><div class="n">${working.length}</div><div class="l">Working now</div><div class="s">${esc(working.map(x => x.r.person).join(" · ") || "nobody on a round")}</div></div>
+    <div class="card tile"><div class="n">${jobsDone}<small>/${jobsTotal}</small></div><div class="l">Jobs done today</div><div class="s">${mustOpen} must-do still open</div></div>
+    <div class="card tile"><div class="n">${inRange}<small>/${tested || POOLS.length}</small></div><div class="l">Pools in range (morning)</div><div class="s">target FC ${TARGET_LO}–${TARGET_HI}${tested < POOLS.length ? ` · ${POOLS.length - tested} not tested` : ""}</div></div>
+    <div class="card tile${att.length ? " alert" : ""}"><div class="n">${att.length}</div><div class="l">Need your attention</div><div class="s">${att.length ? "see the list below" : "all clear"}</div></div>
+  </div>
+  <div class="grid"><div class="stack">
+    <div class="card"><h2>⚠ Needs your attention <small>most urgent first</small></h2>${attHtml}</div>
+    <div class="card"><h2>Who's working today <small>live</small></h2>${people}
+      <div class="legend"><span class="stop done">✓</span> done <span class="stop now">●</span> on site now <span class="stop partial">⚠</span> left with must-do open</div></div>
+  </div><div class="stack">
+    <div class="card"><h2>Water quality today <small>${S.histLoading ? "updating…" : S.histAt ? "as of " + clock(S.histAt) : ""} · <button class="btnlink" id="rf">Refresh</button></small></h2>
+      <table><thead><tr><th>Pool</th><th>AM</th><th>PM</th><th>Night</th><th>pH</th><th>Last night dose</th></tr></thead><tbody>${water}</tbody></table>
+      <div class="legend"><span><span class="fc lo">1</span> below ${FC_LOW}</span><span><span class="fc ok">2.5</span> ${FC_LOW}–${FC_HIGH}</span><span><span class="fc hi">5</span> above ${FC_HIGH}</span><span>⚡ salt chlorinator · “hit target” = this morning ${TARGET_LO}–${TARGET_HI}</span></div></div>
+    <div class="two">
+      <div class="card"><h2>Off today</h2><div class="mini">${off.length ? off.map(o => `<div><span>${esc(o.name)}</span><span class="chip c-mute">${esc(o.type)}</span></div>`).join("") : '<div><span class="muted">Everyone in</span></div>'}</div></div>
+      <div class="card"><h2>App version</h2><div class="mini"><div><span>Latest</span><b>${team.length - oldV.length} of ${team.length}</b></div>${oldV.length ? `<div><span>Old</span><span class="chip c-info">${esc(oldV.join(", "))}</span></div>` : ""}</div></div>
+    </div>
+    <div class="card"><h2>This month <small>days with a round, per person</small></h2><div class="bars">
+      ${mc.map(x => `<div class="row"><span>${esc(x.n)}</span><div class="bar"><i style="width:${Math.round(x.v / maxM * 100)}%"></i></div><span class="v">${x.v}</span></div>`).join("") || '<div class="muted">Loading…</div>'}
+    </div><div class="legend">☀ = Morning Round. Hours, jobs and MC/leave per day are on the tracker's Calendar tab.</div></div>
+  </div></div>
+  <div class="card" style="margin-top:12px"><h2>Open a page</h2><div class="links">
+    <a href="/tracker">Night Round</a><a href="/morning">Morning Round</a><a href="/tasklists/dosing-round-tracker.html#overview">Overview</a><a href="/board">Maintenance Board</a><a href="/dosing-app/pool-history.html">Pool history</a><a href="/dosing">Dosing Lookup</a><a href="/">All pages</a>
+  </div></div>`;
+  $("#out").onclick = () => auth.signOut();
+  $("#rf").onclick = () => loadHistory();
+}
+</script>
+</body></html>
