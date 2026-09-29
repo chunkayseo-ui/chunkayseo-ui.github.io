@@ -97,17 +97,36 @@ let ROWS = null, loadErr = null, period = "month";
 try{ const c = JSON.parse(localStorage.getItem(CACHE_KEY) || "null"); if(c && Array.isArray(c.rows)) ROWS = c.rows; }catch(e){}
 try{ const p = localStorage.getItem("att.period"); if(p) period = p; }catch(e){}
 
+// The sheet's web app refuses when too many requests arrive at once, so ask for
+// 3 pools at a time and try each pool up to 3 times before giving up on it.
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+async function fetchPool(p){
+  for(let i = 0; i < 3; i++){
+    try{
+      const r = await fetch(HISTORY_API + "?pool=" + encodeURIComponent(p));
+      if(!r.ok) throw new Error("HTTP " + r.status);
+      const j = await r.json();
+      if(!j || !Array.isArray(j[p])) throw new Error("bad reply");
+      return j[p];
+    }catch(e){ if(i < 2) await sleep(800 * (i + 1) + Math.random() * 400); }
+  }
+  return null;
+}
 async function load(){
-  const out = []; let fails = 0;
-  await Promise.all(POOLS.map(p => fetch(HISTORY_API + "?pool=" + encodeURIComponent(p)).then(r => r.json()).then(j => {
-    (j[p] || []).forEach(r => {
+  const out = [], failed = [], queue = POOLS.slice();
+  const prev = ROWS || [];
+  const worker = async () => { while(queue.length){ const p = queue.shift(); const rows = await fetchPool(p);
+    if(!rows){ failed.push(p); prev.filter(r => r.pool === p).forEach(r => out.push(r)); continue; }   // keep this pool's saved numbers
+    rows.forEach(r => {
       const e = num(r.expected7am), a = num(r.attended8pm ?? r.attended);
       if(e === null || a === null || e <= 0) return;           // no count, or pool closed that day
       out.push({pool:p, branch:BRANCH_OF(p), date:r.date, exp:e, came:Math.min(a, e), extra:Math.max(0, a - e)});
-    });
-  }).catch(() => { fails++; })));
+    }); } };
+  await Promise.all([worker(), worker(), worker()]);
   if(out.length){ ROWS = out; try{ localStorage.setItem(CACHE_KEY, JSON.stringify({at:Date.now(), rows:out})); }catch(e){} }
-  loadErr = fails ? `${fails} pool${fails > 1 ? "s" : ""} couldn't load — showing what came through.` : null;
+  const saved = failed.filter(p => prev.some(r => r.pool === p)), missing = failed.filter(p => !saved.includes(p));
+  loadErr = missing.length ? `${missing.join(", ")} couldn't load — the totals leave ${missing.length > 1 ? "them" : "it"} out. Reload to try again.`
+    : saved.length ? `${saved.join(", ")} showing saved numbers (couldn't refresh just now).` : null;
   if(!out.length && !ROWS) loadErr = "Couldn't reach the sheet. Check your signal and reload.";
   draw();
 }

@@ -236,7 +236,11 @@ async function loadMonth(){
 }
 async function loadHistory(){
   if(S.histLoading) return; S.histLoading = true; render();
-  await Promise.all(POOLS.map(p => fetch(HISTORY_API + "?pool=" + encodeURIComponent(p)).then(r => r.json()).then(j => { S.hist[p] = j[p] || []; }).catch(() => { if(!S.hist[p]) S.hist[p] = false; })));
+  // 3 pools at a time, up to 3 tries each: the sheet's web app refuses bursts of 13 requests.
+  const queue = POOLS.slice();
+  const one = async p => { for(let i = 0; i < 3; i++){ try{ const r = await fetch(HISTORY_API + "?pool=" + encodeURIComponent(p)); if(!r.ok) throw 0; const j = await r.json(); if(!j || !Array.isArray(j[p])) throw 0; return j[p]; }catch(e){ if(i < 2) await new Promise(ok => setTimeout(ok, 800 * (i + 1) + Math.random() * 400)); } } return null; };
+  const worker = async () => { while(queue.length){ const p = queue.shift(); const rows = await one(p); if(rows) S.hist[p] = rows; else if(!S.hist[p]) S.hist[p] = false; } };
+  await Promise.all([worker(), worker(), worker()]);
   S.histLoading = false; S.histAt = new Date().toISOString(); render();
 }
 // The Maintenance Board's task lists live inside its own page (const DATA = {...}),
