@@ -264,7 +264,8 @@ const fcCell = v => `<span class="fc ${fcClass(v)}">${v === null || v === undefi
 const fmtG = g => g >= 1000 ? (Math.round(g / 100) / 10) + "kg" : Math.round(g) + "g";
 const fmtMl = ml => ml >= 1000 ? (Math.round(ml / 100) / 10) + "L" : Math.round(ml) + "ml";
 const toG = v => { const m = String(v || "").trim().match(/^([\d.]+)\s*(kg|g)?$/i); if(!m) return null; return Number(m[1]) * (/kg/i.test(m[2] || "") ? 1000 : 1); };
-const toMl = v => { const m = String(v || "").trim().match(/^([\d.]+)\s*(ml|l)$/i); if(!m) return null; return Number(m[1]) * (/^l$/i.test(m[2]) ? 1000 : 1); };
+// Acid: ml or L; grams are read as ml (dry acid is scooped by volume and the team counts 1 g = 1 ml).
+const toMl = v => { const m = String(v || "").trim().match(/^([\d.]+)\s*(ml|l|g|kg)$/i); if(!m) return null; return Number(m[1]) * (/^(l|kg)$/i.test(m[2]) ? 1000 : 1); };
 const allRounds = () => Object.values(Object.assign({}, S.month, S.rounds)).filter(r => r && !isTest(r.person));
 const roundsOn = day => allRounds().filter(r => r.date === day);
 const poolOf = (t, s) => String(t.pool || s.outlet || "");
@@ -273,14 +274,16 @@ const samePool = (a, b) => String(a).toUpperCase() === String(b).toUpperCase();
 // Two technicians at one outlet each carry a copy of the shared jobs, so doses are
 // added up within a round and the largest round's total is taken (never summed across rounds).
 function trackerNight(p, day){
-  const out = {fc:null, ph:null, clG:null, acidMl:null, visited:false};
+  const out = {fc:null, ph:null, clG:null, acidMl:null, visited:false, who:[]};
+  const saw = n => { if(n && !out.who.includes(n)) out.who.push(n); };
   roundsOn(day).filter(r => r.kind !== "vacuum").forEach(r => {
     let cl = null, ac = null;
     (r.stops || []).forEach(s => (s.tasks || []).forEach(t => {
       if(!samePool(poolOf(t, s), p)) return;
       if(s.arriveAt) out.visited = true;
-      if(t.reading && num(t.reading.fc) !== null) { out.fc = num(t.reading.fc); out.ph = num(t.reading.ph); }
+      if(t.reading && num(t.reading.fc) !== null) { out.fc = num(t.reading.fc); out.ph = num(t.reading.ph); saw(t.reading.takenBy || t.claimedBy || r.person); }
       const d = t.dosed;
+      if(d && (num(d.chlorineG) !== null || num(d.acidMl) !== null)) saw(d.by || t.claimedBy || r.person);
       if(d && num(d.chlorineG) !== null) cl = (cl || 0) + num(d.chlorineG);
       if(d && num(d.acidMl) !== null) ac = (ac || 0) + num(d.acidMl);
     }));
@@ -306,14 +309,19 @@ function mismatches(day){
     const rec = poolDay(p, day), a = trackerNight(p, day);
     const sCl = rec && rec.dosing ? rec.dosing.chlorine : null, sAc = rec && rec.dosing ? rec.dosing.acid : null;
     const sFc = rec && rec.fc ? num(rec.fc.night) : null;
-    const add = (what, sheet, app, lvl) => out.push({day, pool:p, what, sheet, app, lvl});
+    const add = (what, sheet, app, lvl) => out.push({day, pool:p, what, sheet, app, lvl, who:a.who.join(", ")});
     const sg = toG(sCl), sml = toMl(sAc);
+    // Nothing for the night in the sheet but the tracker has it: one row, not three.
+    if(!sCl && !sAc && sFc === null && (a.clG !== null || a.acidMl || a.fc !== null)){
+      add("Night report missing in the sheet", "–", [a.fc !== null ? "FC " + a.fc : "", a.clG !== null ? fmtG(a.clG) : "", a.acidMl ? fmtMl(a.acidMl) + " acid" : ""].filter(Boolean).join(" · "), "warn");
+      return;
+    }
     if(sCl && a.clG === null && a.visited) add("Chlorine not in the tracker", sCl, "–", "info");
     else if(!sCl && a.clG !== null) add("Chlorine missing in the sheet", "–", fmtG(a.clG), "warn");
     else if(sg !== null && a.clG !== null && Math.abs(sg - a.clG) >= Math.max(50, 0.1 * Math.max(sg, a.clG))) add("Chlorine differs", sCl, fmtG(a.clG), "warn");
     else if(sCl && sg === null && a.clG !== null) add("Chlorine: sheet value can't be read", sCl, fmtG(a.clG), "info");
     if(!sAc && a.acidMl) add("Acid missing in the sheet", "–", fmtMl(a.acidMl), "warn");
-    else if(sAc && sml === null && a.acidMl !== null) add("Acid: sheet value has no unit", sAc, fmtMl(a.acidMl), "info");
+    else if(sAc && sml === null && a.acidMl !== null) add("Acid: sheet value can't be read", sAc, fmtMl(a.acidMl), "info");
     else if(sml !== null && a.acidMl !== null && Math.abs(sml - a.acidMl) >= Math.max(100, 0.1 * Math.max(sml, a.acidMl))) add("Acid differs", sAc, fmtMl(a.acidMl), "warn");
     if(sFc !== null && a.fc !== null && sFc !== a.fc) add("Night FC differs", "FC " + sFc, "FC " + a.fc, "warn");
     else if(sFc === null && a.fc !== null) add("Night FC missing in the sheet", "–", "FC " + a.fc, "info");
@@ -572,8 +580,8 @@ function drawWater(){
   }).join("");
 
   const mmRows = [yest, yesterday(yest)].flatMap(k => mismatches(k));
-  const mmHtml = mmRows.length ? `<div class="scroll"><table><thead><tr><th>Night</th><th>Pool</th><th>What</th><th>Sheet</th><th>Tracker</th></tr></thead><tbody>${mmRows.map(x =>
-      `<tr><td>${shortDate(x.day)}</td><td class="txt"><b>${esc(x.pool)}</b></td><td class="txt"><span class="chip c-${x.lvl === "warn" ? "warn" : "mute"}">${x.lvl === "warn" ? "check" : "note"}</span> ${esc(x.what)}</td><td>${esc(x.sheet)}</td><td>${esc(x.app)}</td></tr>`).join("")}</tbody></table></div>`
+  const mmHtml = mmRows.length ? `<div class="scroll"><table><thead><tr><th>Night</th><th>Pool</th><th>Staff</th><th>What</th><th>Sheet</th><th>Tracker</th></tr></thead><tbody>${mmRows.map(x =>
+      `<tr><td>${shortDate(x.day)}</td><td class="txt"><b>${esc(x.pool)}</b></td><td class="txt">${esc(x.who || "–")}</td><td class="txt"><span class="chip c-${x.lvl === "warn" ? "warn" : "mute"}">${x.lvl === "warn" ? "check" : "note"}</span> ${esc(x.what)}</td><td>${esc(x.sheet)}</td><td>${esc(x.app)}</td></tr>`).join("")}</tbody></table></div>`
     : `<div class="empty">✓ The sheet and the tracker agree for the last two nights.</div>`;
 
   return `
