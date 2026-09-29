@@ -9,23 +9,34 @@
 *{box-sizing:border-box}
 body{margin:0;background:var(--ground);color:var(--ink);font:15px/1.45 "IBM Plex Sans",system-ui,sans-serif}
 .wrap{max-width:1240px;margin:0 auto;padding:16px}
-header{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:14px}
+header{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:10px}
 h1{font:700 26px/1 "Barlow Condensed",sans-serif;text-transform:uppercase;letter-spacing:.02em;margin:0}
 .date{font:13px "IBM Plex Mono",monospace;color:var(--ink-3)}
 .me{margin-left:auto;font-size:13px;color:var(--ink-3)}
 .me button{border:0;background:none;color:var(--accent);text-decoration:underline;font:inherit;cursor:pointer;margin-left:8px;padding:0}
-h2{font:700 15px/1 "Barlow Condensed",sans-serif;text-transform:uppercase;letter-spacing:.06em;color:var(--ink-2);margin:0 0 10px;display:flex;align-items:center;gap:8px}
-h2 small{font:400 12px "IBM Plex Sans";text-transform:none;letter-spacing:0;color:var(--ink-3);margin-left:auto}
-.card{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:14px}
+nav.tabs{display:flex;gap:4px;margin:0 0 14px;border-bottom:2px solid var(--line);overflow-x:auto;scrollbar-width:none}
+nav.tabs a{flex:none;font:700 15px/1 "Barlow Condensed",sans-serif;text-transform:uppercase;letter-spacing:.05em;color:var(--ink-3);text-decoration:none;padding:11px 14px;border-bottom:3px solid transparent;margin-bottom:-2px;display:flex;align-items:center;gap:6px}
+nav.tabs a.on{color:var(--accent);border-bottom-color:var(--accent)}
+nav.tabs .badge{font:600 11px/1 "IBM Plex Mono",monospace;background:var(--urgent);color:#fff;border-radius:9px;padding:3px 6px}
+nav.tabs .short{display:none}
+@media(max-width:600px){nav.tabs .full{display:none}nav.tabs .short{display:inline}nav.tabs a{padding:11px 10px}}
+nav.tabs .badge.soft{background:var(--line);color:var(--ink-2)}
+h2{font:700 15px/1 "Barlow Condensed",sans-serif;text-transform:uppercase;letter-spacing:.06em;color:var(--ink-2);margin:0 0 10px;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+h2 small{font:400 12px "IBM Plex Sans",system-ui,sans-serif;text-transform:none;letter-spacing:0;color:var(--ink-3);margin-left:auto}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:14px;min-width:0}
+.lead{font-size:13.5px;color:var(--ink-2);margin:-4px 0 10px}
 .tiles{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:12px}
+a.tile{text-decoration:none;color:inherit;display:block}
+a.tile:hover{border-color:var(--accent)}
 .tile .n{font:700 34px/1 "IBM Plex Mono",monospace}
 .tile .n small{font-size:16px;color:var(--ink-3)}
 .tile .l{font:600 12px "Barlow Condensed",sans-serif;text-transform:uppercase;letter-spacing:.07em;color:var(--ink-3);margin-top:6px}
 .tile .s{font-size:12.5px;color:var(--ink-3);margin-top:4px}
+.tile .more{font-size:12.5px;color:var(--accent);margin-top:6px}
 .tile.alert{border-color:var(--urgent);background:var(--urgent-soft)}
 .tile.alert .n{color:var(--urgent)}
 .grid{display:grid;grid-template-columns:1.1fr 1fr;gap:12px;align-items:start}
-.stack{display:flex;flex-direction:column;gap:12px}
+.stack{display:flex;flex-direction:column;gap:12px;min-width:0}
 .att{display:flex;gap:10px;align-items:flex-start;padding:9px 0;border-top:1px solid var(--line-soft)}
 .att:first-of-type{border-top:0}
 .chip{flex:none;font:700 11px/1.6 "Barlow Condensed",sans-serif;text-transform:uppercase;letter-spacing:.06em;padding:1px 7px;border-radius:4px;white-space:nowrap}
@@ -42,22 +53,29 @@ h2 small{font:400 12px "IBM Plex Sans";text-transform:none;letter-spacing:0;colo
 .person:first-of-type{border-top:0}
 .person .who b{display:block}
 .person .who span{font-size:12px;color:var(--ink-3)}
+.person .openjobs{grid-column:2/-1;font-size:12.5px;color:var(--ink-3);margin-top:-4px}
 .route{display:flex;gap:4px;flex-wrap:wrap}
 .stop{font:600 12px "IBM Plex Mono",monospace;padding:3px 7px;border-radius:5px;border:1px solid var(--line);background:var(--surface-2);color:var(--ink-3)}
 .stop.done{background:var(--ok-soft);border-color:transparent;color:var(--ok)}
 .stop.now{background:var(--warn-soft);border-color:var(--warn);color:var(--warn)}
 .stop.partial{background:var(--urgent-soft);border-color:transparent;color:var(--urgent)}
 .jobs{font:600 13px "IBM Plex Mono",monospace;text-align:right}
-.jobs span{display:block;font:400 12px "IBM Plex Sans";color:var(--ink-3)}
+.jobs span{display:block;font:400 12px "IBM Plex Sans",system-ui,sans-serif;color:var(--ink-3)}
+.scroll{overflow-x:auto;-webkit-overflow-scrolling:touch;max-width:100%}
 table{width:100%;border-collapse:collapse;font-size:13.5px}
-th{font:600 11.5px "Barlow Condensed",sans-serif;text-transform:uppercase;letter-spacing:.06em;color:var(--ink-3);text-align:left;padding:5px 6px;border-bottom:1px solid var(--line)}
-td{padding:6px;border-bottom:1px solid var(--line-soft);font-family:"IBM Plex Mono",monospace;font-size:13px}
-td:first-child{font:600 13px "IBM Plex Sans"}
+th{font:600 11.5px "Barlow Condensed",sans-serif;text-transform:uppercase;letter-spacing:.06em;color:var(--ink-3);text-align:left;padding:5px 6px;border-bottom:1px solid var(--line);white-space:nowrap}
+td{padding:6px;border-bottom:1px solid var(--line-soft);font-family:"IBM Plex Mono",monospace;font-size:13px;vertical-align:top}
+td:first-child{font:600 13px "IBM Plex Sans",system-ui,sans-serif;white-space:nowrap}
+td.txt{font-family:"IBM Plex Sans",system-ui,sans-serif;font-size:13px}
 .fc{display:inline-block;min-width:34px;text-align:center;border-radius:4px;padding:0 4px}
 .fc.lo{background:var(--urgent-soft);color:var(--urgent);font-weight:600}
 .fc.hi{background:var(--warn-soft);color:var(--warn);font-weight:600}
 .fc.ok{background:var(--ok-soft);color:var(--ok)}
 .fc.na{color:var(--ink-3)}
+.trend td{text-align:center;padding:4px 3px}
+.trend td:first-child{text-align:left}
+.trend th{text-align:center}
+.trend th:first-child{text-align:left}
 .legend{font-size:12px;color:var(--ink-3);margin-top:8px;display:flex;gap:12px;flex-wrap:wrap;align-items:center}
 .bars .row{display:grid;grid-template-columns:80px 1fr 40px;gap:8px;align-items:center;font-size:13px;margin:5px 0}
 .bars .bar{height:10px;background:var(--line-soft);border-radius:4px;overflow:hidden}
@@ -79,8 +97,20 @@ td:first-child{font:600 13px "IBM Plex Sans"}
 .msg.err{color:var(--urgent)}
 .msg.ok{color:var(--ok)}
 .muted{color:var(--ink-3)}
-@media(max-width:900px){.tiles{grid-template-columns:repeat(2,1fr)}.grid,.two{grid-template-columns:1fr}.person{grid-template-columns:1fr auto}.person .route{grid-column:1/-1;order:3}}
 .src{font:600 11px/1 system-ui,sans-serif;color:var(--ink-3);border:1px solid currentColor;border-radius:4px;padding:1px 4px;vertical-align:1px}
+.pbar{height:8px;background:var(--line-soft);border-radius:4px;overflow:hidden;min-width:70px}
+.pbar i{display:block;height:100%;background:var(--accent)}
+.cal td,.cal th{text-align:center;padding:4px 2px;min-width:24px;font-size:12px}
+.cal td:first-child,.cal th:first-child{text-align:left;position:sticky;left:0;background:var(--surface);z-index:1;padding-right:8px}
+.cal th.we,.cal td.we{background:var(--surface-2)}
+.cal th.today{color:var(--accent);box-shadow:inset 0 -2px 0 var(--accent)}
+.cal .w{color:var(--ok);font-weight:600}
+.cal .m{color:var(--warn);font-weight:600}
+.cal .lv{font:700 10px/1.4 "Barlow Condensed",sans-serif;border-radius:3px;padding:0 2px}
+.cal .lv.mc{background:var(--urgent-soft);color:var(--urgent)}
+.cal .lv.al{background:var(--travel-soft);color:var(--travel)}
+.cal .lv.off{background:var(--surface-2);color:var(--ink-3);border:1px solid var(--line)}
+@media(max-width:900px){.tiles{grid-template-columns:repeat(2,1fr)}.grid,.two{grid-template-columns:1fr}.person{grid-template-columns:1fr auto}.person .route{grid-column:1/-1;order:3}.person .openjobs{grid-column:1/-1;order:4}}
 </style></head><body>
 <div class="wrap" id="app"><p class="muted">Loading…</p></div>
 
@@ -88,11 +118,14 @@ td:first-child{font:600 13px "IBM Plex Sans"}
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore-compat.js"></script>
 <script>
-/* HF Pools dashboard -- Chun Kay's own view of the facility team (29 Sep 2026).
- * Sign-in: Firebase email + password (accounts are created by Chun Kay in the
- * Firebase console; self sign-up is switched off there). Reads the same
- * Firestore data the tracker writes, plus the pool-history Apps Script for
- * morning/afternoon/night FC. Read-only: nothing here changes any data. */
+/* HF Pools dashboard -- Chun Kay's own view of the facility team.
+ * 29 Sep 2026: first version. 30 Sep 2026: split into tabs --
+ *   Today (#today)  the 10-second check: needs attention, who's working, a tile per topic
+ *   Water (#water)  water tests & dosing: today, last weekend's target check, 7 days, sheet vs app
+ *   Work  (#work)   rounds & jobs: live rounds, added jobs, can't finish, vacuum times, Maintenance Board, issues
+ *   Team  (#team)   HR: month calendar, MC/leave, app versions, skill cover
+ * Sign-in: Firebase email + password (accounts created by Chun Kay in the Firebase
+ * console; self sign-up is off). Read-only: nothing here changes any data. */
 const firebaseConfig = {
   apiKey: "AIzaSyANFCZbvRGO9aMRtG9MF_qONO3FL85CzSo",
   authDomain: "maintenance-board-f931a.firebaseapp.com",
@@ -102,10 +135,19 @@ const firebaseConfig = {
   appId: "1:169864970579:web:bfb7490d0aebcfed17e1a6"
 };
 const HISTORY_API = "https://script.google.com/macros/s/AKfycbwYJLfkw5lwKnjwqmEtuRiREzbahnf2l63YhmX_7jMR9uqM9MpeqoxeVTTVw5rc76eZ6g/exec";
+const BOARD_PAGE = "/tasklists/index.html";
 const POOLS = ["BK","CC","DR","HB","HS","JEIP1","JEIP2","JEOP1","JEOP2","Lentor","Tengah","TPY","WWW"];
 const SALT = ["BK","Lentor","Tengah","TPY","DR","HS","WWW"];
 const FC_LOW = 2, FC_HIGH = 3.5, TARGET_LO = 2.5, TARGET_HI = 3.5;
 const LONG_JOB_MIN = 90, LONG_VAC_MIN = 120, NO_MORNING_TEST_HOUR = 11;
+// Maintenance Board: the day each outlet's weekly list is usually done (same as the board page).
+const BOARD_DAY = {JE:1, Tengah:1, BK:1, CC:2, WWW:2, HB:3, TPY:3, DR:4, HS:4, Lentor:5};
+const DOW = ["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];
+const TABS = [{id:"today", label:"Today", short:"Today"}, {id:"water", label:"Water & Dosing", short:"Water"}, {id:"work", label:"Work & Routes", short:"Work"}, {id:"team", label:"Team & HR", short:"Team"}];
+// Same starting skills list the tracker's Team tab shows until someone edits it.
+const DEFAULT_SKILL_NAMES = ["Water test", "Manual dosing", "Manual vacuum", "Night dosing", "Pressure jet",
+  "Pool plumbing", "CCTV", "Wi-Fi", "Repairing", "Fibreglass", "Wallpaper", "Outdoor shades (JEOP1 & JEOP2)",
+  "Monthly request delivery", "Replacing lights", "Painting", "Installing pumps, heat pumps & salt chlorinators"];
 
 firebase.initializeApp(firebaseConfig);
 const auth = firebase.auth(), db = firebase.firestore();
@@ -117,12 +159,18 @@ const slug = s => String(s || "").toLowerCase().replace(/[^a-z0-9]+/g, "-").repl
 const clock = iso => { if(!iso) return "–"; const d = new Date(iso); return pad(d.getHours()) + ":" + pad(d.getMinutes()); };
 const mins = ms => { const m = Math.round(ms / 60000); return m < 60 ? m + "m" : Math.floor(m / 60) + "h " + pad(m % 60) + "m"; };
 const cmpBuild = (a, b) => String(a || "").localeCompare(String(b || ""), undefined, {numeric:true});
+const parseKey = k => { const [y, m, d] = k.split("-").map(Number); return new Date(y, m - 1, d); };
+const addDays = (k, n) => { const t = parseKey(k); t.setDate(t.getDate() + n); return dateKey(t); };
+const yesterday = k => addDays(k, -1);
+const shortDate = k => { const d = parseKey(k); return DOW[d.getDay()] + " " + d.getDate(); };
+const median = a => { if(!a.length) return null; const s = a.slice().sort((x, y) => x - y), m = Math.floor(s.length / 2); return s.length % 2 ? s[m] : (s[m - 1] + s[m]) / 2; };
 // Night rounds keep "yesterday" until 06:30 (they run past midnight); Fik's morning round flips at 04:00.
 function nightDay(){ const d = new Date(); if(d.getHours() < 6 || (d.getHours() === 6 && d.getMinutes() < 30)) d.setDate(d.getDate() - 1); return dateKey(d); }
 function calDay(){ const d = new Date(); if(d.getHours() < 4) d.setDate(d.getDate() - 1); return dateKey(d); }
-const yesterday = k => { const [y, m, d] = k.split("-").map(Number); const t = new Date(y, m - 1, d); t.setDate(t.getDate() - 1); return dateKey(t); };
+const tabNow = () => { const h = (location.hash || "").replace("#", ""); return TABS.some(t => t.id === h) ? h : "today"; };
 
-const S = {user:null, rounds:{}, month:{}, issues:{}, roster:[], leave:{}, versions:{}, hist:{}, histAt:null, histLoading:false, unsubs:[]};
+const S = {user:null, rounds:{}, month:{}, issues:{}, roster:[], leave:{}, versions:{}, cfg:null, team:null,
+           hist:{}, histAt:null, histLoading:false, board:null, boardErr:false, unsubs:[]};
 
 /* ---------------- sign-in ---------------- */
 function loginView(msg, cls){
@@ -146,8 +194,8 @@ function loginView(msg, cls){
   $("#forgot").addEventListener("click", async () => {
     const em = $("#em").value.trim();
     if(!em){ $("#msg").className = "msg err"; $("#msg").textContent = "Type your email first, then tap Forgot password."; return; }
-    try{ await auth.sendPasswordResetEmail(em); $("#msg").className = "msg ok"; $("#msg").textContent = "If that email has an account, a reset link is on its way."; }
-    catch(err){ $("#msg").className = "msg ok"; $("#msg").textContent = "If that email has an account, a reset link is on its way."; }
+    try{ await auth.sendPasswordResetEmail(em); }catch(err){}
+    $("#msg").className = "msg ok"; $("#msg").textContent = "If that email has an account, a reset link is on its way.";
   });
 }
 auth.onAuthStateChanged(u => {
@@ -156,6 +204,7 @@ auth.onAuthStateChanged(u => {
   if(!u){ loginView(); return; }
   start();
 });
+window.addEventListener("hashchange", () => { render(); window.scrollTo(0, 0); });
 
 /* ---------------- data ---------------- */
 function start(){
@@ -167,45 +216,118 @@ function start(){
   S.unsubs.push(db.collection("dosing_issues").orderBy("raisedAt", "desc").limit(300).onSnapshot(s => {
     S.issues = {}; s.forEach(d => { S.issues[d.id] = Object.assign({id:d.id}, d.data()); }); render();
   }, () => {}));
-  S.unsubs.push(db.doc("dosing_config/roster").onSnapshot(s => { S.roster = (s.exists && s.data().members) || []; render(); }, () => {}));
-  S.unsubs.push(db.doc("dosing_config/leave").onSnapshot(s => { S.leave = (s.exists && s.data().entries) || {}; render(); }, () => {}));
-  S.unsubs.push(db.doc("dosing_config/versions").onSnapshot(s => { S.versions = (s.exists && s.data().people) || {}; render(); }, () => {}));
-  loadMonth(); loadHistory();
-  const t1 = setInterval(loadHistory, 10 * 60e3), t2 = setInterval(loadMonth, 15 * 60e3), t3 = setInterval(render, 60e3);
-  S.unsubs.push(() => { clearInterval(t1); clearInterval(t2); clearInterval(t3); });
+  const docInto = (path, fn) => S.unsubs.push(db.doc(path).onSnapshot(s => { fn(s.exists ? s.data() : null); render(); }, () => {}));
+  docInto("dosing_config/roster", d => S.roster = (d && d.members) || []);
+  docInto("dosing_config/leave", d => S.leave = (d && d.entries) || {});
+  docInto("dosing_config/versions", d => S.versions = (d && d.people) || {});
+  docInto("dosing_config/tasks", d => S.cfg = d || {});
+  docInto("dosing_config/team", d => S.team = d);
+  loadMonth(); loadHistory(); loadBoard();
+  const t1 = setInterval(loadHistory, 10 * 60e3), t2 = setInterval(loadMonth, 15 * 60e3), t3 = setInterval(render, 60e3), t4 = setInterval(loadBoard, 15 * 60e3);
+  S.unsubs.push(() => { clearInterval(t1); clearInterval(t2); clearInterval(t3); clearInterval(t4); });
 }
+// Rounds from the 1st of the month (Team calendar) or 35 days back (vacuum times), whichever is earlier.
 async function loadMonth(){
-  const first = nightDay().slice(0, 8) + "01";
-  // Last night's rounds, for the doses the technicians recorded in the tracker
-  // (the sheet's dosing column is typed in separately and is sometimes blank).
-  try{ const y = await db.collection("dosing_rounds").where("date", "==", yesterday(calDay())).get(); S.yRounds = []; y.forEach(d => S.yRounds.push(d.data())); render(); }catch(e){}
-  try{ const s = await db.collection("dosing_rounds").where("date", ">=", first).get(); S.month = {}; s.forEach(d => { S.month[d.id] = d.data(); }); render(); }catch(e){}
+  const first = nightDay().slice(0, 8) + "01", back = addDays(calDay(), -35);
+  const from = first < back ? first : back;
+  try{ const s = await db.collection("dosing_rounds").where("date", ">=", from).get(); S.month = {}; s.forEach(d => { S.month[d.id] = Object.assign({id:d.id}, d.data()); }); render(); }catch(e){ console.warn(e); }
 }
 async function loadHistory(){
   if(S.histLoading) return; S.histLoading = true; render();
   await Promise.all(POOLS.map(p => fetch(HISTORY_API + "?pool=" + encodeURIComponent(p)).then(r => r.json()).then(j => { S.hist[p] = j[p] || []; }).catch(() => { if(!S.hist[p]) S.hist[p] = false; })));
   S.histLoading = false; S.histAt = new Date().toISOString(); render();
 }
-const num = v => (v === null || v === undefined || v === "" || isNaN(Number(v))) ? null : Number(v);
-function poolDay(p, day){ const recs = S.hist[p]; if(!recs) return null; return recs.find(r => r.date === day) || null; }
-// Chlorine the tracker recorded for a pool on last night's rounds (grams), or null.
-function trackerDose(p){
-  let g = null;
-  (S.yRounds || []).forEach(r => (r.stops || []).forEach(s => (s.tasks || []).forEach(t => {
-    const d = t.dosed; if(!d || d.chlorineG === null || d.chlorineG === undefined || isNaN(Number(d.chlorineG))) return;
-    const pool = String(t.pool || s.outlet || "");
-    if(pool.toUpperCase() !== p.toUpperCase()) return;
-    g = (g || 0) + Number(d.chlorineG);
-  })));
-  return g;
+// The Maintenance Board's task lists live inside its own page (const DATA = {...}),
+// so read them from there -- the dashboard stays in step when the board changes.
+let boardLists = null;
+async function loadBoard(){
+  try{
+    if(!boardLists){
+      const html = await fetch(BOARD_PAGE + "?v=" + Math.floor(Date.now() / 36e5)).then(r => r.text());
+      const i = html.indexOf("const DATA = {"), j = html.indexOf("\n};", i);
+      if(i < 0 || j < 0) throw new Error("board lists not found");
+      boardLists = new Function(html.slice(i, j + 3) + "\nreturn DATA;")();
+    }
+    const keys = Object.keys(boardLists);
+    const docs = await Promise.all(keys.map(k => db.doc("maintenance_state/" + k + "_daily").get().then(s => s.exists ? (s.data().tasks || {}) : {}).catch(() => ({}))));
+    S.board = {}; keys.forEach((k, n) => S.board[k] = docs[n]); S.boardErr = false;
+  }catch(e){ console.warn(e); S.boardErr = true; }
+  render();
 }
-const fmtG = g => g >= 1000 ? (Math.round(g / 100) / 10) + "kg" : Math.round(g) + "g";
-const toG = v => { const m = String(v || "").trim().match(/^([\d.]+)\s*(kg|g)?$/i); if(!m) return null; return Number(m[1]) * (/kg/i.test(m[2] || "") ? 1000 : 1); };
-function fcClass(v){ if(v === null) return "na"; return v < FC_LOW ? "lo" : v > FC_HIGH ? "hi" : "ok"; }
 
-/* ---------------- derived views ---------------- */
+/* ---------------- helpers over the data ---------------- */
+const num = v => (v === null || v === undefined || v === "" || isNaN(Number(v))) ? null : Number(v);
+const isTest = n => /^test/i.test(n || "");
+function poolDay(p, day){ const recs = S.hist[p]; if(!recs) return null; return recs.find(r => r.date === day) || null; }
+function fcClass(v){ if(v === null || v === undefined) return "na"; return v < FC_LOW ? "lo" : v > FC_HIGH ? "hi" : "ok"; }
+const fcCell = v => `<span class="fc ${fcClass(v)}">${v === null || v === undefined ? "–" : v}</span>`;
+const fmtG = g => g >= 1000 ? (Math.round(g / 100) / 10) + "kg" : Math.round(g) + "g";
+const fmtMl = ml => ml >= 1000 ? (Math.round(ml / 100) / 10) + "L" : Math.round(ml) + "ml";
+const toG = v => { const m = String(v || "").trim().match(/^([\d.]+)\s*(kg|g)?$/i); if(!m) return null; return Number(m[1]) * (/kg/i.test(m[2] || "") ? 1000 : 1); };
+const toMl = v => { const m = String(v || "").trim().match(/^([\d.]+)\s*(ml|l)$/i); if(!m) return null; return Number(m[1]) * (/^l$/i.test(m[2]) ? 1000 : 1); };
+const allRounds = () => Object.values(Object.assign({}, S.month, S.rounds)).filter(r => r && !isTest(r.person));
+const roundsOn = day => allRounds().filter(r => r.date === day);
+const poolOf = (t, s) => String(t.pool || s.outlet || "");
+const samePool = (a, b) => String(a).toUpperCase() === String(b).toUpperCase();
+// What the tracker recorded for a pool on one night: water test reading + measured dose.
+// Two technicians at one outlet each carry a copy of the shared jobs, so doses are
+// added up within a round and the largest round's total is taken (never summed across rounds).
+function trackerNight(p, day){
+  const out = {fc:null, ph:null, clG:null, acidMl:null, visited:false};
+  roundsOn(day).filter(r => r.kind !== "vacuum").forEach(r => {
+    let cl = null, ac = null;
+    (r.stops || []).forEach(s => (s.tasks || []).forEach(t => {
+      if(!samePool(poolOf(t, s), p)) return;
+      if(s.arriveAt) out.visited = true;
+      if(t.reading && num(t.reading.fc) !== null) { out.fc = num(t.reading.fc); out.ph = num(t.reading.ph); }
+      const d = t.dosed;
+      if(d && num(d.chlorineG) !== null) cl = (cl || 0) + num(d.chlorineG);
+      if(d && num(d.acidMl) !== null) ac = (ac || 0) + num(d.acidMl);
+    }));
+    if(cl !== null) out.clG = Math.max(out.clG || 0, cl);
+    if(ac !== null) out.acidMl = Math.max(out.acidMl || 0, ac);
+  });
+  return out;
+}
+// A night's dose: the sheet first (the official record), the tracker when the sheet is blank.
+function nightDose(p, day){
+  const rec = poolDay(p, day), app = trackerNight(p, day);
+  const sheet = rec && rec.dosing && rec.dosing.chlorine ? String(rec.dosing.chlorine) : "";
+  if(sheet) return {text:sheet, g:toG(sheet), from:"sheet", app};
+  if(app.clG !== null) return {text:fmtG(app.clG), g:app.clG, from:"app", app};
+  return null;
+}
+const hitMark = am => am === null || am === undefined ? "" : am >= TARGET_LO && am <= TARGET_HI ? "✓" : am > TARGET_HI ? "✗ high" : "✗ low";
+// Sheet vs tracker for one night: every pool where the two disagree, or one side is blank.
+function mismatches(day){
+  const out = [];
+  POOLS.forEach(p => {
+    if(!S.hist[p]) return;
+    const rec = poolDay(p, day), a = trackerNight(p, day);
+    const sCl = rec && rec.dosing ? rec.dosing.chlorine : null, sAc = rec && rec.dosing ? rec.dosing.acid : null;
+    const sFc = rec && rec.fc ? num(rec.fc.night) : null;
+    const add = (what, sheet, app, lvl) => out.push({day, pool:p, what, sheet, app, lvl});
+    const sg = toG(sCl), sml = toMl(sAc);
+    if(sCl && a.clG === null && a.visited) add("Chlorine not in the tracker", sCl, "–", "info");
+    else if(!sCl && a.clG !== null) add("Chlorine missing in the sheet", "–", fmtG(a.clG), "warn");
+    else if(sg !== null && a.clG !== null && Math.abs(sg - a.clG) >= Math.max(50, 0.1 * Math.max(sg, a.clG))) add("Chlorine differs", sCl, fmtG(a.clG), "warn");
+    else if(sCl && sg === null && a.clG !== null) add("Chlorine: sheet value can't be read", sCl, fmtG(a.clG), "info");
+    if(!sAc && a.acidMl) add("Acid missing in the sheet", "–", fmtMl(a.acidMl), "warn");
+    else if(sAc && sml === null && a.acidMl !== null) add("Acid: sheet value has no unit", sAc, fmtMl(a.acidMl), "info");
+    else if(sml !== null && a.acidMl !== null && Math.abs(sml - a.acidMl) >= Math.max(100, 0.1 * Math.max(sml, a.acidMl))) add("Acid differs", sAc, fmtMl(a.acidMl), "warn");
+    if(sFc !== null && a.fc !== null && sFc !== a.fc) add("Night FC differs", "FC " + sFc, "FC " + a.fc, "warn");
+    else if(sFc === null && a.fc !== null) add("Night FC missing in the sheet", "–", "FC " + a.fc, "info");
+  });
+  return out;
+}
+// The most recent weekend whose next morning has already been tested: Sat + Sun nights.
+function lastWeekend(){
+  let k = calDay();
+  for(let i = 0; i < 8; i++){ if(parseKey(k).getDay() === 0 && addDays(k, 1) <= calDay()) break; k = yesterday(k); }
+  return [yesterday(k), k];
+}
 function todaysRounds(){
-  return Object.values(S.rounds).filter(r => !/^test/i.test(r.person || "")).map(r => {
+  return Object.values(S.rounds).filter(r => !isTest(r.person)).map(r => {
     const tasks = (r.stops || []).flatMap(s => (s.tasks || []).map(t => Object.assign({outlet:s.outlet}, t)));
     const done = tasks.filter(t => t.doneAt).length;
     const onsite = (r.stops || []).find(s => s.arriveAt && !s.departAt);
@@ -214,59 +336,120 @@ function todaysRounds(){
     return {r, tasks, done, total:tasks.length, onsite, running, finished, vac:r.kind === "vacuum" || /__vac$/.test(r.id)};
   }).sort((a, b) => (a.finished - b.finished) || String(a.r.person).localeCompare(String(b.r.person)));
 }
+// Jobs added in Task Setting that still need something: dated one-offs not done, and can't-finish decisions.
+function addedJobs(){
+  const today = calDay(), extra = (S.cfg && S.cfg.extra) || {}, list = [];
+  Object.keys(extra).forEach(o => (extra[o] || []).forEach(e => {
+    if(!e || e.cancelled) return;
+    const stuck = e.stuck && !e.stuck.ack;
+    if(e.oneTime && e.fromDate){
+      list.push({o, e, stuck, state: e.fromDate > today ? "upcoming" : e.fromDate < today ? "late" : "tonight"});
+    } else if(stuck) list.push({o, e, stuck, state:"standing"});
+  }));
+  const rank = {late:0, tonight:1, standing:2, upcoming:3};
+  return list.sort((a, b) => (b.stuck - a.stuck) || rank[a.state] - rank[b.state] || String(a.e.fromDate || "").localeCompare(String(b.e.fromDate || "")));
+}
+const standingJobs = () => { const extra = (S.cfg && S.cfg.extra) || {}; return Object.values(extra).reduce((n, l) => n + (l || []).filter(e => e && !e.cancelled && !e.oneTime).length, 0); };
+// Maintenance Board, this week's cycle (the board resets on Saturday noon; peak starts Saturday 5am).
+function boardWeek(){
+  if(!S.board || !boardLists) return null;
+  const now = new Date(), since = new Date(now.getFullYear(), now.getMonth(), now.getDate() - ((now.getDay() - 6 + 7) % 7), 12);
+  if(since > now) since.setDate(since.getDate() - 7);
+  const deadline = new Date(since); deadline.setDate(deadline.getDate() + 6); deadline.setHours(5, 0, 0, 0);
+  return Object.keys(boardLists).map(k => {
+    const items = (boardLists[k].daily || []), st = S.board[k] || {};
+    const doneNow = it => { const r = st[it.id]; return r && r.status === "done" && num(r.doneAt) !== null && num(r.doneAt) >= since.getTime(); };
+    const done = items.filter(doneNow), pool = items.filter(it => it.g === "Pool Maintenance");
+    const last = Object.values(st).filter(r => r && num(r.lastDoneAt)).sort((a, b) => b.lastDoneAt - a.lastDoneAt)[0];
+    return {k, label:boardLists[k].label || k, total:items.length, done:done.length, poolTotal:pool.length, poolOpen:pool.filter(it => !doneNow(it)).length,
+            day:BOARD_DAY[k], last, deadline};
+  });
+}
+// Manual vacuum times per pool over the last 5 weeks.
+function vacuumTimes(){
+  const by = {};
+  allRounds().forEach(r => (r.stops || []).forEach(s => (s.tasks || []).forEach(t => {
+    if(!/vacuum/i.test(t.name || "") || !t.doneAt || !t.vac || num(t.vac.minutes) === null) return;
+    const p = poolOf(t, s).toUpperCase();
+    (by[p] = by[p] || []).push({date:r.date, who:t.claimedBy || r.person, min:num(t.vac.minutes), skipped:Object.keys(t.vac.skipped || {}).length, unfinished:!!t.vac.unfinished, at:t.doneAt});
+  })));
+  return Object.keys(by).map(p => {
+    const runs = by[p].sort((a, b) => String(b.at).localeCompare(String(a.at)));
+    const full = runs.filter(x => !x.skipped && !x.unfinished).map(x => x.min);
+    const usual = median(full.length ? full : runs.map(x => x.min));
+    const last = runs[0];
+    let flag = "";
+    if(last.unfinished) flag = "left unfinished";
+    else if(last.skipped) flag = last.skipped + " section" + (last.skipped > 1 ? "s" : "") + " skipped";
+    else if(usual && runs.length >= 3 && last.min < usual * 0.6) flag = "much faster than usual";
+    else if(usual && runs.length >= 3 && last.min > usual * 1.5) flag = "much slower than usual";
+    return {p, last, usual, n:runs.length, flag};
+  }).sort((a, b) => (!!b.flag - !!a.flag) || a.p.localeCompare(b.p));
+}
+function teamData(){
+  if(S.team && Array.isArray(S.team.skills) && Array.isArray(S.team.staff)) return S.team;
+  const skills = DEFAULT_SKILL_NAMES.map((name, i) => ({id:"s" + (i + 1), name}));
+  const lv = ids => { const o = {}; ids.forEach(id => o[id] = {level:"can"}); return o; };
+  const all = skills.map(x => x.id), five = ["s1","s2","s3","s4","s5"];
+  return {skills, staff:[{name:"William", skills:lv(all)}, {name:"Islam", skills:lv(all)}, {name:"Sharul", skills:lv(five)}, {name:"Guru", skills:lv(five)}, {name:"Fik", skills:lv(["s3","s5"])}]};
+}
+const leaveType = t => ({mc:"MC", al:"Annual leave", off:"Off", other:"Other"})[t] || t;
+const leaveEntries = () => Object.values(S.leave).filter(e => e && e.date && !e.removed);
+function offOn(day){ return leaveEntries().filter(e => e.date === day).map(e => ({name:e.person, type:leaveType(e.type), code:e.type, note:e.note || ""})); }
+const offToday = () => offOn(calDay());
+const teamNames = () => [...new Set(S.roster.filter(n => !isTest(n)).concat(allRounds().map(r => r.person).filter(Boolean)))];
+function versionRows(){
+  const newest = Object.values(S.versions).map(v => v && v.build).filter(Boolean).sort(cmpBuild).pop();
+  return {newest, rows:teamNames().map(n => { const v = S.versions[slug(n)] || null; return {n, v, old:!v || cmpBuild(v.build, newest) < 0}; })};
+}
+
+/* ---------------- what needs Kay ---------------- */
 function attention(){
   const out = [], now = Date.now(), hour = new Date().getHours(), today = calDay();
-  // water
   POOLS.forEach(p => {
     const rec = poolDay(p, today);
     const am = rec && num(rec.fc && rec.fc.morning), pm = rec && num(rec.fc && rec.fc.afternoon), ni = rec && num(rec.fc && rec.fc.night);
     const latest = [ni, pm, am].find(v => v !== null && v !== undefined);
     if(latest !== undefined && latest !== null){
-      if(latest > FC_HIGH) out.push({lvl:"urg", chip:"▲ FC high", t:`${p} FC ${latest}`, m:`Latest test today is above ${FC_HIGH}. Check the dose and the scale.`, href:"/dosing-app/pool-history.html"});
-      else if(latest < FC_LOW) out.push({lvl:"urg", chip:"▼ FC low", t:`${p} FC ${latest}`, m: SALT.includes(p) ? "Below 2 — the salt chlorinator should be ON." : "Below 2 — needs dosing.", href:"/dosing-app/pool-history.html"});
+      if(latest > FC_HIGH) out.push({lvl:"urg", chip:"▲ FC high", t:`${p} FC ${latest}`, m:`Latest test today is above ${FC_HIGH}. Check the dose and the scale.`, href:"#water"});
+      else if(latest < FC_LOW) out.push({lvl:"urg", chip:"▼ FC low", t:`${p} FC ${latest}`, m: SALT.includes(p) ? "Below 2 — the salt chlorinator should be ON." : "Below 2 — needs dosing.", href:"#water"});
     } else if(S.hist[p] && hour >= NO_MORNING_TEST_HOUR && (!rec || am === null)){
-      out.push({lvl:"warn", chip:"? No test", t:`${p} — no morning test yet`, m:`Nothing recorded by ${NO_MORNING_TEST_HOUR}:00.`, href:"/dosing-app/pool-history.html"});
+      out.push({lvl:"warn", chip:"? No test", t:`${p} — no morning test yet`, m:`Nothing recorded by ${NO_MORNING_TEST_HOUR}:00.`, href:"#water"});
     }
   });
-  // jobs
   todaysRounds().forEach(({r, tasks}) => {
     tasks.forEach(t => {
       if(t.startedAt && !t.doneAt && !t.cancelledAt && !t.paused){
         const lim = /vacuum/i.test(t.name) ? LONG_VAC_MIN : LONG_JOB_MIN, ran = now - new Date(t.startedAt).getTime();
-        if(ran > lim * 60e3) out.push({lvl:"warn", chip:"◷ Long job", t:`${r.person} · ${t.name} at ${t.outlet} — ${mins(ran)}`, m:`Running longer than ${lim} min.${t.vac && t.vac.photos ? " " + Object.keys(t.vac.photos).length + " photos in." : ""}`, href:"/tasklists/dosing-round-tracker.html"});
+        if(ran > lim * 60e3) out.push({lvl:"warn", chip:"◷ Long job", t:`${r.person} · ${t.name} at ${t.outlet} — ${mins(ran)}`, m:`Running longer than ${lim} min.${t.vac && t.vac.photos ? " " + Object.keys(t.vac.photos).length + " photos in." : ""}`, href:"#work"});
       }
-      if(t.cantFinish && !t.doneAt) out.push({lvl:"warn", chip:"✕ Can't finish", t:`${r.person} · ${t.name} at ${t.outlet}`, m:`${t.cantFinish.reason || ""}${t.cantFinish.note ? " — " + t.cantFinish.note : ""}. Decide on Overview.`, href:"/tasklists/dosing-round-tracker.html"});
+      if(t.cantFinish && !t.doneAt) out.push({lvl:"warn", chip:"✕ Can't finish", t:`${r.person} · ${t.name} at ${t.outlet}`, m:`${t.cantFinish.reason || ""}${t.cantFinish.note ? " — " + t.cantFinish.note : ""}. Decide on Overview.`, href:"#work"});
     });
     (r.stops || []).forEach(s => {
       if(!s.departAt) return;
       const open = (s.tasks || []).filter(t => t.kind === "required" && !t.doneAt && !t.cantFinish && !t.cancelledAt);
-      if(open.length) out.push({lvl:"urg", chip:"⚠ Left open", t:`${r.person} left ${s.outlet} with ${open.length} must-do open`, m:open.map(t => t.name).join(", "), href:"/tasklists/dosing-round-tracker.html"});
+      if(open.length) out.push({lvl:"urg", chip:"⚠ Left open", t:`${r.person} left ${s.outlet} with ${open.length} must-do open`, m:open.map(t => t.name).join(", "), href:"#work"});
     });
   });
-  // issues waiting for a plan
+  const stuck = addedJobs().filter(x => x.stuck);
+  if(stuck.length) out.push({lvl:"warn", chip:"✕ Your jobs", t:`${stuck.length} added job${stuck.length > 1 ? "s" : ""} couldn't be finished`, m:stuck.slice(0, 3).map(x => `${x.o}: ${x.e.name}`).join(" · ") + " — decide on Overview.", href:"#work"});
+  const late = addedJobs().filter(x => x.state === "late" && !x.stuck);
+  if(late.length) out.push({lvl:"info", chip:"◷ Overdue", t:`${late.length} dated job${late.length > 1 ? "s" : ""} past their night, not done`, m:late.slice(0, 3).map(x => `${x.o}: ${x.e.name}`).join(" · "), href:"#work"});
+  const mm = mismatches(yesterday(today)).filter(x => x.lvl === "warn");
+  if(mm.length) out.push({lvl:"info", chip:"≠ Sheet vs app", t:`${mm.length} difference${mm.length > 1 ? "s" : ""} between the sheet and the tracker last night`, m:[...new Set(mm.map(x => x.pool))].join(", "), href:"#water"});
+  const bw = boardWeek();
+  if(bw){
+    const soon = bw.filter(b => b.poolOpen && (b.deadline - now) < 36 * 36e5 && (b.deadline - now) > 0);
+    if(soon.length) out.push({lvl:"warn", chip:"🏊 Board", t:`Pool maintenance still open before the weekend peak`, m:soon.map(b => `${b.label} ${b.poolOpen}`).join(" · "), href:"#work"});
+  }
   const openIss = Object.values(S.issues).filter(i => i.status === "open");
-  if(openIss.length) out.push({lvl:"info", chip:"● Issues", t:`${openIss.length} open issue${openIss.length > 1 ? "s" : ""} waiting for a plan`, m:openIss.slice(0, 3).map(i => `${i.outlet}: ${(i.description || "").slice(0, 40)}`).join(" · "), href:"/tasklists/dosing-round-tracker.html"});
-  // old app versions, only for people working today
-  const newest = Object.values(S.versions).map(v => v && v.build).filter(Boolean).sort(cmpBuild).pop();
+  if(openIss.length) out.push({lvl:"info", chip:"● Issues", t:`${openIss.length} open issue${openIss.length > 1 ? "s" : ""} waiting for a plan`, m:openIss.slice(0, 3).map(i => `${i.outlet}: ${(i.description || "").slice(0, 40)}`).join(" · "), href:"#work"});
+  const {newest} = versionRows();
   const working = [...new Set(todaysRounds().map(x => x.r.person))];
   const old = working.filter(n => { const v = S.versions[slug(n)]; return !v || cmpBuild(v.build, newest) < 0; });
-  if(old.length) out.push({lvl:"info", chip:"⟳ Old app", t:`${old.join(", ")} on an old version`, m:"Old pages can undo saved jobs — ask them to reopen the link.", href:"/tasklists/dosing-round-tracker.html"});
+  if(old.length) out.push({lvl:"info", chip:"⟳ Old app", t:`${old.join(", ")} on an old version`, m:"Old pages can undo saved jobs — ask them to reopen the link.", href:"#team"});
   const rank = {urg:0, warn:1, info:2};
   return out.sort((a, b) => rank[a.lvl] - rank[b.lvl]);
-}
-function offToday(){
-  const d = calDay();
-  return Object.values(S.leave).filter(e => e && e.date === d && !e.removed).map(e => ({name:e.person, type:({mc:"MC", al:"Annual leave", off:"Off", other:"Other"})[e.type] || e.type, note:e.note || ""}));
-}
-function monthCounts(){
-  const days = {};
-  Object.values(S.month).forEach(r => {
-    if(!r.person || /^test/i.test(r.person)) return;
-    if(!(r.stops || []).some(s => s.arriveAt)) return;
-    const key = r.person + (r.kind === "vacuum" ? " ☀" : "");
-    (days[key] = days[key] || new Set()).add(r.date);
-  });
-  return Object.entries(days).map(([n, s]) => ({n, v:s.size})).sort((a, b) => b.v - a.v);
 }
 
 /* ---------------- render ---------------- */
@@ -274,14 +457,25 @@ let renderQueued = false;
 function render(){ if(renderQueued) return; renderQueued = true; requestAnimationFrame(() => { renderQueued = false; draw(); }); }
 function draw(){
   if(!S.user) return;
-  const tr = todaysRounds(), att = attention(), today = calDay(), yest = yesterday(today), now = new Date();
-  const working = tr.filter(x => !x.finished);
-  const jobsDone = tr.reduce((a, x) => a + x.done, 0), jobsTotal = tr.reduce((a, x) => a + x.total, 0);
-  const mustOpen = tr.reduce((a, x) => a + x.tasks.filter(t => t.kind === "required" && !t.doneAt).length, 0);
-  let inRange = 0, tested = 0;
-  POOLS.forEach(p => { const rec = poolDay(p, today); const am = rec && num(rec.fc && rec.fc.morning); if(am !== null && am !== undefined){ tested++; if(am >= TARGET_LO && am <= TARGET_HI) inRange++; } });
+  const tab = tabNow(), now = new Date(), att = attention();
+  const badges = {today:att.filter(a => a.lvl === "urg").length};
+  const prevCal = $("#calscroll"), calLeft = prevCal ? prevCal.scrollLeft : null;
+  const body = tab === "water" ? drawWater() : tab === "work" ? drawWork() : tab === "team" ? drawTeam() : drawToday(att);
+  $("#app").innerHTML = `
+  <header><h1>HF Pools · Dashboard</h1><span class="date">${now.toLocaleDateString("en-SG", {weekday:"short", day:"numeric", month:"short"})} · ${pad(now.getHours())}:${pad(now.getMinutes())} · live</span>
+    <span class="me">Signed in as ${esc(S.user.email)}<button id="out">Sign out</button></span></header>
+  <nav class="tabs">${TABS.map(t => `<a href="#${t.id}" class="${t.id === tab ? "on" : ""}"><span class="full">${t.label}</span><span class="short">${t.short}</span>${badges[t.id] ? `<span class="badge">${badges[t.id]}</span>` : ""}</a>`).join("")}</nav>
+  ${body}`;
+  // Month calendar: keep where it was scrolled on a redraw; the first time, bring today into view (phones).
+  const cal = $("#calscroll");
+  if(cal){ if(calLeft !== null) cal.scrollLeft = calLeft; else { const th = cal.querySelector("th.today"); if(th) cal.scrollLeft = Math.max(0, th.offsetLeft - cal.clientWidth + 170); } }
+  $("#out").onclick = () => auth.signOut();
+  const rf = $("#rf"); if(rf) rf.onclick = () => loadHistory();
+}
 
-  const people = tr.map(x => {
+function peopleHtml(showOpen){
+  const now = new Date();
+  return todaysRounds().map(x => {
     const stops = (x.r.stops || []).map(s => {
       const req = (s.tasks || []).filter(t => t.kind === "required");
       const left = req.filter(t => !t.doneAt).length;
@@ -294,71 +488,220 @@ function draw(){
     }).join("");
     const heading = x.r.headingTo ? `<span class="stop">→ ${esc(x.r.headingTo)}</span>` : "";
     const sub = (x.vac ? "morning" : "night") + " · " + (x.finished ? "done" : "since " + clock(x.r.createdAt));
+    const open = showOpen ? x.tasks.filter(t => !t.doneAt && !t.cancelledAt) : [];
+    const openHtml = open.length ? `<div class="openjobs">Open: ${open.slice(0, 8).map(t => `${esc(t.outlet)} ${esc(t.name)}${t.kind === "required" ? " ❗" : ""}${t.cantFinish ? " (can't finish)" : ""}`).join(" · ")}${open.length > 8 ? ` · +${open.length - 8} more` : ""}</div>` : "";
     return `<div class="person"><div class="who"><b>${esc(x.r.person)}${x.vac ? " ☀" : ""}</b><span>${sub}</span></div>
-      <div class="route">${stops}${heading}</div><div class="jobs">${x.done}/${x.total}<span>jobs</span></div></div>`;
+      <div class="route">${stops}${heading}</div><div class="jobs">${x.done}/${x.total}<span>jobs</span></div>${openHtml}</div>`;
   }).join("") || `<div class="empty muted">No rounds started today yet.</div>`;
-
-  const water = POOLS.map(p => {
-    if(S.hist[p] === undefined) return `<tr><td>${p}</td><td colspan="5" class="muted">loading…</td></tr>`;
-    if(S.hist[p] === false) return `<tr><td>${p}</td><td colspan="5" class="muted">couldn't load</td></tr>`;
-    const rec = poolDay(p, today), yr = poolDay(p, yest);
-    const f = v => `<span class="fc ${fcClass(v)}">${v === null || v === undefined ? "–" : v}</span>`;
-    const am = rec && num(rec.fc && rec.fc.morning), pm = rec && num(rec.fc && rec.fc.afternoon), ni = rec && num(rec.fc && rec.fc.night);
-    const ph = rec && rec.ph && num(rec.ph.night);
-    const sheetDose = yr && yr.dosing && yr.dosing.chlorine ? String(yr.dosing.chlorine) : "";
-    const appG = trackerDose(p);
-    let dose = "";
-    if(sheetDose){
-      dose = esc(sheetDose);
-      const sg = toG(sheetDose);
-      if(appG !== null && sg !== null && Math.abs(sg - appG) >= 50) dose += ` <span class="src" title="The tracker recorded a different amount">(app ${fmtG(appG)})</span>`;
-    } else if(appG !== null){
-      dose = `${fmtG(appG)} <span class="src" title="From the tracker — not in the sheet yet">app</span>`;
-    }
-    let hit = "";
-    if(dose && am !== null && am !== undefined) hit = am >= TARGET_LO && am <= TARGET_HI ? " · ✓ hit target" : am > TARGET_HI ? " · ✗ too high" : " · ✗ low";
-    return `<tr><td>${p}${SALT.includes(p) ? ' <span class="muted" title="salt chlorinator">⚡</span>' : ""}</td><td>${f(am ?? null)}</td><td>${f(pm ?? null)}</td><td>${f(ni ?? null)}</td><td>${ph ?? "–"}</td><td>${dose || "–"}${hit}</td></tr>`;
-  }).join("");
-
-  const attHtml = att.length ? att.map(a => `<div class="att"><span class="chip c-${a.lvl}">${esc(a.chip)}</span><div><b>${esc(a.t)}</b><div class="m">${esc(a.m)}</div></div><a class="go" href="${a.href}">Open</a></div>`).join("")
+}
+const peopleLegend = `<div class="legend"><span class="stop done">✓</span> done <span class="stop now">●</span> on site now <span class="stop partial">⚠</span> left with must-do open</div>`;
+function attHtml(list){
+  return list.length ? list.map(a => `<div class="att"><span class="chip c-${a.lvl}">${esc(a.chip)}</span><div><b>${esc(a.t)}</b><div class="m">${esc(a.m)}</div></div><a class="go" href="${a.href}">Open</a></div>`).join("")
     : `<div class="empty">✓ Nothing needs you right now.</div>`;
+}
 
+/* ---- Today ---- */
+function drawToday(att){
+  const tr = todaysRounds(), today = calDay();
+  const working = tr.filter(x => !x.finished);
+  const jobsDone = tr.reduce((a, x) => a + x.done, 0), jobsTotal = tr.reduce((a, x) => a + x.total, 0);
+  const mustOpen = tr.reduce((a, x) => a + x.tasks.filter(t => t.kind === "required" && !t.doneAt).length, 0);
+  let inRange = 0, tested = 0, low = 0, high = 0;
+  POOLS.forEach(p => { const rec = poolDay(p, today); const am = rec && num(rec.fc && rec.fc.morning); if(am !== null && am !== undefined){ tested++; if(am >= TARGET_LO && am <= TARGET_HI) inRange++; else if(am < TARGET_LO) low++; else high++; } });
   const off = offToday();
-  const newest = Object.values(S.versions).map(v => v && v.build).filter(Boolean).sort(cmpBuild).pop();
-  const team = S.roster.filter(n => !/^test/i.test(n));
-  const oldV = team.filter(n => { const v = S.versions[slug(n)]; return !v || cmpBuild(v.build, newest) < 0; });
-  const mc = monthCounts(), maxM = Math.max(1, ...mc.map(x => x.v));
-
-  $("#app").innerHTML = `
-  <header><h1>HF Pools · Dashboard</h1><span class="date">${now.toLocaleDateString("en-SG", {weekday:"short", day:"numeric", month:"short"})} · ${pad(now.getHours())}:${pad(now.getMinutes())} · live</span>
-    <span class="me">Signed in as ${esc(S.user.email)}<button id="out">Sign out</button></span></header>
+  return `
   <div class="tiles">
-    <div class="card tile"><div class="n">${working.length}</div><div class="l">Working now</div><div class="s">${esc(working.map(x => x.r.person).join(" · ") || "nobody on a round")}</div></div>
-    <div class="card tile"><div class="n">${jobsDone}<small>/${jobsTotal}</small></div><div class="l">Jobs done today</div><div class="s">${mustOpen} must-do still open</div></div>
-    <div class="card tile"><div class="n">${inRange}<small>/${tested || POOLS.length}</small></div><div class="l">Pools in range (morning)</div><div class="s">target FC ${TARGET_LO}–${TARGET_HI}${tested < POOLS.length ? ` · ${POOLS.length - tested} not tested` : ""}</div></div>
+    <a class="card tile" href="#water"><div class="n">${inRange}<small>/${tested || POOLS.length}</small></div><div class="l">Water · in range this morning</div><div class="s">${low} low · ${high} high${tested < POOLS.length ? ` · ${POOLS.length - tested} not tested` : ""}</div><div class="more">Water & Dosing →</div></a>
+    <a class="card tile" href="#work"><div class="n">${jobsDone}<small>/${jobsTotal}</small></div><div class="l">Work · jobs done today</div><div class="s">${working.length} working now · ${mustOpen} must-do open</div><div class="more">Work & Routes →</div></a>
+    <a class="card tile" href="#team"><div class="n">${off.length}</div><div class="l">Team · off today</div><div class="s">${esc(off.map(o => o.name + " " + o.type).join(" · ") || "everyone in")}</div><div class="more">Team & HR →</div></a>
     <div class="card tile${att.length ? " alert" : ""}"><div class="n">${att.length}</div><div class="l">Need your attention</div><div class="s">${att.length ? "see the list below" : "all clear"}</div></div>
   </div>
   <div class="grid"><div class="stack">
-    <div class="card"><h2>⚠ Needs your attention <small>most urgent first</small></h2>${attHtml}</div>
-    <div class="card"><h2>Who's working today <small>live</small></h2>${people}
-      <div class="legend"><span class="stop done">✓</span> done <span class="stop now">●</span> on site now <span class="stop partial">⚠</span> left with must-do open</div></div>
+    <div class="card"><h2>⚠ Needs your attention <small>most urgent first</small></h2>${attHtml(att)}</div>
   </div><div class="stack">
-    <div class="card"><h2>Water quality today <small>${S.histLoading ? "updating…" : S.histAt ? "as of " + clock(S.histAt) : ""} · <button class="btnlink" id="rf">Refresh</button></small></h2>
-      <table><thead><tr><th>Pool</th><th>AM</th><th>PM</th><th>Night</th><th>pH</th><th>Last night dose</th></tr></thead><tbody>${water}</tbody></table>
-      <div class="legend"><span><span class="fc lo">1</span> below ${FC_LOW}</span><span><span class="fc ok">2.5</span> ${FC_LOW}–${FC_HIGH}</span><span><span class="fc hi">5</span> above ${FC_HIGH}</span><span>⚡ salt chlorinator · “hit target” = this morning ${TARGET_LO}–${TARGET_HI} · <span class="src">app</span> = dose from the tracker, not in the sheet yet</span></div></div>
-    <div class="two">
-      <div class="card"><h2>Off today</h2><div class="mini">${off.length ? off.map(o => `<div><span>${esc(o.name)}</span><span class="chip c-mute">${esc(o.type)}</span></div>`).join("") : '<div><span class="muted">Everyone in</span></div>'}</div></div>
-      <div class="card"><h2>App version</h2><div class="mini"><div><span>Latest</span><b>${team.length - oldV.length} of ${team.length}</b></div>${oldV.length ? `<div><span>Old</span><span class="chip c-info">${esc(oldV.join(", "))}</span></div>` : ""}</div></div>
-    </div>
-    <div class="card"><h2>This month <small>days with a round, per person</small></h2><div class="bars">
-      ${mc.map(x => `<div class="row"><span>${esc(x.n)}</span><div class="bar"><i style="width:${Math.round(x.v / maxM * 100)}%"></i></div><span class="v">${x.v}</span></div>`).join("") || '<div class="muted">Loading…</div>'}
-    </div><div class="legend">☀ = Morning Round. Hours, jobs and MC/leave per day are on the tracker's Calendar tab.</div></div>
-  </div></div>
-  <div class="card" style="margin-top:12px"><h2>Open a page</h2><div class="links">
-    <a href="/tracker">Night Round</a><a href="/morning">Morning Round</a><a href="/tasklists/dosing-round-tracker.html#overview">Overview</a><a href="/board">Maintenance Board</a><a href="/dosing-app/pool-history.html">Pool history</a><a href="/dosing">Dosing Lookup</a><a href="/">All pages</a>
+    <div class="card"><h2>Who's working today <small>live</small></h2>${peopleHtml(false)}${peopleLegend}</div>
+    <div class="card"><h2>Open a page</h2><div class="links">
+      <a href="/tracker">Night Round</a><a href="/morning">Morning Round</a><a href="/tasklists/dosing-round-tracker.html#overview">Overview</a><a href="/board">Maintenance Board</a><a href="/dosing-app/pool-history.html">Pool history</a><a href="/dosing">Dosing Lookup</a><a href="/">All pages</a>
+    </div></div>
   </div></div>`;
-  $("#out").onclick = () => auth.signOut();
-  $("#rf").onclick = () => loadHistory();
+}
+
+/* ---- Water & Dosing ---- */
+function drawWater(){
+  const today = calDay(), yest = yesterday(today);
+  const loadingRow = (p, cols) => S.hist[p] === undefined ? `<tr><td>${p}</td><td colspan="${cols}" class="muted">loading…</td></tr>` : S.hist[p] === false ? `<tr><td>${p}</td><td colspan="${cols}" class="muted">couldn't load</td></tr>` : "";
+  const salt = p => SALT.includes(p) ? ' <span class="muted" title="salt chlorinator">⚡</span>' : "";
+
+  const todayRows = POOLS.map(p => {
+    const lr = loadingRow(p, 5); if(lr) return lr;
+    const rec = poolDay(p, today);
+    const am = rec && num(rec.fc && rec.fc.morning), pm = rec && num(rec.fc && rec.fc.afternoon), ni = rec && num(rec.fc && rec.fc.night);
+    const ph = rec && rec.ph && num(rec.ph.night);
+    const d = nightDose(p, yest);
+    let dose = "–";
+    if(d){
+      dose = esc(d.text) + (d.from === "app" ? ` <span class="src" title="From the tracker — not in the sheet yet">app</span>` : "");
+      if(d.from === "sheet" && d.app.clG !== null && d.g !== null && Math.abs(d.g - d.app.clG) >= 50) dose += ` <span class="src" title="The tracker recorded a different amount">(app ${fmtG(d.app.clG)})</span>`;
+      const h = hitMark(am); if(h) dose += " · " + (h === "✓" ? "✓ hit target" : h);
+    }
+    return `<tr><td>${p}${salt(p)}</td><td>${fcCell(am)}</td><td>${fcCell(pm)}</td><td>${fcCell(ni)}</td><td>${ph ?? "–"}</td><td>${dose}</td></tr>`;
+  }).join("");
+
+  const [sat, sun] = lastWeekend();
+  let hits = 0, checked = 0;
+  const wkRows = POOLS.map(p => {
+    const lr = loadingRow(p, 2); if(lr) return lr;
+    const cell = night => {
+      const d = nightDose(p, night), next = poolDay(p, addDays(night, 1)), am = next && num(next.fc && next.fc.morning);
+      if(!d && (am === null || am === undefined)) return `<td class="muted">–</td>`;
+      if(!d) return `<td><span class="muted">no dose</span> → ${fcCell(am)}</td>`;
+      const h = hitMark(am); if(h){ checked++; if(h === "✓") hits++; }
+      return `<td>${esc(d.text)}${d.from === "app" ? ' <span class="src">app</span>' : ""} → ${fcCell(am)} <b style="color:var(--${h === "✓" ? "ok" : "urgent"})">${h || "?"}</b></td>`;
+    };
+    return `<tr><td>${p}${salt(p)}</td>${cell(sat)}${cell(sun)}</tr>`;
+  }).join("");
+
+  const days = []; for(let i = 6; i >= 0; i--) days.push(addDays(today, -i));
+  const trendRows = POOLS.map(p => {
+    const lr = loadingRow(p, 7); if(lr) return lr;
+    return `<tr><td>${p}${salt(p)}</td>${days.map(k => {
+      const rec = poolDay(p, k), am = rec && num(rec.fc && rec.fc.morning), prev = nightDose(p, yesterday(k));
+      const tip = rec ? `${p} ${shortDate(k)} · AM ${am ?? "–"} · PM ${num(rec.fc && rec.fc.afternoon) ?? "–"} · Night ${num(rec.fc && rec.fc.night) ?? "–"}${prev ? " · dosed " + prev.text + " the night before" : ""}` : `${p} ${shortDate(k)} · no record`;
+      return `<td title="${esc(tip)}">${fcCell(am)}</td>`;
+    }).join("")}</tr>`;
+  }).join("");
+
+  const mmRows = [yest, yesterday(yest)].flatMap(k => mismatches(k));
+  const mmHtml = mmRows.length ? `<div class="scroll"><table><thead><tr><th>Night</th><th>Pool</th><th>What</th><th>Sheet</th><th>Tracker</th></tr></thead><tbody>${mmRows.map(x =>
+      `<tr><td>${shortDate(x.day)}</td><td class="txt"><b>${esc(x.pool)}</b></td><td class="txt"><span class="chip c-${x.lvl === "warn" ? "warn" : "mute"}">${x.lvl === "warn" ? "check" : "note"}</span> ${esc(x.what)}</td><td>${esc(x.sheet)}</td><td>${esc(x.app)}</td></tr>`).join("")}</tbody></table></div>`
+    : `<div class="empty">✓ The sheet and the tracker agree for the last two nights.</div>`;
+
+  return `
+  <div class="grid"><div class="stack">
+    <div class="card"><h2>Water quality today <small>${S.histLoading ? "updating…" : S.histAt ? "as of " + clock(S.histAt) : ""} · <button class="btnlink" id="rf">Refresh</button></small></h2>
+      <div class="scroll"><table><thead><tr><th>Pool</th><th>AM</th><th>PM</th><th>Night</th><th>pH</th><th>Last night dose</th></tr></thead><tbody>${todayRows}</tbody></table></div>
+      <div class="legend"><span><span class="fc lo">1</span> below ${FC_LOW}</span><span><span class="fc ok">2.5</span> ${FC_LOW}–${FC_HIGH}</span><span><span class="fc hi">5</span> above ${FC_HIGH}</span><span>⚡ salt chlorinator · “hit target” = this morning ${TARGET_LO}–${TARGET_HI} · <span class="src">app</span> = dose from the tracker, not in the sheet yet</span></div></div>
+    <div class="card"><h2>Morning FC · last 7 days <small>hover a box for the full day</small></h2>
+      <div class="scroll"><table class="trend"><thead><tr><th>Pool</th>${days.map(k => `<th>${shortDate(k)}</th>`).join("")}</tr></thead><tbody>${trendRows}</tbody></table></div>
+      <div class="legend">Rows of red mean the night dose for that pool is too small; rows of amber mean too big.</div></div>
+  </div><div class="stack">
+    <div class="card"><h2>Last weekend · did the dose hit ${TARGET_LO}–${TARGET_HI}? <small>${checked ? hits + " of " + checked + " ✓" : ""}</small></h2>
+      <p class="lead">Night dose → next morning FC. Weekends are checked because they're the peak.</p>
+      <div class="scroll"><table><thead><tr><th>Pool</th><th>${shortDate(sat)} night</th><th>${shortDate(sun)} night</th></tr></thead><tbody>${wkRows}</tbody></table></div></div>
+    <div class="card"><h2>Sheet vs tracker <small>last two nights</small></h2>
+      <p class="lead">The night report sheet and the tracker should say the same thing. "Check" rows are worth a look; "note" rows are usually harmless.</p>
+      ${mmHtml}</div>
+  </div></div>`;
+}
+
+/* ---- Work & Routes ---- */
+function drawWork(){
+  const tr = todaysRounds(), today = calDay();
+  const cant = tr.flatMap(x => x.tasks.filter(t => t.cantFinish && !t.doneAt).map(t => ({who:x.r.person, t})));
+  const aj = addedJobs(), standing = standingJobs();
+  const stateLabel = x => x.stuck ? `<span class="chip c-warn">can't finish · decide</span>` : x.state === "late" ? `<span class="chip c-urg">since ${esc(shortDate(x.e.fromDate))}</span>` : x.state === "tonight" ? `<span class="chip c-info">tonight</span>` : x.state === "upcoming" ? `<span class="chip c-mute">from ${esc(shortDate(x.e.fromDate))}</span>` : `<span class="chip c-mute">every week</span>`;
+  const ajHtml = aj.length ? `<div class="scroll"><table><thead><tr><th>Outlet</th><th>Job</th><th>For</th><th>Status</th></tr></thead><tbody>${aj.map(x => `<tr><td>${esc(x.o)}</td><td class="txt">${esc(x.e.name)}${x.e.kind === "required" ? " ❗" : ""}<div class="muted" style="font-size:12px">${esc([x.e.category, x.e.addedBy ? "added by " + x.e.addedBy : ""].filter(Boolean).join(" · "))}${x.stuck && x.e.stuck.reason ? " · " + esc(x.e.stuck.reason) : ""}</div></td><td class="txt">${esc(x.e.assignee || "anyone")}</td><td>${stateLabel(x)}</td></tr>`).join("")}</tbody></table></div>`
+    : `<div class="empty">✓ No dated jobs waiting.</div>`;
+  const cantHtml = cant.length ? cant.map(x => `<div class="att"><span class="chip c-warn">✕</span><div><b>${esc(x.who)} · ${esc(x.t.name)} at ${esc(x.t.outlet)}</b><div class="m">${esc(x.t.cantFinish.reason || "")}${x.t.cantFinish.note ? " — " + esc(x.t.cantFinish.note) : ""}</div></div><a class="go" href="/tasklists/dosing-round-tracker.html#overview">Decide</a></div>`).join("") : `<div class="empty">✓ Nothing today.</div>`;
+
+  const vt = vacuumTimes();
+  const vtHtml = vt.length ? `<div class="scroll"><table><thead><tr><th>Pool</th><th>Last vacuum</th><th>Time</th><th>Usual</th><th></th></tr></thead><tbody>${vt.map(v => `<tr><td>${esc(v.p)}</td><td class="txt">${esc(shortDate(v.last.date))} · ${esc(v.last.who || "")}</td><td>${v.last.min}m</td><td>${v.usual !== null ? Math.round(v.usual) + "m" : "–"}<span class="muted" style="font-size:11px"> ×${v.n}</span></td><td>${v.flag ? `<span class="chip c-warn">${esc(v.flag)}</span>` : ""}</td></tr>`).join("")}</tbody></table></div>
+      <div class="legend">Time = first to last photo, breaks taken off. Usual = the middle of the last 5 weeks' full vacuums (×runs).</div>`
+    : `<div class="muted">No vacuums with photos in the last 5 weeks.</div>`;
+
+  const bw = boardWeek();
+  let boardHtml;
+  if(S.boardErr && !bw) boardHtml = `<div class="muted">Couldn't read the Maintenance Board. <a href="/board">Open it</a></div>`;
+  else if(!bw) boardHtml = `<div class="muted">Loading…</div>`;
+  else {
+    const dow = new Date().getDay();
+    boardHtml = `<div class="scroll"><table><thead><tr><th>Outlet</th><th>Day</th><th>This week</th><th></th><th>Pool maint.</th><th>Last done</th></tr></thead><tbody>${bw.map(b => {
+      const pct = b.total ? Math.round(b.done / b.total * 100) : 0;
+      const due = b.day !== undefined && ((dow + 1) % 7) >= ((b.day + 1) % 7); // Sat-based week: its day has come
+      return `<tr><td>${esc(b.label)}</td><td>${b.day !== undefined ? DOW[b.day] : "–"}</td><td>${b.done}/${b.total}</td><td><div class="pbar"><i style="width:${pct}%"></i></div></td>
+        <td>${b.poolOpen ? `<span class="chip ${due ? "c-warn" : "c-mute"}">${b.poolOpen} open</span>` : `<span class="chip c-ok">✓ done</span>`}</td>
+        <td class="txt">${b.last ? esc(shortDate(dateKey(new Date(b.last.lastDoneAt)))) + " · " + esc(b.last.lastDoneBy || "") : "–"}</td></tr>`; }).join("")}</tbody></table></div>
+      <div class="legend">Week runs Saturday noon → Saturday 5am (weekend peak). Amber = that outlet's maintenance day has passed with pool jobs still open.</div>`;
+  }
+
+  const iss = Object.values(S.issues).filter(i => i.status !== "resolved");
+  const pr = {urgent:0, medium:1, low:2};
+  iss.sort((a, b) => (pr[a.priority] ?? 1) - (pr[b.priority] ?? 1) || String(b.raisedAt || "").localeCompare(String(a.raisedAt || "")));
+  const issHtml = iss.length ? `<div class="scroll"><table><thead><tr><th>Outlet</th><th>Issue</th><th>Status</th></tr></thead><tbody>${iss.slice(0, 12).map(i => `<tr><td>${esc(i.outlet)}</td><td class="txt">${esc((i.description || "").slice(0, 90))}<div class="muted" style="font-size:12px">${esc(i.raisedBy || "")}${i.raisedAt ? " · " + esc(shortDate(dateKey(new Date(i.raisedAt)))) : ""}</div></td><td><span class="chip ${i.priority === "urgent" ? "c-urg" : "c-mute"}">${esc(i.status)}${i.priority === "urgent" ? " · urgent" : ""}</span></td></tr>`).join("")}</tbody></table></div>${iss.length > 12 ? `<div class="legend">+${iss.length - 12} more on the tracker's Overview.</div>` : ""}`
+    : `<div class="empty">✓ No open issues.</div>`;
+
+  return `
+  <div class="grid"><div class="stack">
+    <div class="card"><h2>Rounds today <small>night, afternoon and ☀ morning · live</small></h2>${peopleHtml(true)}${peopleLegend}</div>
+    <div class="card"><h2>Can't finish today <small>waiting for your decision</small></h2>${cantHtml}</div>
+    <div class="card"><h2>Jobs you added <small>${standing} weekly job${standing === 1 ? "" : "s"} running · <a href="/tasklists/dosing-round-tracker.html#tasks">Task Setting</a></small></h2>${ajHtml}</div>
+  </div><div class="stack">
+    <div class="card"><h2>Maintenance Board · this week <small><a href="/board">Open the board</a></small></h2>${boardHtml}</div>
+    <div class="card"><h2>Manual vacuum times <small>last 5 weeks</small></h2>${vtHtml}</div>
+    <div class="card"><h2>Open issues <small>${iss.length}</small></h2>${issHtml}</div>
+  </div></div>`;
+}
+
+/* ---- Team & HR ---- */
+function drawTeam(){
+  const today = calDay(), month = nightDay().slice(0, 7);
+  const [y, m] = month.split("-").map(Number), nDays = new Date(y, m, 0).getDate();
+  const days = []; for(let d = 1; d <= nDays; d++) days.push(month + "-" + pad(d));
+  const people = teamNames();
+  // per person per day: worked (night / morning) + hours
+  const work = {};
+  allRounds().filter(r => r.date && r.date.startsWith(month) && (r.stops || []).some(s => s.arriveAt)).forEach(r => {
+    const k = r.person + "|" + r.date, w = work[k] = work[k] || {night:false, morning:false, ms:0};
+    if(r.kind === "vacuum") w.morning = true; else w.night = true;
+    const arr = (r.stops || []).map(s => s.arriveAt).filter(Boolean).sort(), dep = (r.stops || []).map(s => s.departAt).filter(Boolean).sort();
+    if(arr.length && dep.length){ const ms = new Date(dep[dep.length - 1]) - new Date(arr[0]); if(ms > 0 && ms < 16 * 36e5) w.ms += ms; }
+  });
+  const lv = {}; leaveEntries().filter(e => e.date.startsWith(month)).forEach(e => lv[e.person + "|" + e.date] = e.type);
+  const calRows = people.map(n => {
+    let nights = 0, mornings = 0, ms = 0, mc = 0, al = 0;
+    const cells = days.map(k => {
+      const w = work[n + "|" + k], l = lv[n + "|" + k], we = [0, 6].includes(parseKey(k).getDay()) ? " we" : "";
+      if(w){ if(w.night) nights++; if(w.morning) mornings++; ms += w.ms; }
+      if(l === "mc") mc++; if(l === "al") al++;
+      const inner = l ? `<span class="lv ${l === "mc" ? "mc" : l === "al" ? "al" : "off"}">${l === "mc" ? "MC" : l === "al" ? "AL" : "OFF"}</span>`
+        : w ? `${w.night ? '<span class="w">●</span>' : ""}${w.morning ? '<span class="m">☀</span>' : ""}` : "";
+      const tip = `${n} · ${shortDate(k)}${w ? " · " + (w.night ? "round" : "") + (w.morning ? (w.night ? " + " : "") + "morning round" : "") + (w.ms ? " · " + mins(w.ms) : "") : ""}${l ? " · " + leaveType(l) : ""}`;
+      return `<td class="${we.trim()}" title="${esc(tip)}">${inner}</td>`;
+    }).join("");
+    return `<tr><td>${esc(n)}</td>${cells}<td>${nights || (mornings ? "" : 0)}${mornings ? ` <span class="m">${nights ? "+" : ""}☀${mornings}</span>` : ""}</td><td>${ms ? Math.round(ms / 36e5) + "h" : "–"}</td><td>${mc || "–"}</td><td>${al || "–"}</td></tr>`;
+  }).join("");
+
+  const upcoming = leaveEntries().filter(e => e.date >= today && e.date <= addDays(today, 21)).sort((a, b) => a.date.localeCompare(b.date));
+  const upHtml = upcoming.length ? `<div class="mini">${upcoming.map(e => `<div><span>${esc(shortDate(e.date))} · <b>${esc(e.person)}</b>${e.note ? ` <span class="muted">${esc(e.note)}</span>` : ""}</span><span class="chip ${e.type === "mc" ? "c-urg" : e.type === "al" ? "c-info" : "c-mute"}">${esc(leaveType(e.type))}</span></div>`).join("")}</div>` : `<div class="empty">✓ Nobody off in the next 3 weeks.</div>`;
+
+  const {rows:vr} = versionRows();
+  const verHtml = `<div class="scroll"><table><thead><tr><th>Person</th><th>Version</th><th>Last opened</th><th></th></tr></thead><tbody>${vr.map(x => `<tr><td>${esc(x.n)}</td><td>${esc(x.v ? x.v.build : "–")}</td><td class="txt">${x.v && x.v.at ? esc(shortDate(dateKey(new Date(x.v.at)))) + " " + clock(x.v.at) + (x.v.device ? " · " + esc(x.v.device) : "") : "never"}</td><td>${x.old ? '<span class="chip c-info">⟳ old</span>' : '<span class="chip c-ok">latest</span>'}</td></tr>`).join("")}</tbody></table></div>`;
+
+  const td = teamData(), offNow = offToday().map(o => o.name);
+  const can = sk => td.staff.filter(p => p.skills && p.skills[sk.id] && ["can", "train"].includes(p.skills[sk.id].level)).map(p => p.name);
+  const skRows = td.skills.map(sk => ({sk, who:can(sk)})).map(x => ({...x, here:x.who.filter(n => !offNow.includes(n))}))
+    .filter(x => x.who.length <= 1 || x.here.length < x.who.length && x.here.length <= 1)
+    .sort((a, b) => a.here.length - b.here.length || a.who.length - b.who.length);
+  // Group skills with the same people, so "William, Islam" isn't repeated eleven times.
+  const groups = [];
+  skRows.forEach(x => { const k = x.who.join(",") + "|" + x.here.join(","); let g = groups.find(g => g.k === k); if(!g) groups.push(g = {k, who:x.who, here:x.here, names:[]}); g.names.push(x.sk.name); });
+  const skHtml = groups.length ? `<div class="mini">${groups.map(g => {
+      const off = g.who.filter(n => !g.here.includes(n));
+      const chip = g.who.length === 0 ? '<span class="chip c-urg">nobody</span>' : g.here.length === 0 ? '<span class="chip c-urg">nobody in today</span>' : g.who.length === 1 ? '<span class="chip c-warn">only 1 person</span>' : '<span class="chip c-warn">1 in today</span>';
+      return `<div style="display:block"><div style="display:flex;justify-content:space-between;gap:8px;border:0;padding:0"><b>${g.who.length ? esc(g.who.join(" & ")) : "No one"}${off.length ? ` <span class="muted" style="font-weight:400">(${esc(off.join(", "))} off today)</span>` : ""}</b>${chip}</div><div class="muted" style="display:block;border:0;padding:2px 0 0">${esc(g.names.join(" · "))}</div></div>`; }).join("")}</div>`
+    : `<div class="empty">✓ Every skill has at least two people.</div>`;
+
+  return `
+  <div class="card" style="margin-bottom:12px"><h2>${esc(new Date(y, m - 1, 1).toLocaleDateString("en-SG", {month:"long", year:"numeric"}))} · who worked which day <small><a href="/tasklists/dosing-round-tracker.html#calendar">Tracker calendar</a></small></h2>
+    <div class="scroll" id="calscroll"><table class="cal"><thead><tr><th>Person</th>${days.map(k => `<th class="${[0, 6].includes(parseKey(k).getDay()) ? "we" : ""}${k === today ? " today" : ""}">${Number(k.slice(8))}<br><span class="muted" style="font-weight:400">${DOW[parseKey(k).getDay()][0]}</span></th>`).join("")}<th>Rounds</th><th>Hours</th><th>MC</th><th>AL</th></tr></thead><tbody>${calRows}</tbody></table></div>
+    <div class="legend"><span><span class="w">●</span> round</span><span><span class="m">☀</span> morning round</span><span><span class="lv mc" style="font:700 10px/1.4 'Barlow Condensed';padding:0 2px;border-radius:3px;background:var(--urgent-soft);color:var(--urgent)">MC</span> MC</span><span>AL annual leave · OFF off day · hover a day for hours</span></div></div>
+  <div class="grid"><div class="stack">
+    <div class="card"><h2>Off · today and next 3 weeks</h2>${upHtml}</div>
+    <div class="card"><h2>Skill cover <small><a href="/tasklists/dosing-round-tracker.html#team">Team tab</a></small></h2><p class="lead">Skills only one person can do, or with cover gone because someone is off today.</p>${skHtml}</div>
+  </div><div class="stack">
+    <div class="card"><h2>App version on each phone</h2>${verHtml}</div>
+    <div class="card"><h2>Coming later</h2><p class="lead" style="margin:0">Leave and MC applications to approve, and the conduct log, will sit here once the HR app is built.</p></div>
+  </div></div>`;
 }
 </script>
 </body></html>
