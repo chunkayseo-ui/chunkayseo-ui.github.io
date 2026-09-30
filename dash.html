@@ -213,10 +213,42 @@ function loginView(msg, cls){
     $("#msg").className = "msg ok"; $("#msg").textContent = "If that email has an account, a reset link is on its way.";
   });
 }
-auth.onAuthStateChanged(u => {
+/* Who is signed in. Staff get their own page, not this manager dashboard (Kay, 30 Sep 2026).
+   Emails are kept out of this public page: only a SHA-256 fingerprint of each is listed.
+   Anyone not listed here (Kay) gets the full dashboard; "supervisor" (William) does too. */
+const PEOPLE = {
+  "dc56ea9e3e3156675058121ac14f4b161da89f2f0fe90231583a2fce2797af32": {name:"Fik", role:"staff"},
+  "6df36b3943ca1eea63bdcb152d79273de09030ced956146f0180cc98066f3133": {name:"Sharul", role:"staff"},
+  "6ba3ddae7dbb119b31d474b6551b38f271c6df9613b44889fd8cfff6e8c47edf": {name:"William", role:"supervisor"},
+};
+async function whoIs(email){
+  try{
+    const buf = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(String(email || "").trim().toLowerCase()));
+    const hex = [...new Uint8Array(buf)].map(b => b.toString(16).padStart(2, "0")).join("");
+    return PEOPLE[hex] || null;
+  }catch(e){ return null; }
+}
+function staffView(p){
+  $("#app").innerHTML = `
+  <header><h1>HF Pools</h1><span class="me">Signed in as ${esc(S.user.email)}<button id="out">Sign out</button></span></header>
+  <div class="card" style="max-width:560px;margin:16px auto">
+    <h2 style="font-size:20px;text-transform:none;letter-spacing:0">Hi ${esc(p.name)} 👋</h2>
+    <p class="lead">You're signed in. Your own page — your day, your month, your leave and off days, and the work you've finished — is being built and will show here soon.</p>
+    <div class="mini" style="margin-top:10px">
+      <div><a href="/tracker">Night Round tracker</a></div>
+      <div><a href="/morning">Morning Round</a></div>
+      <div><a href="/board">Maintenance Board (tasklists)</a></div>
+      <div><a href="/dosing">Dosing Lookup</a></div>
+    </div>
+  </div>`;
+  $("#out").onclick = () => auth.signOut();
+}
+auth.onAuthStateChanged(async u => {
   S.unsubs.forEach(f => { try{ f(); }catch(e){} }); S.unsubs = [];
-  S.user = u;
+  S.user = u; S.person = null;
   if(!u){ loginView(); return; }
+  S.person = await whoIs(u.email);
+  if(S.person && S.person.role === "staff"){ staffView(S.person); return; }
   start();
 });
 window.addEventListener("hashchange", () => { render(); window.scrollTo(0, 0); });
@@ -553,6 +585,7 @@ let renderQueued = false;
 function render(){ if(renderQueued) return; renderQueued = true; requestAnimationFrame(() => { renderQueued = false; draw(); }); }
 function draw(){
   if(!S.user) return;
+  if(S.person && S.person.role === "staff") return;
   const tab = tabNow(), now = new Date(), att = attention();
   const badges = {today:att.filter(a => a.lvl === "urg").length};
   const prevCal = $("#calscroll"), calLeft = prevCal ? prevCal.scrollLeft : null;
