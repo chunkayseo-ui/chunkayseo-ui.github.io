@@ -376,16 +376,35 @@ function start(){
   docInto("dosing_config/team", d => S.team = d);
   docInto("dosing_config/dosing_changes", d => S.dchanges = (d && d.entries) || {});
   loadMonth(); loadHistory(); loadBoard();
-  const t1 = setInterval(loadHistory, 10 * 60e3), t2 = setInterval(loadMonth, 15 * 60e3), t3 = setInterval(render, 60e3), t4 = setInterval(loadBoard, 15 * 60e3);
+  // Firestore reads are limited per day (30 Sep 2026: the free quota ran out) -- refresh the big
+  // month queries hourly, and only while the dashboard is actually on screen.
+  const whenSeen = fn => () => { if(!document.hidden) fn(); };
+  const t1 = setInterval(loadHistory, 10 * 60e3), t2 = setInterval(whenSeen(loadMonth), 60 * 60e3), t3 = setInterval(render, 60e3), t4 = setInterval(whenSeen(loadBoard), 60 * 60e3);
   S.unsubs.push(() => { clearInterval(t1); clearInterval(t2); clearInterval(t3); clearInterval(t4); });
 }
 // Rounds from the 1st of the month (Team calendar) or 35 days back (vacuum times), whichever is earlier.
+const MONTH_CACHE = "dash.month.v1";
 async function loadMonth(){
   const first = nightDay().slice(0, 8) + "01", back = addDays(calDay(), -35);
-  const from = first < back ? first : back;
-  try{ const s = await db.collection("dosing_rounds").where("date", ">=", from).get(); S.month = {}; s.forEach(d => { S.month[d.id] = Object.assign({id:d.id}, d.data()); }); render(); }catch(e){ console.warn(e); }
-  // Weekend dose on a weekday (asked by a technician, OK'd by Kay or William).
-  try{ const t = await db.collection("dosing_topups").where("date", ">=", from).get(); S.topups = []; t.forEach(d => S.topups.push(Object.assign({id:d.id}, d.data()))); render(); }catch(e){}
+  const from = first < back ? first : back, fresh = addDays(nightDay(), -2);
+  // Rounds from before the last two days don't change any more: keep them on this device and only
+  // ask the database for the recent ones (saves most of the reads on every open / refresh).
+  let c = null; try{ c = JSON.parse(localStorage.getItem(MONTH_CACHE) || "null"); }catch(e){}
+  const useCache = c && c.from && c.from <= from && c.rounds;
+  const since = useCache ? (fresh > from ? fresh : from) : from;
+  try{
+    const s = await db.collection("dosing_rounds").where("date", ">=", since).get();
+    const rounds = {};
+    if(useCache) Object.values(c.rounds).forEach(r => { if(r.date >= from && r.date < since) rounds[r.id] = r; });
+    s.forEach(d => { rounds[d.id] = Object.assign({id:d.id}, d.data()); });
+    S.month = rounds; render();
+    // Weekend dose on a weekday (asked by a technician, OK'd by Kay or William).
+    let topups = useCache ? (c.topups || []).filter(t => t.date >= from && t.date < since) : [];
+    try{ const t = await db.collection("dosing_topups").where("date", ">=", since).get(); t.forEach(d => topups.push(Object.assign({id:d.id}, d.data()))); }catch(e){}
+    S.topups = topups; render();
+    try{ localStorage.setItem(MONTH_CACHE, JSON.stringify({from, rounds, topups})); }
+    catch(e){ try{ localStorage.removeItem(MONTH_CACHE); }catch(e2){} }
+  }catch(e){ console.warn(e); if(useCache && !Object.keys(S.month || {}).length){ S.month = c.rounds; S.topups = c.topups || []; render(); } }
   loadBoardActivity();
 }
 // Claims and Dones, each given the work day it belongs to. A Done belongs to the day its job was
@@ -409,16 +428,23 @@ function boardWorkEvents(events){
 // Maintenance Board jobs (afternoon lists, Fik's early-morning jobs) are logged per outlet in
 // activity/<outlet>/events {ts, who, action}. The Team calendar counts a day worked from these too.
 const BOARD_OUTLETS = ["CC","DR","Lentor","Tengah","JE","HB","HS","BK","WWW","TPY"];
+const ACT_CACHE = "dash.act.v1";
 async function loadBoardActivity(){
   const first = parseKey(nightDay().slice(0, 8) + "01").getTime();
-  const outlets = boardLists ? Object.keys(boardLists) : BOARD_OUTLETS, ev = [];
+  const outlets = boardLists ? Object.keys(boardLists) : BOARD_OUTLETS;
+  // Only events newer than the last one already on this device are read again.
+  let c = null; try{ c = JSON.parse(localStorage.getItem(ACT_CACHE) || "null"); }catch(e){}
+  if(!c || c.first !== first || !Array.isArray(c.ev)) c = {first, ev:[]};
+  const ev = c.ev.filter(x => x.ts >= first);
   await Promise.all(outlets.map(async o => {
+    const mine = ev.filter(x => x.outlet === o), last = mine.length ? Math.max(...mine.map(x => x.ts)) : first - 1;
     try{
-      const s = await db.collection("activity").doc(o).collection("events").where("ts", ">=", first).get();
+      const s = await db.collection("activity").doc(o).collection("events").where("ts", ">", last).get();
       s.forEach(d => { const x = d.data(); if(x && x.who && x.ts) ev.push({outlet:o, who:x.who, ts:Number(x.ts), action:x.action, text:x.text || ""}); });
     }catch(e){ console.warn("board activity", o, e); }
   }));
   S.boardAct = ev; render();
+  try{ localStorage.setItem(ACT_CACHE, JSON.stringify({first, ev})); }catch(e){ try{ localStorage.removeItem(ACT_CACHE); }catch(e2){} }
 }
 // Water tests come from the sheet's web app, which answers one pool at a time and takes a few seconds
 // each. So: show the readings saved on this phone/computer straight away, then refresh in the
