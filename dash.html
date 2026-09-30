@@ -69,7 +69,8 @@ td:first-child{font:600 13px "IBM Plex Sans",system-ui,sans-serif;white-space:no
 td.txt{font-family:"IBM Plex Sans",system-ui,sans-serif;font-size:13px}
 .fc{display:inline-block;min-width:34px;text-align:center;border-radius:4px;padding:0 4px}
 .fc.lo{background:var(--urgent-soft);color:var(--urgent);font-weight:600}
-.fc.hi{background:var(--warn-soft);color:var(--warn);font-weight:600}
+.fc.av{background:var(--warn-soft);color:var(--warn);font-weight:600}
+.fc.hi{background:var(--travel-soft);color:var(--travel);font-weight:600}
 .fc.ok{background:var(--ok-soft);color:var(--ok)}
 .fc.na{color:var(--ink-3)}
 .trend td{text-align:center;padding:4px 3px}
@@ -151,7 +152,8 @@ const HISTORY_API = "https://script.google.com/macros/s/AKfycbwYJLfkw5lwKnjwqmEt
 const BOARD_PAGE = "/tasklists/index.html";
 const POOLS = ["BK","CC","DR","HB","HS","JEIP1","JEIP2","JEOP1","JEOP2","Lentor","Tengah","TPY","WWW"];
 const SALT = ["BK","Lentor","Tengah","TPY","DR","HS","WWW"];
-const FC_LOW = 2, FC_HIGH = 3.5, TARGET_LO = 2.5, TARGET_HI = 3.5;
+// Kay's bands (30 Sep 2026): 2.5–3.5 on target · 1.5–2 average · 1 or below low · above 3.5 high.
+const FC_LOW = 2, FC_HIGH = 3.5, TARGET_LO = 2.5, TARGET_HI = 3.5, AVG_LO = 1.5;
 const LONG_JOB_MIN = 90, LONG_VAC_MIN = 120, NO_MORNING_TEST_HOUR = 11;
 // Maintenance Board: the day each outlet's weekly list is usually done (same as the board page).
 const BOARD_DAY = {JE:1, Tengah:1, BK:1, CC:2, WWW:2, HB:3, TPY:3, DR:4, HS:4, Lentor:5};
@@ -326,7 +328,7 @@ async function loadBoard(){
 const num = v => (v === null || v === undefined || v === "" || isNaN(Number(v))) ? null : Number(v);
 const isTest = n => /^test/i.test(n || "");
 function poolDay(p, day){ const recs = S.hist[p]; if(!recs) return null; return recs.find(r => r.date === day) || null; }
-function fcClass(v){ if(v === null || v === undefined) return "na"; return v < FC_LOW ? "lo" : v > FC_HIGH ? "hi" : "ok"; }
+function fcClass(v){ if(v === null || v === undefined) return "na"; return v < AVG_LO ? "lo" : v < TARGET_LO ? "av" : v > TARGET_HI ? "hi" : "ok"; }
 const fcCell = v => `<span class="fc ${fcClass(v)}">${v === null || v === undefined ? "–" : v}</span>`;
 const fmtG = g => g >= 1000 ? (Math.round(g / 100) / 10) + "kg" : Math.round(g) + "g";
 const fmtMl = ml => ml >= 1000 ? (Math.round(ml / 100) / 10) + "L" : Math.round(ml) + "ml";
@@ -367,7 +369,7 @@ function nightDose(p, day){
   if(app.clG !== null) return {text:app.clG === 0 ? "none" : fmtG(app.clG), g:app.clG, from:"app", app};
   return null;
 }
-const hitMark = am => am === null || am === undefined ? "" : am >= TARGET_LO && am <= TARGET_HI ? "✓" : am > TARGET_HI ? "✗ high" : "✗ low";
+const hitMark = am => am === null || am === undefined ? "" : am >= TARGET_LO && am <= TARGET_HI ? "✓" : am > TARGET_HI ? "✗ high" : am >= AVG_LO ? "~ average" : "✗ low";
 // Sheet vs tracker for one night: every pool where the two disagree, or one side is blank.
 function mismatches(day){
   const out = [];
@@ -601,12 +603,12 @@ function drawToday(att){
   const working = tr.filter(x => !x.finished);
   const jobsDone = tr.reduce((a, x) => a + x.done, 0), jobsTotal = tr.reduce((a, x) => a + x.total, 0);
   const mustOpen = tr.reduce((a, x) => a + x.tasks.filter(t => t.kind === "required" && !t.doneAt).length, 0);
-  let inRange = 0, tested = 0, low = 0, high = 0;
-  POOLS.forEach(p => { const rec = poolDay(p, today); const am = rec && num(rec.fc && rec.fc.morning); if(am !== null && am !== undefined){ tested++; if(am >= TARGET_LO && am <= TARGET_HI) inRange++; else if(am < TARGET_LO) low++; else high++; } });
+  let inRange = 0, tested = 0, low = 0, high = 0, avg = 0;
+  POOLS.forEach(p => { const rec = poolDay(p, today); const am = rec && num(rec.fc && rec.fc.morning); if(am !== null && am !== undefined){ tested++; if(am >= TARGET_LO && am <= TARGET_HI) inRange++; else if(am > TARGET_HI) high++; else if(am >= AVG_LO) avg++; else low++; } });
   const off = offToday();
   return `
   <div class="tiles">
-    <a class="card tile" href="#water"><div class="n">${inRange}<small>/${tested || POOLS.length}</small></div><div class="l">Water · in range this morning</div><div class="s">${low} low · ${high} high${tested < POOLS.length ? ` · ${POOLS.length - tested} not tested` : ""}</div><div class="more">Water & Dosing →</div></a>
+    <a class="card tile" href="#water"><div class="n">${inRange}<small>/${tested || POOLS.length}</small></div><div class="l">Water · in range this morning</div><div class="s">${avg} average · ${low} low · ${high} high${tested < POOLS.length ? ` · ${POOLS.length - tested} not tested` : ""}</div><div class="more">Water & Dosing →</div></a>
     <a class="card tile" href="#work"><div class="n">${jobsDone}<small>/${jobsTotal}</small></div><div class="l">Work · jobs done today</div><div class="s">${working.length} working now · ${mustOpen} must-do open</div><div class="more">Work & Routes →</div></a>
     <a class="card tile" href="#team"><div class="n">${off.length}</div><div class="l">Team · off today</div><div class="s">${esc(off.map(o => o.name + " " + o.type).join(" · ") || "everyone in")}</div><div class="more">Team & HR →</div></a>
     <div class="card tile${att.length ? " alert" : ""}"><div class="n">${att.length}</div><div class="l">Need your attention</div><div class="s">${att.length ? "see the list below" : "all clear"}</div></div>
@@ -749,7 +751,7 @@ function drawWater(){
       if(!d) return `<td${we} title="${esc(p + " · " + shortDate(night) + " night · no dose recorded")}"><div class="dz muted">no dose</div>${fcCell(am)}</td>`;
       const h = hitMark(am);
       if(h){ pc++; tally.all[1]++; if(isWkNight(night)) tally.wk[1]++; if(h === "✓"){ ph++; tally.all[0]++; if(isWkNight(night)) tally.wk[0]++; } }
-      const mark = pending ? '<span class="muted" title="Waiting for this morning\'s test">…</span>' : `<b style="color:var(--${h === "✓" ? "ok" : "urgent"})">${h === "✓" ? "✓" : h ? (h === "✗ high" ? "↑" : "↓") : "?"}</b>`;
+      const mark = pending ? '<span class="muted" title="Waiting for this morning\'s test">…</span>' : `<b style="color:var(--${h === "✓" ? "ok" : h === "~ average" ? "warn" : h === "✗ high" ? "travel" : "urgent"})">${h === "✓" ? "✓" : h === "~ average" ? "~" : h ? (h === "✗ high" ? "↑" : "↓") : "?"}</b>`;
       const tip = `${p} · ${shortDate(night)} night: ${d.text}${d.from === "app" ? " (from the tracker)" : ""} → ${shortDate(nextDay)} morning ${am ?? (pending ? "not tested yet" : "no test")}${h ? " · " + (h === "✓" ? "hit target" : h.replace("✗ ", "")) : ""}`;
       return `<td${we} title="${esc(tip)}"><div class="dz">${esc(d.text)}${d.from === "app" ? ' <span class="src">app</span>' : ""}</div>${fcCell(am)} ${mark}</td>`;
     };
@@ -775,7 +777,7 @@ function drawWater(){
   <div class="grid"><div class="stack">
     <div class="card"><h2>Water quality today <small>${S.histLoading ? (S.histAt ? "showing " + clock(S.histAt) + " · updating…" : "updating…") : S.histAt ? "as of " + clock(S.histAt) : ""} · <button class="btnlink" id="rf">Refresh</button></small></h2>
       <div class="scroll"><table><thead><tr><th>Pool</th><th>AM</th><th>PM</th><th>Night</th><th>pH</th><th class="ln">Last night FC</th><th>Last night dose</th></tr></thead><tbody>${todayRows}</tbody></table></div>
-      <div class="legend"><span><span class="fc lo">1</span> below ${FC_LOW}</span><span><span class="fc ok">2.5</span> ${FC_LOW}–${FC_HIGH}</span><span><span class="fc hi">5</span> above ${FC_HIGH}</span><span>⚡ salt chlorinator · “hit target” = this morning ${TARGET_LO}–${TARGET_HI} · <span class="src">app</span> = dose from the tracker, not in the sheet yet</span></div></div>
+      <div class="legend"><span><span class="fc lo">1</span> low (1 or below)</span><span><span class="fc av">2</span> average (1.5–2)</span><span><span class="fc ok">3</span> on target (2.5–3.5)</span><span><span class="fc hi">4</span> high (above 3.5)</span><span>⚡ salt chlorinator · “hit target” = this morning ${TARGET_LO}–${TARGET_HI} · <span class="src">app</span> = dose from the tracker, not in the sheet yet</span></div></div>
     <div class="card"><h2>Morning FC · last 7 days <small>hover a box for the full day</small></h2>
       <div class="scroll"><table class="trend"><thead><tr><th>Pool</th>${days.map(k => `<th>${shortDate(k)}</th>`).join("")}</tr></thead><tbody>${trendRows}</tbody></table></div>
       <div class="legend">Rows of red mean the night dose for that pool is too small; rows of amber mean too big.</div></div>
@@ -791,7 +793,7 @@ function drawWater(){
       <p class="lead" style="margin-bottom:8px">Log each change to a pool's dosing table. The review then only judges the nights after it.</p>
       ${changesHtml()}</div>
     <div class="card" style="margin-top:12px"><h2>Night dose → next morning · last 7 nights <small>${tally.all[1] ? `all ${tally.all[0]} of ${tally.all[1]} ✓` : ""}${tally.wk[1] ? ` · weekend ${tally.wk[0]} of ${tally.wk[1]} ✓` : ""}</small></h2>
-      <p class="lead">Each box: the night's dose, then the next morning's FC. ✓ = ${TARGET_LO}–${TARGET_HI} · ↓ low · ↑ high · ? no morning test. Shaded = Sat and Sun nights, the peak.</p>
+      <p class="lead">Each box: the night's dose, then the next morning's FC. ✓ on target 2.5–3.5 · ~ average 1.5–2 · ↓ low 1 or below · ↑ high above 3.5 · ? no morning test. Shaded = Sat and Sun nights, the peak.</p>
       <div class="scroll"><table class="nd"><thead><tr><th>Pool</th>${nights.map(k => `<th${isWkNight(k) ? ' class="we"' : ""}>${shortDate(k)}</th>`).join("")}<th>Hit</th></tr></thead><tbody>${wkRows}</tbody></table></div></div>
   `;
 }
