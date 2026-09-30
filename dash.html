@@ -604,8 +604,11 @@ function drawWater(){
   const salt = p => SALT.includes(p) ? ' <span class="muted" title="salt chlorinator">⚡</span>' : "";
 
   const todayRows = POOLS.map(p => {
-    const lr = loadingRow(p, 5); if(lr) return lr;
+    const lr = loadingRow(p, 6); if(lr) return lr;
     const rec = poolDay(p, today);
+    // Last night's FC: the sheet's night reading, or the tracker's water test if the sheet has none yet.
+    const prev = poolDay(p, yest), sheetLn = prev && num(prev.fc && prev.fc.night), appLn = sheetLn === null || sheetLn === undefined ? trackerNight(p, yest).fc : null;
+    const lnFc = sheetLn !== null && sheetLn !== undefined ? fcCell(sheetLn) : appLn !== null && appLn !== undefined ? fcCell(appLn) + ` <span class="src" title="From the tracker — not in the sheet yet">app</span>` : fcCell(null);
     const am = rec && num(rec.fc && rec.fc.morning), pm = rec && num(rec.fc && rec.fc.afternoon), ni = rec && num(rec.fc && rec.fc.night);
     const ph = rec && rec.ph && num(rec.ph.night);
     const d = nightDose(p, yest);
@@ -615,7 +618,7 @@ function drawWater(){
       if(d.from === "sheet" && d.app.clG !== null && d.g !== null && Math.abs(d.g - d.app.clG) >= 50) dose += ` <span class="src" title="The tracker recorded a different amount">(app ${fmtG(d.app.clG)})</span>`;
       const h = hitMark(am); if(h) dose += " · " + (h === "✓" ? "✓ hit target" : h);
     }
-    return `<tr><td>${p}${salt(p)}</td><td>${fcCell(am)}</td><td>${fcCell(pm)}</td><td>${fcCell(ni)}</td><td>${ph ?? "–"}</td><td>${dose}</td></tr>`;
+    return `<tr><td>${p}${salt(p)}</td><td>${fcCell(am)}</td><td>${fcCell(pm)}</td><td>${fcCell(ni)}</td><td>${ph ?? "–"}</td><td class="ln">${lnFc}</td><td>${dose}</td></tr>`;
   }).join("");
 
   const [sat, sun] = lastWeekend();
@@ -650,7 +653,7 @@ function drawWater(){
   return `
   <div class="grid"><div class="stack">
     <div class="card"><h2>Water quality today <small>${S.histLoading ? "updating…" : S.histAt ? "as of " + clock(S.histAt) : ""} · <button class="btnlink" id="rf">Refresh</button></small></h2>
-      <div class="scroll"><table><thead><tr><th>Pool</th><th>AM</th><th>PM</th><th>Night</th><th>pH</th><th>Last night dose</th></tr></thead><tbody>${todayRows}</tbody></table></div>
+      <div class="scroll"><table><thead><tr><th>Pool</th><th>AM</th><th>PM</th><th>Night</th><th>pH</th><th class="ln">Last night FC</th><th>Last night dose</th></tr></thead><tbody>${todayRows}</tbody></table></div>
       <div class="legend"><span><span class="fc lo">1</span> below ${FC_LOW}</span><span><span class="fc ok">2.5</span> ${FC_LOW}–${FC_HIGH}</span><span><span class="fc hi">5</span> above ${FC_HIGH}</span><span>⚡ salt chlorinator · “hit target” = this morning ${TARGET_LO}–${TARGET_HI} · <span class="src">app</span> = dose from the tracker, not in the sheet yet</span></div></div>
     <div class="card"><h2>Morning FC · last 7 days <small>hover a box for the full day</small></h2>
       <div class="scroll"><table class="trend"><thead><tr><th>Pool</th>${days.map(k => `<th>${shortDate(k)}</th>`).join("")}</tr></thead><tbody>${trendRows}</tbody></table></div>
