@@ -116,6 +116,20 @@ table.nd td,table.nd th{text-align:center;white-space:nowrap;padding:5px 6px}
 table.nd td:first-child,table.nd th:first-child{text-align:left}
 table.nd .we{background:var(--surface-2)}
 table.nd .dz{font-size:11.5px;color:var(--ink-2);margin-bottom:2px}
+.pf-top{display:flex;gap:16px;flex-wrap:wrap}
+.pf-photo{width:150px;text-align:center}
+.pf-photo img,.pf-nophoto{width:150px;height:200px;object-fit:cover;border-radius:8px;border:1px solid var(--line);display:flex;align-items:center;justify-content:center;background:var(--surface-2);color:var(--ink-3);font-size:13px}
+.pf-grid{flex:1;min-width:240px;display:grid;gap:8px}
+.pf-f{display:flex;flex-direction:column;gap:3px;font-size:13px;color:var(--ink-2)}
+.pf-f input,.pf-f select,.pf-f textarea{font:inherit;font-size:15px;padding:8px 10px;border:1px solid var(--line);border-radius:6px;background:var(--surface);color:var(--ink)}
+.pf-warn{background:var(--warn-soft);color:var(--warn);border-radius:8px;padding:8px 10px;margin-bottom:10px;font-size:13.5px}
+.pf-msg{margin-left:10px;font-size:13.5px}
+.pf-msg.ok{color:var(--ok)}
+.pf-msg.err{color:var(--urgent)}
+.sp-list{display:grid;gap:6px}
+.sp summary{display:flex;align-items:center;gap:10px;cursor:pointer;list-style:none}
+.sp summary img,.sp-nop{width:42px;height:56px;object-fit:cover;border-radius:6px;background:var(--surface-2);display:flex;align-items:center;justify-content:center;font-weight:700;color:var(--ink-3)}
+.sp-body{padding:6px 0 8px 52px;display:grid;gap:3px;font-size:13.5px}
 .cal .fo{color:var(--ink-3);font-size:10px}
 .cal .mw{color:var(--ink-2);font-weight:600}
 .cal td.ot{background:var(--warn-soft);box-shadow:inset 0 0 0 1.5px var(--warn)}
@@ -229,27 +243,113 @@ async function whoIs(email){
     return PEOPLE[hex] || null;
   }catch(e){ return null; }
 }
+/* ---- My details: personal particulars + portrait (Kay, 30 Sep 2026) ----
+   Stored in staff_profiles/<login uid>. That collection is locked by the database rules so only the person,
+   Kay and William can read it. Until those rules are switched on, saving is blocked (the page checks by trying
+   to read a record that isn't theirs: if that works, the lock isn't on yet).
+   Deliberately NOT collected: NRIC/FIN number, race, religion — HR keeps those. */
+const PROFILE_FIELDS = [
+  {k:"fullName", l:"Full name (as per IC / work pass)", req:true},
+  {k:"preferredName", l:"Name we call you"},
+  {k:"mobile", l:"Mobile number", type:"tel", req:true},
+  {k:"email", l:"Personal email", type:"email"},
+  {k:"dob", l:"Date of birth", type:"date"},
+  {k:"nationality", l:"Nationality"},
+  {k:"address", l:"Home address", area:true},
+  {k:"emName", l:"Emergency contact — name", req:true},
+  {k:"emRelation", l:"Emergency contact — relationship (e.g. wife, brother)"},
+  {k:"emPhone", l:"Emergency contact — phone", type:"tel", req:true},
+  {k:"language", l:"Preferred language"},
+  {k:"shirt", l:"Uniform / T-shirt size", opts:["", "S", "M", "L", "XL", "XXL"]},
+];
+async function profileLockOn(){
+  try{ await db.doc("staff_profiles/__lock_check__").get(); return false; }   // readable -> not locked yet
+  catch(e){ return /permission|insufficient/i.test(String(e && (e.code || e.message))); }
+}
+// Portrait: centre-crop to 3:4, 360x480 JPEG, about 30–60 KB, kept inside the record.
+function portraitFrom(file){
+  return new Promise((ok, bad) => {
+    const img = new Image(), url = URL.createObjectURL(file);
+    img.onload = () => {
+      const W = 360, H = 480, r = W / H, sr = img.width / img.height;
+      let sw = img.width, sh = img.height, sx = 0, sy = 0;
+      if(sr > r){ sw = img.height * r; sx = (img.width - sw) / 2; } else { sh = img.width / r; sy = (img.height - sh) / 2; }
+      const c = document.createElement("canvas"); c.width = W; c.height = H;
+      c.getContext("2d").drawImage(img, sx, sy, sw, sh, 0, 0, W, H);
+      URL.revokeObjectURL(url); ok(c.toDataURL("image/jpeg", 0.82));
+    };
+    img.onerror = () => { URL.revokeObjectURL(url); bad(new Error("That file isn't a photo.")); };
+    img.src = url;
+  });
+}
 function staffView(p){
+  const f = S.pf = S.pf || {data:null, loaded:false, locked:null, saving:false, msg:"", photo:null};
+  const d = f.data || {};
+  const field = x => {
+    const v = esc(d[x.k] || (x.k === "email" && !f.data ? S.user.email : "") || "");
+    const input = x.opts ? `<select data-pf="${x.k}">${x.opts.map(o => `<option ${String(d[x.k] || "") === o ? "selected" : ""}>${o}</option>`).join("")}</select>`
+      : x.area ? `<textarea data-pf="${x.k}" rows="2">${v}</textarea>`
+      : `<input data-pf="${x.k}" type="${x.type || "text"}" value="${v}">`;
+    return `<label class="pf-f"><span>${esc(x.l)}${x.req ? ' <b style="color:var(--urgent)">*</b>' : ""}</span>${input}</label>`;
+  };
+  const photo = f.photo || d.photo;
+  const lockNote = f.locked === false ? `<div class="pf-warn">🔒 Saving is switched off until Kay turns on the privacy lock for this page. You can fill it in, but it won't be saved yet.</div>` : "";
   $("#app").innerHTML = `
   <header><h1>HF Pools</h1><span class="me">Signed in as ${esc(S.user.email)}<button id="out">Sign out</button></span></header>
-  <div class="card" style="max-width:560px;margin:16px auto">
+  <div class="card" style="max-width:640px;margin:16px auto">
     <h2 style="font-size:20px;text-transform:none;letter-spacing:0">Hi ${esc(p.name)} 👋</h2>
-    <p class="lead">You're signed in. Your own page — your day, your month, your leave and off days, and the work you've finished — is being built and will show here soon.</p>
-    <div class="mini" style="margin-top:10px">
-      <div><a href="/tracker">Night Round tracker</a></div>
-      <div><a href="/morning">Morning Round</a></div>
-      <div><a href="/board">Maintenance Board (tasklists)</a></div>
-      <div><a href="/dosing">Dosing Lookup</a></div>
+    <p class="lead">Your own page — your day, your month, your leave and off days — is coming soon. For now, please fill in <b>My details</b> below.</p>
+    <div class="mini" style="margin-top:6px"><div><a href="/tracker">Night Round tracker</a></div><div><a href="/morning">Morning Round</a></div><div><a href="/board">Maintenance Board (tasklists)</a></div><div><a href="/dosing">Dosing Lookup</a></div></div>
+  </div>
+  <div class="card" style="max-width:640px;margin:0 auto 24px">
+    <h2>My details <small>only you, Kay and William can see this</small></h2>
+    ${!f.loaded ? `<div class="empty">Loading…</div>` : `
+    ${lockNote}
+    <div class="pf-top">
+      <div class="pf-photo">${photo ? `<img src="${photo}" alt="Your photo">` : `<div class="pf-nophoto">No photo yet</div>`}
+        <label class="btnlink" style="display:block;margin-top:6px;cursor:pointer">📷 ${photo ? "Change photo" : "Add portrait photo"}<input id="pf-photo" type="file" accept="image/*" capture="user" hidden></label>
+        <div class="muted" style="font-size:11.5px">Face the camera, plain background, shoulders up.</div></div>
+      <div class="pf-grid">${PROFILE_FIELDS.map(field).join("")}</div>
     </div>
+    <p class="muted" style="font-size:12px;margin:8px 0">We don't ask for your NRIC/FIN number, race or religion here — HR already keeps those.</p>
+    <button class="btn" id="pf-save" ${f.saving || f.locked === false ? "disabled" : ""}>${f.saving ? "Saving…" : "Save my details"}</button>
+    <span class="pf-msg ${f.msgCls || ""}">${esc(f.msg || "")}</span>
+    ${d.updatedAt ? `<div class="muted" style="font-size:12px;margin-top:6px">Last saved ${esc(new Date(d.updatedAt).toLocaleString("en-SG"))}</div>` : ""}`}
   </div>`;
   $("#out").onclick = () => auth.signOut();
+  if(!f.loaded) return;
+  document.querySelectorAll("[data-pf]").forEach(el => el.oninput = el.onchange = () => { f.data = Object.assign({}, f.data, {[el.dataset.pf]: el.value}); });
+  const ph = $("#pf-photo"); if(ph) ph.onchange = async () => { const file = ph.files && ph.files[0]; if(!file) return;
+    try{ f.photo = await portraitFrom(file); f.data = Object.assign({}, f.data, {photo:f.photo}); f.msg = "Photo ready — tap Save."; f.msgCls = ""; }catch(e){ f.msg = e.message; f.msgCls = "err"; }
+    staffView(p); };
+  $("#pf-save").onclick = async () => {
+    const data = Object.assign({}, f.data);
+    if(!data.email) data.email = S.user.email;
+    const miss = PROFILE_FIELDS.filter(x => x.req && !String(data[x.k] || "").trim()).map(x => x.l.split(" (")[0].split(" —")[0] + (x.k.startsWith("em") ? " (emergency)" : ""));
+    if(miss.length){ f.msg = "Please fill in: " + miss.join(", "); f.msgCls = "err"; staffView(p); return; }
+    if(!(await profileLockOn())){ f.locked = false; staffView(p); return; }
+    f.saving = true; f.msg = ""; staffView(p);
+    const rec = {}; PROFILE_FIELDS.forEach(x => rec[x.k] = String(data[x.k] || "").trim().slice(0, 300));
+    if(data.photo) rec.photo = data.photo;
+    Object.assign(rec, {person:p.name, login:S.user.email, updatedAt:new Date().toISOString()});
+    try{ await db.doc("staff_profiles/" + S.user.uid).set(rec); f.data = rec; f.photo = null; f.msg = "Saved ✓"; f.msgCls = "ok"; }
+    catch(e){ f.msg = "Couldn't save — " + (e.message || e); f.msgCls = "err"; }
+    f.saving = false; staffView(p);
+  };
+}
+async function loadMyProfile(p){
+  const f = S.pf = {data:null, loaded:false, locked:null, saving:false, msg:"", photo:null};
+  staffView(p);
+  f.locked = await profileLockOn();
+  try{ const snap = await db.doc("staff_profiles/" + S.user.uid).get(); f.data = snap.exists ? snap.data() : null; }catch(e){ f.data = null; }
+  f.loaded = true; staffView(p);
 }
 auth.onAuthStateChanged(async u => {
   S.unsubs.forEach(f => { try{ f(); }catch(e){} }); S.unsubs = [];
   S.user = u; S.person = null;
   if(!u){ loginView(); return; }
   S.person = await whoIs(u.email);
-  if(S.person && S.person.role === "staff"){ staffView(S.person); return; }
+  if(S.person && S.person.role === "staff"){ loadMyProfile(S.person); return; }
   start();
 });
 window.addEventListener("hashchange", () => { render(); window.scrollTo(0, 0); });
@@ -890,6 +990,22 @@ function drawWork(){
 }
 
 /* ---- Team & HR ---- */
+
+function staffProfilesHtml(){
+  if(!S.profilesLoading && !S.profiles){ S.profilesLoading = true;
+    db.collection("staff_profiles").get().then(q => { S.profiles = []; q.forEach(d => { if(d.id !== "__lock_check__") S.profiles.push(Object.assign({id:d.id}, d.data())); }); S.profilesLoading = false; render(); },
+      () => { S.profiles = []; S.profilesLoading = false; S.profilesErr = true; render(); }); }
+  if(!S.profiles) return `<div class="empty">Loading…</div>`;
+  if(S.profilesErr) return `<div class="empty">Couldn't load the staff details.</div>`;
+  if(!S.profiles.length) return `<div class="empty">Nobody has filled in their details yet. Staff do it after signing in at hfpools.com/dash.</div>`;
+  const row = (l, v) => v ? `<div><span class="muted">${esc(l)}</span> ${esc(v)}</div>` : "";
+  return `<div class="sp-list">${S.profiles.sort((a, b) => String(a.person).localeCompare(String(b.person))).map(x => `
+    <details class="sp"><summary>${x.photo ? `<img src="${x.photo}" alt="">` : `<span class="sp-nop">${esc(String(x.person || "?")[0])}</span>`}
+      <span><b>${esc(x.preferredName || x.person || x.fullName)}</b><br><span class="muted">${esc(x.mobile || "")}</span></span></summary>
+      <div class="sp-body">${row("Full name", x.fullName)}${row("Mobile", x.mobile)}${row("Email", x.email)}${row("Date of birth", x.dob)}${row("Nationality", x.nationality)}${row("Address", x.address)}
+        ${row("Emergency", [x.emName, x.emRelation && "(" + x.emRelation + ")", x.emPhone].filter(Boolean).join(" "))}${row("Language", x.language)}${row("Uniform size", x.shirt)}
+        <div class="muted" style="font-size:11.5px">Updated ${esc(x.updatedAt ? new Date(x.updatedAt).toLocaleDateString("en-SG") : "–")}</div></div></details>`).join("")}</div>`;
+}
 function drawTeam(){
   const today = calDay(), month = nightDay().slice(0, 7);
   const [y, m] = month.split("-").map(Number), nDays = new Date(y, m, 0).getDate();
@@ -967,6 +1083,7 @@ function drawTeam(){
     <div class="card"><h2>Skill cover <small><a href="/tasklists/dosing-round-tracker.html#team">Team tab</a></small></h2><p class="lead">Skills only one person can do, or with cover gone because someone is off today.</p>${skHtml}</div>
   </div><div class="stack">
     <div class="card"><h2>App version on each phone</h2>${verHtml}</div>
+    <div class="card"><h2>Staff details <small>from each person's page · only you and William</small></h2>${staffProfilesHtml()}</div>
     <div class="card"><h2>Coming later</h2><p class="lead" style="margin:0">Leave and MC applications to approve, and the conduct log, will sit here once the HR app is built.</p></div>
   </div></div>`;
 }
