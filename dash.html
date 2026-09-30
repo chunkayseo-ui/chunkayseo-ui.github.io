@@ -239,6 +239,24 @@ async function loadMonth(){
   try{ const t = await db.collection("dosing_topups").where("date", ">=", from).get(); S.topups = []; t.forEach(d => S.topups.push(Object.assign({id:d.id}, d.data()))); render(); }catch(e){}
   loadBoardActivity();
 }
+// Claims and Dones, each given the work day it belongs to. A Done belongs to the day its job was
+// claimed: when someone forgets to close a job and taps Done the next day (Sharul, 2 -> 3 Sep),
+// that next day isn't a work day. A Done more than 4 hours after its claim doesn't stretch the hours.
+function boardWorkEvents(events){
+  const dayOf = ts => { const d = new Date(ts); if(d.getHours() < 4) d.setDate(d.getDate() - 1); return dateKey(d); };
+  const claims = {}, out = [];
+  events.slice().sort((a, b) => a.ts - b.ts).forEach(e => {
+    const k = String(e.who).toLowerCase() + "|" + e.outlet + "|" + (e.text || "");
+    if(e.action === "claimed"){ claims[k] = e.ts; out.push(Object.assign({}, e, {day:dayOf(e.ts)})); }
+    else if(e.action === "done"){
+      const c = claims[k];
+      if(c && e.ts - c > 4 * 36e5) out.push(Object.assign({}, e, {day:dayOf(c), ts:c, late:true}));
+      else out.push(Object.assign({}, e, {day:dayOf(c || e.ts)}));
+      delete claims[k];
+    }
+  });
+  return out;
+}
 // Maintenance Board jobs (afternoon lists, Fik's early-morning jobs) are logged per outlet in
 // activity/<outlet>/events {ts, who, action}. The Team calendar counts a day worked from these too.
 const BOARD_OUTLETS = ["CC","DR","Lentor","Tengah","JE","HB","HS","BK","WWW","TPY"];
@@ -248,7 +266,7 @@ async function loadBoardActivity(){
   await Promise.all(outlets.map(async o => {
     try{
       const s = await db.collection("activity").doc(o).collection("events").where("ts", ">=", first).get();
-      s.forEach(d => { const x = d.data(); if(x && x.who && x.ts) ev.push({outlet:o, who:x.who, ts:Number(x.ts), action:x.action}); });
+      s.forEach(d => { const x = d.data(); if(x && x.who && x.ts) ev.push({outlet:o, who:x.who, ts:Number(x.ts), action:x.action, text:x.text || ""}); });
     }catch(e){ console.warn("board activity", o, e); }
   }));
   S.boardAct = ev; render();
@@ -718,9 +736,8 @@ function drawTeam(){
   });
   // Board jobs: a day counts if someone claimed or finished a job. Before 4am belongs to the day before (night work).
   const visits = {};
-  S.boardAct.filter(e => e.action === "claimed" || e.action === "done").forEach(e => {
-    const d = new Date(e.ts); if(d.getHours() < 4) d.setDate(d.getDate() - 1);
-    const day = dateKey(d); if(!day.startsWith(month)) return;
+  boardWorkEvents(S.boardAct).forEach(e => {
+    const day = e.day; if(!day.startsWith(month)) return;
     const n = canonName(e.who), w = W(n, day); w.board = true; if(e.action === "done") w.jobs++;
     w.bA = Math.min(w.bA || Infinity, e.ts); w.bB = Math.max(w.bB || 0, e.ts);
     if(!w.outlets.includes(e.outlet)) w.outlets.push(e.outlet);
@@ -736,9 +753,10 @@ function drawTeam(){
     const cells = days.map(k => {
       const w = work[n + "|" + k], l = lv[n + "|" + k], fixedOff = isFixedOff(n, k), we = [0, 6].includes(parseKey(k).getDay()) ? "we" : "";
       const t = w ? spanMs(w.spans) : 0;
-      if(w){ daysWorked++; ms += t; }
+      const away = l === "mc" || l === "al" || l === "ul";
+      if(w && !away){ daysWorked++; ms += t; }
       if(l === "mc") mc++; if(l === "al") al++; if(l === "ul") ul++;
-      const onOff = w && fixedOff && k <= today;          // worked on a weekly off day = swap or OT
+      const onOff = w && !away && fixedOff && k <= today;          // worked on a weekly off day = swap or OT
       if(onOff) offWork++;
       const marks = w ? `${w.night ? '<span class="w">●</span>' : ""}${w.morning ? '<span class="m">☀</span>' : ""}${w.board ? '<span class="b">◆</span>' : ""}` : "";
       const inner = l ? `<span class="lv ${l === "mc" ? "mc" : l === "al" ? "al" : l === "ul" ? "ul" : "off"}">${l === "mc" ? "MC" : l === "al" ? "AL" : l === "ul" ? "UL" : "OFF"}</span>`
