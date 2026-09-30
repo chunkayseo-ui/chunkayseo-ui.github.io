@@ -721,6 +721,7 @@ function drawTeam(){
     const d = new Date(e.ts); if(d.getHours() < 4) d.setDate(d.getDate() - 1);
     const day = dateKey(d); if(!day.startsWith(month)) return;
     const n = canonName(e.who), w = W(n, day); w.board = true; if(e.action === "done") w.jobs++;
+    w.bA = Math.min(w.bA || Infinity, e.ts); w.bB = Math.max(w.bB || 0, e.ts);
     if(!w.outlets.includes(e.outlet)) w.outlets.push(e.outlet);
     const v = visits[n + "|" + day + "|" + e.outlet] = visits[n + "|" + day + "|" + e.outlet] || {w, a:e.ts, b:e.ts};
     v.a = Math.min(v.a, e.ts); v.b = Math.max(v.b, e.ts);
@@ -741,7 +742,7 @@ function drawTeam(){
       const marks = w ? `${w.night ? '<span class="w">●</span>' : ""}${w.morning ? '<span class="m">☀</span>' : ""}${w.board ? '<span class="b">◆</span>' : ""}` : "";
       const inner = l ? `<span class="lv ${l === "mc" ? "mc" : l === "al" ? "al" : "off"}">${l === "mc" ? "MC" : l === "al" ? "AL" : "OFF"}</span>`
         : w ? marks : fixedOff ? '<span class="fo">off</span>' : "";
-      const what = w ? [w.night && "night round", w.morning && "morning round", w.board && `Maintenance Board (${w.jobs} job${w.jobs === 1 ? "" : "s"} done · ${w.outlets.join(", ")})`].filter(Boolean).join(" + ") : "";
+      const what = w ? [w.night && "night round", w.morning && "morning round", w.board && `Tasklists ${clock(new Date(w.bA).toISOString())}–${clock(new Date(w.bB).toISOString())} (${w.jobs} job${w.jobs === 1 ? "" : "s"} done · ${w.outlets.join(", ")})`].filter(Boolean).join(" + ") : "";
       const tip = `${n} · ${shortDate(k)}${what ? " · " + what : ""}${t ? " · " + mins(t) : ""}${l ? " · " + leaveType(l) : ""}${onOff ? " · worked on off day: swap or OT" : !w && fixedOff && !l ? " · off day" : ""}`;
       return `<td class="${[we, onOff ? "ot" : ""].filter(Boolean).join(" ")}" title="${esc(tip)}">${inner}</td>`;
     }).join("");
@@ -771,7 +772,7 @@ function drawTeam(){
   return `
   <div class="card" style="margin-bottom:12px"><h2>${esc(new Date(y, m - 1, 1).toLocaleDateString("en-SG", {month:"long", year:"numeric"}))} · who worked which day <small><a href="/tasklists/dosing-round-tracker.html#calendar">Tracker calendar</a></small></h2>
     <div class="scroll" id="calscroll"><table class="cal"><thead><tr><th>Person</th>${days.map(k => `<th class="${[0, 6].includes(parseKey(k).getDay()) ? "we" : ""}${k === today ? " today" : ""}">${Number(k.slice(8))}<br><span class="muted" style="font-weight:400">${DOW[parseKey(k).getDay()][0]}</span></th>`).join("")}<th>Days</th><th>Hours</th><th title="Worked on a weekly off day: swap or OT">Off-day work</th><th>MC</th><th>AL</th></tr></thead><tbody>${calRows}</tbody></table></div>
-    <div class="legend"><span><span class="w">●</span> night round</span><span><span class="m">☀</span> morning round</span><span><span class="b">◆</span> Maintenance Board jobs</span><span><span style="background:var(--warn-soft);box-shadow:inset 0 0 0 1.5px var(--warn);padding:0 4px;border-radius:3px">&nbsp;</span> worked on off day (swap or OT)</span><span><span class="fo">off</span> weekly off day</span><span><span class="lv mc" style="font:700 10px/1.4 'Barlow Condensed';padding:0 2px;border-radius:3px;background:var(--urgent-soft);color:var(--urgent)">MC</span> MC</span><span>AL annual leave · OFF off day · hover a day for hours</span></div></div>
+    <div class="legend"><span><span class="w">●</span> night round</span><span><span class="m">☀</span> morning round</span><span><span class="b">◆</span> Tasklists jobs (Maintenance Board)</span><span><span style="background:var(--warn-soft);box-shadow:inset 0 0 0 1.5px var(--warn);padding:0 4px;border-radius:3px">&nbsp;</span> worked on off day (swap or OT)</span><span><span class="fo">off</span> weekly off day</span><span><span class="lv mc" style="font:700 10px/1.4 'Barlow Condensed';padding:0 2px;border-radius:3px;background:var(--urgent-soft);color:var(--urgent)">MC</span> MC</span><span>AL annual leave · OFF off day · hover a day for hours</span></div></div>
   <div class="grid"><div class="stack">
     <div class="card"><h2>Off · today and next 3 weeks</h2>${upHtml}</div>
     <div class="card"><h2>Skill cover <small><a href="/tasklists/dosing-round-tracker.html#team">Team tab</a></small></h2><p class="lead">Skills only one person can do, or with cover gone because someone is off today.</p>${skHtml}</div>
