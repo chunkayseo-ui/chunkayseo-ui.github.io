@@ -107,6 +107,10 @@ td.txt{font-family:"IBM Plex Sans",system-ui,sans-serif;font-size:13px}
 .cal .w{color:var(--ok);font-weight:600}
 .cal .m{color:var(--warn);font-weight:600}
 .cal .b{color:var(--travel);font-weight:600;font-size:11px}
+.dc-form{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:8px}
+.dc-form select,.dc-form input{font:inherit;padding:6px 8px;border:1px solid var(--line);border-radius:6px;background:var(--surface)}
+.dc-form #dc-note{flex:1;min-width:200px}
+table.rv td{vertical-align:top;padding:6px 8px}
 table.nd td,table.nd th{text-align:center;white-space:nowrap;padding:5px 6px}
 table.nd td:first-child,table.nd th:first-child{text-align:left}
 table.nd .we{background:var(--surface-2)}
@@ -231,6 +235,7 @@ function start(){
   docInto("dosing_config/versions", d => S.versions = (d && d.people) || {});
   docInto("dosing_config/tasks", d => S.cfg = d || {});
   docInto("dosing_config/team", d => S.team = d);
+  docInto("dosing_config/dosing_changes", d => S.dchanges = (d && d.entries) || {});
   loadMonth(); loadHistory(); loadBoard();
   const t1 = setInterval(loadHistory, 10 * 60e3), t2 = setInterval(loadMonth, 15 * 60e3), t3 = setInterval(render, 60e3), t4 = setInterval(loadBoard, 15 * 60e3);
   S.unsubs.push(() => { clearInterval(t1); clearInterval(t2); clearInterval(t3); clearInterval(t4); });
@@ -546,6 +551,7 @@ function draw(){
   if(cal){ if(calLeft !== null) cal.scrollLeft = calLeft; else { const th = cal.querySelector("th.today"); if(th) cal.scrollLeft = Math.max(0, th.offsetLeft - cal.clientWidth + 170); } }
   $("#out").onclick = () => auth.signOut();
   const rf = $("#rf"); if(rf) rf.onclick = () => loadHistory();
+  bindDosingChanges();
 }
 
 function peopleHtml(showOpen){
@@ -602,6 +608,94 @@ function drawToday(att){
 }
 
 /* ---- Water & Dosing ---- */
+
+/* ---- Dosing review: is each pool's night dose right? (built-in check; a written AI review comes later) ----
+   For each pool, the nights in the last 14 that had a dose and a next-morning test, split into weekday and
+   weekend (Sat + Sun) nights, because they use different rows of the dosing table. Only nights after the
+   pool's latest logged dosing change count, so a new table is judged on its own results.
+   Advice: middle (median) morning FC below 2.5 -> raise; above 3.5 -> lower. Size of the change = how many
+   grams it took to lift FC by 1 ppm on those nights (dose / (morning FC - night FC before the dose)),
+   times the gap to 3, rounded to 50 g and kept within half the usual dose. */
+const REVIEW_NIGHTS = 14, MIN_NIGHTS = 3, TARGET_MID = 3;
+const dosingChanges = () => Object.entries(S.dchanges || {}).map(([id, e]) => Object.assign({id}, e)).filter(e => e && e.date && e.pool && !e.removed).sort((a, b) => b.date.localeCompare(a.date));
+const lastChange = p => dosingChanges().find(e => samePool(e.pool, p)) || null;
+const round50 = g => Math.round(g / 50) * 50;
+function reviewPool(p){
+  const today = calDay(), ch = lastChange(p), since = ch ? ch.date : null;
+  const nights = []; for(let i = 1; i <= REVIEW_NIGHTS; i++) nights.push(addDays(today, -i));
+  const out = {weekday:[], weekend:[]};
+  nights.forEach(n => {
+    if(since && n < since) return;                               // judge the table in use now
+    const d = nightDose(p, n); if(!d || d.g === null || d.g <= 0) return;
+    const next = poolDay(p, addDays(n, 1)), am = next && num(next.fc && next.fc.morning);
+    if(am === null || am === undefined) return;
+    const rec = poolDay(p, n), before = rec && num(rec.fc && rec.fc.night);
+    const bef = before !== null && before !== undefined ? before : trackerNight(p, n).fc;
+    (([6, 0].includes(parseKey(n).getDay())) ? out.weekend : out.weekday).push({night:n, g:d.g, am, before:bef});
+  });
+  const judge = list => {
+    if(list.length < MIN_NIGHTS) return {n:list.length, verdict:"wait"};
+    const mid = median(list.map(x => x.am)), usual = median(list.map(x => x.g)), hits = list.filter(x => x.am >= TARGET_LO && x.am <= TARGET_HI).length;
+    const rates = list.filter(x => x.before !== null && x.before !== undefined && x.am - x.before >= 0.5).map(x => x.g / (x.am - x.before));
+    const gPerPpm = rates.length >= 2 ? median(rates) : null;
+    let verdict = "keep", change = 0;
+    if(mid < TARGET_LO || mid > TARGET_HI){
+      verdict = mid < TARGET_LO ? "raise" : "lower";
+      const raw = gPerPpm ? gPerPpm * (TARGET_MID - mid) : usual * 0.3 * (TARGET_MID - mid);   // no rate yet: ~30% of the dose per ppm
+      change = Math.max(-usual * 0.5, Math.min(usual * 0.5, raw));
+      change = round50(change) || (verdict === "raise" ? 50 : -50);
+    }
+    return {n:list.length, mid, usual, hits, verdict, change, gPerPpm};
+  };
+  return {pool:p, since, change:ch, weekday:judge(out.weekday), weekend:judge(out.weekend)};
+}
+function reviewCell(j){
+  if(j.verdict === "wait") return `<span class="muted">waiting · ${j.n} of ${MIN_NIGHTS} nights</span>`;
+  const head = `<span class="muted">${j.n} nights · AM ${Math.round(j.mid * 10) / 10} · ${j.hits}/${j.n} ✓ · usual ${fmtG(j.usual)}</span>`;
+  const chip = j.verdict === "keep" ? '<span class="chip c-ok" style="text-transform:none">Keep</span>'
+    : `<span class="chip ${j.verdict === "raise" ? "c-urg" : "c-warn"}" style="text-transform:none">${j.verdict === "raise" ? "Raise" : "Lower"} about ${j.change > 0 ? "+" : "−"}${fmtG(Math.abs(j.change))}</span>`;
+  return `<div>${chip}</div><div style="font-size:12px">${head}</div>`;
+}
+function reviewHtml(){
+  if(POOLS.some(p => S.hist[p] === undefined)) return `<div class="empty">Loading the water tests…</div>`;
+  const rows = POOLS.map(reviewPool);
+  const act = rows.filter(r => [r.weekday, r.weekend].some(j => j.verdict === "raise" || j.verdict === "lower"));
+  const body = rows.map(r => `<tr><td>${r.pool}${SALT.includes(r.pool) ? ' <span class="muted" title="salt chlorinator">⚡</span>' : ""}</td>
+    <td class="txt">${reviewCell(r.weekday)}</td><td class="txt">${reviewCell(r.weekend)}</td>
+    <td class="txt" style="font-size:12px">${r.change ? `${esc(shortDate(r.change.date))} · ${esc(r.change.note || "")}` : '<span class="muted">–</span>'}</td></tr>`).join("");
+  return `<p class="lead">${act.length ? `<b>${act.length} pool${act.length > 1 ? "s" : ""} to look at:</b> ${esc(act.map(r => r.pool).join(", "))}.` : "✓ Every pool with enough nights is on target."} Based on the last ${REVIEW_NIGHTS} nights (only nights after a pool's latest change). Weekend = Sat and Sun nights. Grams are a starting point — change a row, then let 2 weekends show the result.</p>
+    <div class="scroll"><table class="rv"><thead><tr><th>Pool</th><th>Weekday nights</th><th>Weekend nights</th><th>Latest change</th></tr></thead><tbody>${body}</tbody></table></div>
+    <div class="legend">⚡ salt chlorinator pools: the chlorinator also moves FC, so check it was on/off as usual before changing the table.</div>`;
+}
+function changesHtml(){
+  const f = S.dcForm = S.dcForm || {pool:"", date:calDay(), note:""};
+  const list = dosingChanges().slice(0, 12);
+  return `<div class="dc-form">
+      <select id="dc-pool" aria-label="Pool"><option value="">Pool…</option>${POOLS.map(p => `<option ${f.pool === p ? "selected" : ""}>${p}</option>`).join("")}</select>
+      <input type="date" id="dc-date" value="${esc(f.date)}" max="${calDay()}" aria-label="Date the new table started">
+      <input id="dc-note" maxlength="120" placeholder="What changed, e.g. +100 g weekday and weekend" value="${esc(f.note)}" aria-label="What changed">
+      <button id="dc-add" class="btnlink" style="font-weight:600">Log change</button></div>
+    ${list.length ? `<div class="mini">${list.map(e => `<div><span>${esc(shortDate(e.date))} · <b>${esc(e.pool)}</b> · ${esc(e.note || "")} <span class="muted">${esc(e.by || "")}</span></span><button class="btnlink" data-dcrm="${esc(e.id)}">remove</button></div>`).join("")}</div>` : `<div class="empty">No changes logged yet.</div>`}`;
+}
+function bindDosingChanges(){
+  const f = S.dcForm; if(!f || !$("#dc-add")) return;
+  $("#dc-pool").onchange = e => f.pool = e.target.value;
+  $("#dc-date").onchange = e => f.date = e.target.value;
+  $("#dc-note").oninput = e => f.note = e.target.value;
+  $("#dc-add").onclick = async () => {
+    if(!f.pool || !f.date || !f.note.trim()){ alert("Pick the pool, the date and say what changed."); return; }
+    const id = f.date + "__" + f.pool.toLowerCase() + "__" + Date.now().toString(36);
+    const e = {date:f.date, pool:f.pool, note:f.note.trim().slice(0, 120), by:(S.user && S.user.email || "").split("@")[0], at:new Date().toISOString()};
+    S.dchanges = Object.assign({}, S.dchanges, {[id]:e}); S.dcForm = {pool:"", date:calDay(), note:""}; render();
+    try{ await db.doc("dosing_config/dosing_changes").set({entries:{[id]:e}}, {merge:true}); }catch(err){ alert("Couldn't save — check your connection."); }
+  };
+  document.querySelectorAll("[data-dcrm]").forEach(b => b.onclick = async () => {
+    const id = b.dataset.dcrm, e = (S.dchanges || {})[id]; if(!e || !confirm(`Remove ${e.pool} ${shortDate(e.date)}: ${e.note}?`)) return;
+    const upd = Object.assign({}, e, {removed:true, removedAt:new Date().toISOString()});
+    S.dchanges = Object.assign({}, S.dchanges, {[id]:upd}); render();
+    try{ await db.doc("dosing_config/dosing_changes").set({entries:{[id]:upd}}, {merge:true}); }catch(err){}
+  });
+}
 function drawWater(){
   const today = calDay(), yest = yesterday(today);
   const loadingRow = (p, cols) => S.hist[p] === undefined ? `<tr><td>${p}</td><td colspan="${cols}" class="muted">loading…</td></tr>` : S.hist[p] === false ? `<tr><td>${p}</td><td colspan="${cols}" class="muted">couldn't load</td></tr>` : "";
@@ -677,6 +771,11 @@ function drawWater(){
       <p class="lead">The night report sheet and the tracker should say the same thing. "Check" rows are worth a look; "note" rows are usually harmless.</p>
       ${mmHtml}</div>
   </div></div>
+    <div class="card" style="margin-top:12px"><h2>Dosing review · does the table need changing? <small>built-in check · AI review coming</small></h2>
+      ${reviewHtml()}
+      <h3 style="margin:14px 0 6px;font-size:14px">Dosing changes</h3>
+      <p class="lead" style="margin-bottom:8px">Log each change to a pool's dosing table. The review then only judges the nights after it.</p>
+      ${changesHtml()}</div>
     <div class="card" style="margin-top:12px"><h2>Night dose → next morning · last 7 nights <small>${tally.all[1] ? `all ${tally.all[0]} of ${tally.all[1]} ✓` : ""}${tally.wk[1] ? ` · weekend ${tally.wk[0]} of ${tally.wk[1]} ✓` : ""}</small></h2>
       <p class="lead">Each box: the night's dose, then the next morning's FC. ✓ = ${TARGET_LO}–${TARGET_HI} · ↓ low · ↑ high · ? no morning test. Shaded = Sat and Sun nights, the peak.</p>
       <div class="scroll"><table class="nd"><thead><tr><th>Pool</th>${nights.map(k => `<th${isWkNight(k) ? ' class="we"' : ""}>${shortDate(k)}</th>`).join("")}<th>Hit</th></tr></thead><tbody>${wkRows}</tbody></table></div></div>
