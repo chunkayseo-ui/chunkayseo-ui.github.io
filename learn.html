@@ -1,0 +1,804 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>HF Pools · Learn</title>
+<meta name="robots" content="noindex">
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700&family=IBM+Plex+Sans:wght@400;600&family=Noto+Sans+Tamil:wght@400;600&display=swap" rel="stylesheet">
+<style>
+:root{--ground:#EEF3F3;--surface:#fff;--surface-2:#F6F9F9;--line:#C7D6D6;--line-soft:#DCE6E6;--ink:#0A1417;--ink-2:#33474D;--ink-3:#5B7378;
+--accent:#00676F;--accent-soft:#DCEEEE;--ok:#256B4C;--ok-soft:#DDEEE5;--warn:#8A590D;--warn-soft:#F6EAD4;--urgent:#B23A2E;--urgent-soft:#F8DEDA;--water:#2F7FB8;--water-soft:#D9ECF7}
+*{box-sizing:border-box}
+body{margin:0;background:var(--ground);color:var(--ink);font:17px/1.5 "IBM Plex Sans","Noto Sans Tamil",system-ui,sans-serif}
+body.ta{font-family:"Noto Sans Tamil","IBM Plex Sans",system-ui,sans-serif}
+.wrap{max-width:720px;margin:0 auto;padding:14px 16px 40px}
+header{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:12px}
+h1{font:700 26px/1 "Barlow Condensed",sans-serif;text-transform:uppercase;letter-spacing:.02em;margin:0}
+h1 small{font-size:15px;color:var(--accent);margin-left:6px}
+.me{margin-left:auto;font-size:13px;color:var(--ink-3)}
+.me button,.btnlink{border:0;background:none;color:var(--accent);text-decoration:underline;font:inherit;cursor:pointer;padding:0}
+.langs{display:flex;gap:6px;margin:0 0 14px}
+.langs button{flex:1;padding:10px 6px;border:2px solid var(--line);border-radius:10px;background:var(--surface);font:600 16px "IBM Plex Sans","Noto Sans Tamil",sans-serif;color:var(--ink-2);cursor:pointer}
+.langs button.on{border-color:var(--accent);background:var(--accent-soft);color:var(--accent)}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:16px;min-width:0}
+.hello{margin-bottom:12px}
+.hello b{font-size:20px}
+.progress{height:10px;background:var(--line-soft);border-radius:6px;overflow:hidden;margin-top:8px}
+.progress i{display:block;height:100%;background:var(--ok)}
+.list{display:grid;gap:10px}
+.lesson{display:flex;align-items:center;gap:14px;padding:14px;border:1px solid var(--line);border-radius:14px;background:var(--surface);cursor:pointer;text-align:left;font:inherit;color:inherit;width:100%}
+.lesson:hover{border-color:var(--accent)}
+.lesson .ic{font-size:34px;width:52px;height:52px;display:flex;align-items:center;justify-content:center;background:var(--water-soft);border-radius:12px;flex:none}
+.lesson .tt{font-weight:600;font-size:17px;line-height:1.3}
+.lesson .sub{font-size:13.5px;color:var(--ink-3)}
+.lesson .st{margin-left:auto;flex:none;font:700 13px/1 "Barlow Condensed",sans-serif;text-transform:uppercase;letter-spacing:.05em;padding:6px 9px;border-radius:6px}
+.st.pass{background:var(--ok-soft);color:var(--ok)}
+.st.try{background:var(--warn-soft);color:var(--warn)}
+.st.new{background:var(--surface-2);color:var(--ink-3);border:1px solid var(--line)}
+.num{font:700 13px "Barlow Condensed",sans-serif;color:var(--ink-3);letter-spacing:.05em}
+.top{display:flex;align-items:center;gap:10px;margin-bottom:10px}
+.top .back{font-size:15px}
+.dots{display:flex;gap:5px;margin-left:auto}
+.dots i{width:9px;height:9px;border-radius:50%;background:var(--line)}
+.dots i.on{background:var(--accent)}
+.dots i.done{background:var(--ok)}
+.slide{text-align:center}
+.pic{min-height:150px;display:flex;align-items:center;justify-content:center;font-size:84px;line-height:1;margin:6px 0 14px}
+.pic svg{width:100%;max-width:440px;height:auto}
+.say{font-size:20px;line-height:1.55;text-align:left;margin:0}
+body.ta .say{font-size:18px}
+.nav{display:flex;gap:10px;margin-top:18px}
+.b{flex:1;padding:15px 10px;border-radius:12px;border:2px solid var(--accent);background:var(--surface);color:var(--accent);font:600 17px "IBM Plex Sans","Noto Sans Tamil",sans-serif;cursor:pointer}
+.b.main{background:var(--accent);color:#fff}
+.b:disabled{opacity:.4}
+.listen{display:inline-flex;align-items:center;gap:6px;margin-top:14px;padding:9px 14px;border-radius:30px;border:1px solid var(--line);background:var(--surface-2);font:600 15px "IBM Plex Sans","Noto Sans Tamil",sans-serif;color:var(--ink-2);cursor:pointer}
+.listen.on{background:var(--water-soft);border-color:var(--water);color:var(--water)}
+.hint{font-size:12.5px;color:var(--ink-3);margin-top:6px}
+.q{font-size:21px;font-weight:600;line-height:1.4;margin:4px 0 14px}
+.opts{display:grid;gap:10px}
+.opt{text-align:left;padding:15px 14px;border:2px solid var(--line);border-radius:12px;background:var(--surface);font:500 17px "IBM Plex Sans","Noto Sans Tamil",sans-serif;color:var(--ink);cursor:pointer;display:flex;gap:10px;align-items:center}
+.opt .l{flex:none;width:28px;height:28px;border-radius:50%;background:var(--surface-2);border:1px solid var(--line);display:flex;align-items:center;justify-content:center;font-weight:700;font-size:14px;color:var(--ink-3)}
+.opt.right{border-color:var(--ok);background:var(--ok-soft)}
+.opt.wrong{border-color:var(--urgent);background:var(--urgent-soft)}
+.fb{margin-top:12px;padding:12px 14px;border-radius:12px;font-size:16px}
+.fb.ok{background:var(--ok-soft);color:var(--ok)}
+.fb.no{background:var(--urgent-soft);color:var(--urgent)}
+.result{text-align:center;padding:10px 0}
+.result .big{font-size:80px;line-height:1}
+.result .score{font:700 44px/1 "Barlow Condensed",sans-serif;margin:10px 0}
+.login{max-width:380px;margin:10vh auto 0}
+.login input{width:100%;padding:12px;border:1px solid var(--line);border-radius:8px;font:16px "IBM Plex Sans";margin-top:4px}
+.login label{display:block;font-size:14px;color:var(--ink-3);margin-top:12px}
+.msg{font-size:14px;margin-top:10px;min-height:18px}
+.msg.err{color:var(--urgent)}.msg.ok{color:var(--ok)}
+.muted{color:var(--ink-3)}
+.team{margin-top:18px}
+.team h2{font:700 16px/1 "Barlow Condensed",sans-serif;text-transform:uppercase;letter-spacing:.06em;color:var(--ink-2);margin:0 0 10px}
+.scroll{overflow-x:auto}
+table{border-collapse:collapse;width:100%;font-size:14px}
+th,td{padding:7px 6px;border-bottom:1px solid var(--line-soft);text-align:center;white-space:nowrap}
+th{font:600 12px "Barlow Condensed",sans-serif;text-transform:uppercase;letter-spacing:.05em;color:var(--ink-3)}
+td:first-child,th:first-child{text-align:left;font-weight:600}
+td .p{color:var(--ok);font-weight:700}
+td .f{color:var(--warn);font-weight:600}
+td .n{color:var(--line)}
+</style></head><body>
+<div class="wrap" id="app"><p class="muted">Loading…</p></div>
+
+<script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore-compat.js"></script>
+<script>
+/* HF Pools Learn -- lesson content. Three languages: en (simple English), ms (Bahasa Melayu), ta (Tamil).
+ * Keep sentences short. Numbers stay as digits in every language.
+ * pic: an emoji, or "svg:<name>" for a drawing from PICS. */
+const LESSONS = [
+/* ---------------- 1. Chlorine ---------------- */
+{ id:"chlorine", icon:"🦠", mins:4,
+  title:{en:"Chlorine kills germs", ms:"Klorin membunuh kuman", ta:"குளோரின் கிருமிகளை அழிக்கிறது"},
+  cards:[
+  {pic:"🏊", t:{
+    en:"Swimmers bring germs into the pool: sweat, pee, poop, skin and dirt. Some germs make people sick — stomach pain, diarrhoea, eye and ear infections.",
+    ms:"Perenang membawa kuman ke dalam kolam: peluh, air kencing, najis, kulit dan kotoran. Sesetengah kuman membuat orang sakit — sakit perut, cirit-birit, jangkitan mata dan telinga.",
+    ta:"நீச்சல் அடிப்பவர்கள் குளத்திற்குள் கிருமிகளைக் கொண்டு வருகிறார்கள்: வியர்வை, சிறுநீர், மலம், தோல், அழுக்கு. சில கிருமிகள் நோயை உண்டாக்கும் — வயிற்று வலி, வயிற்றுப்போக்கு, கண் மற்றும் காது தொற்று."}},
+  {pic:"svg:germ", t:{
+    en:"Chlorine breaks the germ's outer wall. The germ dies. Most bacteria die in less than 1 minute.",
+    ms:"Klorin memecahkan dinding luar kuman. Kuman mati. Kebanyakan bakteria mati dalam masa kurang daripada 1 minit.",
+    ta:"குளோரின் கிருமியின் வெளிச் சுவரை உடைக்கிறது. கிருமி இறக்கிறது. பெரும்பாலான பாக்டீரியாக்கள் 1 நிமிடத்திற்குள் இறக்கின்றன."}},
+  {pic:"📉", t:{
+    en:"Free chlorine (FC) = chlorine still ready to fight. Every germ, every swimmer and the sun use it up. So FC goes down during the day.",
+    ms:"Klorin bebas (FC) = klorin yang masih sedia untuk melawan. Setiap kuman, setiap perenang dan matahari menghabiskannya. Jadi FC turun sepanjang hari.",
+    ta:"கட்டற்ற குளோரின் (Free Chlorine – FC) = இன்னும் போராடத் தயாராக இருக்கும் குளோரின். ஒவ்வொரு கிருமியும், ஒவ்வொரு நீச்சல்காரரும், சூரியனும் அதைச் செலவழிக்கின்றன. அதனால் பகலில் FC குறைகிறது."}},
+  {pic:"🌙", t:{
+    en:"That is why we dose every night. The pump mixes the chlorine overnight, so the pool is strong in the morning. Target next morning: FC 2.5 – 3.5 ppm.",
+    ms:"Sebab itu kita masukkan klorin setiap malam. Pam mencampurkan klorin sepanjang malam, jadi klorin dalam kolam cukup kuat pada waktu pagi. Sasaran pagi esok: FC 2.5 – 3.5 ppm.",
+    ta:"அதனால்தான் ஒவ்வொரு இரவும் டோஸ் செய்கிறோம். இரவு முழுவதும் பம்ப் குளோரினைக் கலக்கிறது, காலையில் குளம் வலுவாக இருக்கும். மறுநாள் காலை இலக்கு: FC 2.5 – 3.5 ppm."}},
+  {pic:"🪣", t:{
+    en:"Our chlorine is a powder (calcium hypochlorite). Weigh it. Put WATER in the bucket first, then add the powder. Stir well until most of it dissolves. Pour it around the pool as the route shows.",
+    ms:"Klorin kita ialah serbuk (kalsium hipoklorit). Timbang dahulu. Masukkan AIR ke dalam baldi dahulu, kemudian serbuk. Kacau sehingga kebanyakannya larut. Tuang di sekeliling kolam mengikut laluan.",
+    ta:"நம் குளோரின் ஒரு பொடி (கால்சியம் ஹைப்போகுளோரைட்). முதலில் எடை போடுங்கள். வாளியில் முதலில் தண்ணீர் ஊற்றுங்கள், பிறகு பொடியைப் போடுங்கள். பெரும்பாலானது கரையும் வரை நன்றாகக் கலக்குங்கள். வழிப்படத்தில் காட்டியபடி குளத்தைச் சுற்றி ஊற்றுங்கள்."}},
+  {pic:"⚠️", t:{
+    en:"FC 0 = no protection. Germs grow and the water turns cloudy, then green. If the morning FC is 1 or below, tell the supervisor.",
+    ms:"FC 0 = tiada perlindungan. Kuman membiak dan air menjadi keruh, kemudian hijau. Jika FC pagi 1 atau kurang, beritahu penyelia.",
+    ta:"FC 0 = பாதுகாப்பு இல்லை. கிருமிகள் பெருகும், தண்ணீர் கலங்கலாகி, பின் பச்சையாகும். காலை FC 1 அல்லது அதற்குக் குறைவாக இருந்தால், மேற்பார்வையாளரிடம் சொல்லுங்கள்."}},
+  ],
+  quiz:[
+  {q:{en:"What does chlorine do?", ms:"Apa fungsi klorin?", ta:"குளோரின் என்ன செய்கிறது?"},
+   o:[{en:"Kills germs", ms:"Membunuh kuman", ta:"கிருமிகளை அழிக்கிறது"},
+      {en:"Makes the water warm", ms:"Memanaskan air", ta:"தண்ணீரைச் சூடாக்குகிறது"},
+      {en:"Makes the water blue", ms:"Membirukan air", ta:"தண்ணீரை நீலமாக்குகிறது"}], a:0},
+  {q:{en:"Why does FC go down during the day?", ms:"Kenapa FC turun sepanjang hari?", ta:"பகலில் FC ஏன் குறைகிறது?"},
+   o:[{en:"The pump eats it", ms:"Pam memakannya", ta:"பம்ப் அதைச் சாப்பிடுகிறது"},
+      {en:"Swimmers, germs and the sun use it up", ms:"Perenang, kuman dan matahari menghabiskannya", ta:"நீச்சல்காரர்கள், கிருமிகள், சூரியன் அதைச் செலவழிக்கின்றன"},
+      {en:"It sinks to the floor", ms:"Ia tenggelam ke lantai", ta:"அது தரையில் மூழ்குகிறது"}], a:1},
+  {q:{en:"What FC do we want the next morning?", ms:"FC berapa yang kita mahu pagi esok?", ta:"மறுநாள் காலை எவ்வளவு FC வேண்டும்?"},
+   o:[{en:"0 – 1 ppm", ms:"0 – 1 ppm", ta:"0 – 1 ppm"},
+      {en:"2.5 – 3.5 ppm", ms:"2.5 – 3.5 ppm", ta:"2.5 – 3.5 ppm"},
+      {en:"8 – 10 ppm", ms:"8 – 10 ppm", ta:"8 – 10 ppm"}], a:1},
+  {q:{en:"Mixing chlorine powder in the bucket — what goes in first?", ms:"Bancuh serbuk klorin dalam baldi — apa dimasukkan dahulu?", ta:"வாளியில் குளோரின் பொடி கலக்கும்போது — முதலில் எது?"},
+   o:[{en:"Water first, then powder", ms:"Air dahulu, kemudian serbuk", ta:"முதலில் தண்ணீர், பிறகு பொடி"},
+      {en:"Powder first, then water", ms:"Serbuk dahulu, kemudian air", ta:"முதலில் பொடி, பிறகு தண்ணீர்"}], a:0},
+  ]},
+
+/* ---------------- 2. pH & acid ---------------- */
+{ id:"ph", icon:"🧪", mins:4,
+  title:{en:"pH and acid", ms:"pH dan asid", ta:"pH மற்றும் அமிலம்"},
+  cards:[
+  {pic:"svg:phscale", t:{
+    en:"pH tells us if water is acid or not. The scale is 0 to 14. 7 is the middle. Our pools: pH 7.2 – 7.6. (NEA allows 7.2 – 7.8.)",
+    ms:"pH memberitahu sama ada air berasid atau tidak. Skala 0 hingga 14. 7 ialah tengah. Kolam kita: pH 7.2 – 7.6. (NEA benarkan 7.2 – 7.8.)",
+    ta:"தண்ணீர் அமிலமா இல்லையா என்பதை pH சொல்கிறது. அளவு 0 முதல் 14 வரை. 7 நடுவில். நம் குளங்கள்: pH 7.2 – 7.6. (NEA 7.2 – 7.8 வரை அனுமதிக்கிறது.)"}},
+  {pic:"svg:strength", t:{
+    en:"pH changes how strong chlorine is. pH 7.0: about 3 of 4 parts are strong. pH 7.5: about half. pH 8.0: only 1 of 5. High pH = weak chlorine, even when the FC number looks OK.",
+    ms:"pH mengubah kekuatan klorin. pH 7.0: kira-kira 3 daripada 4 bahagian kuat. pH 7.5: kira-kira separuh. pH 8.0: hanya 1 daripada 5. pH tinggi = klorin lemah, walaupun nombor FC nampak OK.",
+    ta:"pH குளோரினின் வலிமையை மாற்றுகிறது. pH 7.0: சுமார் 4-இல் 3 பங்கு வலுவானது. pH 7.5: சுமார் பாதி. pH 8.0: 5-இல் 1 பங்கு மட்டுமே. அதிக pH = பலவீனமான குளோரின், FC எண் சரியாகத் தெரிந்தாலும் கூட."}},
+  {pic:"😣", t:{
+    en:"pH too low (below 7.2): eyes sting, skin itches, and metal ladders and pump parts rust.",
+    ms:"pH terlalu rendah (bawah 7.2): mata pedih, kulit gatal, tangga logam dan bahagian pam berkarat.",
+    ta:"pH மிகக் குறைவு (7.2-க்குக் கீழ்): கண் எரியும், தோல் அரிக்கும், உலோக ஏணிகளும் பம்ப் பாகங்களும் துருப்பிடிக்கும்."}},
+  {pic:"📈", t:{
+    en:"In our pools pH usually goes UP. Chlorine powder and the salt chlorinator both push it up. So we add acid to bring it down.",
+    ms:"Di kolam kita pH biasanya NAIK. Serbuk klorin dan klorinator garam kedua-duanya menaikkannya. Jadi kita tambah asid untuk menurunkannya.",
+    ta:"நம் குளங்களில் pH பொதுவாக உயரும். குளோரின் பொடியும் உப்பு குளோரினேட்டரும் அதை உயர்த்துகின்றன. அதனால் அதைக் குறைக்க அமிலம் சேர்க்கிறோம்."}},
+  {pic:"🧴", t:{
+    en:"Acid: follow the dosing table for your pH reading. Pour slowly in front of the return jets, away from swimmers. Chlorine and acid: different places, never at the same time, never in the same bucket.",
+    ms:"Asid: ikut jadual dos mengikut bacaan pH anda. Tuang perlahan di hadapan jet pulangan, jauh dari perenang. Klorin dan asid: tempat berbeza, jangan pada masa yang sama, jangan dalam baldi yang sama.",
+    ta:"அமிலம்: உங்கள் pH அளவுக்கான டோசிங் அட்டவணையைப் பின்பற்றுங்கள். திரும்பும் ஜெட் முன் மெதுவாக ஊற்றுங்கள், நீச்சல்காரர்களிடமிருந்து தள்ளி. குளோரினும் அமிலமும்: வெவ்வேறு இடங்களில், ஒரே நேரத்தில் இல்லை, ஒரே வாளியில் இல்லை."}},
+  ],
+  quiz:[
+  {q:{en:"What pH do we want in our pools?", ms:"pH berapa yang kita mahu di kolam?", ta:"நம் குளங்களில் எவ்வளவு pH வேண்டும்?"},
+   o:[{en:"6.0 – 6.5", ms:"6.0 – 6.5", ta:"6.0 – 6.5"},{en:"7.2 – 7.6", ms:"7.2 – 7.6", ta:"7.2 – 7.6"},{en:"8.5 – 9.0", ms:"8.5 – 9.0", ta:"8.5 – 9.0"}], a:1},
+  {q:{en:"pH is 8.0. What happens to the chlorine?", ms:"pH ialah 8.0. Apa jadi pada klorin?", ta:"pH 8.0. குளோரினுக்கு என்ன ஆகும்?"},
+   o:[{en:"Chlorine becomes weak", ms:"Klorin menjadi lemah", ta:"குளோரின் பலவீனமாகும்"},
+      {en:"Chlorine becomes stronger", ms:"Klorin menjadi lebih kuat", ta:"குளோரின் வலுவாகும்"},
+      {en:"Nothing changes", ms:"Tiada perubahan", ta:"எதுவும் மாறாது"}], a:0},
+  {q:{en:"What brings pH down?", ms:"Apa yang menurunkan pH?", ta:"pH-ஐக் குறைப்பது எது?"},
+   o:[{en:"Bicarb", ms:"Bikarbonat", ta:"பைகார்ப்"},{en:"Acid", ms:"Asid", ta:"அமிலம்"},{en:"Salt", ms:"Garam", ta:"உப்பு"}], a:1},
+  {q:{en:"pH too low causes…", ms:"pH terlalu rendah menyebabkan…", ta:"pH மிகக் குறைவானால்…"},
+   o:[{en:"Eyes sting and metal rusts", ms:"Mata pedih dan logam berkarat", ta:"கண் எரியும், உலோகம் துருப்பிடிக்கும்"},
+      {en:"Water turns warm", ms:"Air menjadi panas", ta:"தண்ணீர் சூடாகும்"},
+      {en:"More swimmers come", ms:"Lebih ramai perenang datang", ta:"அதிக நீச்சல்காரர்கள் வருவார்கள்"}], a:0},
+  ]},
+
+/* ---------------- 3. Bicarb ---------------- */
+{ id:"bicarb", icon:"🛡️", mins:3,
+  title:{en:"Bicarb keeps pH steady", ms:"Bikarbonat menstabilkan pH", ta:"பைகார்ப் pH-ஐ நிலையாக வைக்கிறது"},
+  cards:[
+  {pic:"🛡️", t:{
+    en:"Alkalinity is like a shock absorber for pH. It stops the pH from jumping up and down.",
+    ms:"Kealkalian seperti penyerap hentakan untuk pH. Ia menghalang pH daripada naik turun dengan cepat.",
+    ta:"காரத்தன்மை (அல்கலினிட்டி) pH-க்கு ஒரு அதிர்ச்சி தாங்கி (ஷாக் அப்சார்பர்) போன்றது. pH மேலும் கீழும் குதிப்பதைத் தடுக்கிறது."}},
+  {pic:"🎢", t:{
+    en:"Low alkalinity: pH swings every day — high one day, very low after acid. Hard to control, and because pH keeps changing, the chlorine does not work well.",
+    ms:"Kealkalian rendah: pH berubah-ubah setiap hari — tinggi satu hari, sangat rendah selepas asid. Susah dikawal, dan kerana pH sentiasa berubah, klorin tidak berfungsi dengan baik.",
+    ta:"குறைந்த காரத்தன்மை: pH தினமும் மாறும் — ஒரு நாள் அதிகம், அமிலம் போட்ட பின் மிகக் குறைவு. கட்டுப்படுத்துவது கடினம், pH மாறிக்கொண்டே இருப்பதால் குளோரினும் நன்றாக வேலை செய்யாது."}},
+  {pic:"🥄", t:{
+    en:"Bicarb (sodium bicarbonate — like baking soda) raises alkalinity. It also pushes pH up a little.",
+    ms:"Bikarbonat (natrium bikarbonat — seperti soda penaik) menaikkan kealkalian. Ia juga menaikkan pH sedikit.",
+    ta:"பைகார்ப் (சோடியம் பைகார்பனேட் — சமையல் சோடா போல) காரத்தன்மையை உயர்த்துகிறது. pH-ஐயும் கொஞ்சம் உயர்த்துகிறது."}},
+  {pic:"🌊", t:{
+    en:"Add bicarb only when the table or the supervisor says. Measure with the scoop. Spread it wide across the pool while the pump runs.",
+    ms:"Tambah bikarbonat hanya apabila jadual atau penyelia suruh. Sukat dengan sudu penyukat. Tabur luas ke seluruh kolam semasa pam berjalan.",
+    ta:"அட்டவணை அல்லது மேற்பார்வையாளர் சொன்னால் மட்டுமே பைகார்ப் சேர்க்கவும். ஸ்கூப்பால் அளக்கவும். பம்ப் ஓடும்போது குளம் முழுவதும் பரவலாகத் தூவுங்கள்."}},
+  {pic:"⏱️", t:{
+    en:"Do not add acid and bicarb at the same time — they cancel each other. Keep them a few hours apart.",
+    ms:"Jangan tambah asid dan bikarbonat pada masa yang sama — ia membatalkan satu sama lain. Jarakkan beberapa jam.",
+    ta:"அமிலமும் பைகார்பும் ஒரே நேரத்தில் சேர்க்க வேண்டாம் — ஒன்றையொன்று ரத்து செய்யும். சில மணி நேர இடைவெளி வையுங்கள்."}},
+  ],
+  quiz:[
+  {q:{en:"What does alkalinity do?", ms:"Apa fungsi kealkalian?", ta:"காரத்தன்மை என்ன செய்கிறது?"},
+   o:[{en:"Keeps pH steady", ms:"Menstabilkan pH", ta:"pH-ஐ நிலையாக வைக்கிறது"},{en:"Kills germs", ms:"Membunuh kuman", ta:"கிருமிகளை அழிக்கிறது"},{en:"Cleans the floor", ms:"Membersihkan lantai", ta:"தரையைச் சுத்தம் செய்கிறது"}], a:0},
+  {q:{en:"Bicarb raises…", ms:"Bikarbonat menaikkan…", ta:"பைகார்ப் உயர்த்துவது…"},
+   o:[{en:"Chlorine", ms:"Klorin", ta:"குளோரின்"},{en:"Alkalinity", ms:"Kealkalian", ta:"காரத்தன்மை"},{en:"Water level", ms:"Paras air", ta:"நீர் மட்டம்"}], a:1},
+  {q:{en:"How do we add bicarb?", ms:"Bagaimana tambah bikarbonat?", ta:"பைகார்ப் எப்படிச் சேர்ப்பது?"},
+   o:[{en:"Spread wide, pump running", ms:"Tabur luas, pam berjalan", ta:"பரவலாகத் தூவுதல், பம்ப் ஓடும்போது"},
+      {en:"All in one corner, pump off", ms:"Semua di satu sudut, pam tutup", ta:"ஒரே மூலையில், பம்ப் நிறுத்தி"},
+      {en:"Mixed with chlorine powder", ms:"Campur dengan serbuk klorin", ta:"குளோரின் பொடியுடன் கலந்து"}], a:0},
+  {q:{en:"Acid and bicarb together at the same time?", ms:"Asid dan bikarbonat pada masa yang sama?", ta:"அமிலமும் பைகார்பும் ஒரே நேரத்திலா?"},
+   o:[{en:"Yes, it saves time", ms:"Ya, jimat masa", ta:"ஆம், நேரம் மிச்சம்"},{en:"No — a few hours apart", ms:"Tidak — jarak beberapa jam", ta:"இல்லை — சில மணி நேர இடைவெளி"}], a:1},
+  ]},
+
+/* ---------------- 4. Water test ---------------- */
+{ id:"test", icon:"🔬", mins:4,
+  title:{en:"Doing the FC test right", ms:"Ujian FC yang betul", ta:"FC சோதனையைச் சரியாகச் செய்வது"},
+  cards:[
+  {pic:"🎯", t:{
+    en:"A wrong test = a wrong dose. Test the same way every time.",
+    ms:"Ujian salah = dos salah. Uji dengan cara yang sama setiap kali.",
+    ta:"தவறான சோதனை = தவறான டோஸ். ஒவ்வொரு முறையும் ஒரே மாதிரி சோதியுங்கள்."}},
+  {pic:"💪", t:{
+    en:"Take the water from elbow deep (30 – 40 cm under the surface), away from the return jets and the skimmer.",
+    ms:"Ambil air sedalam siku (30 – 40 cm bawah permukaan), jauh dari jet pulangan dan skimmer.",
+    ta:"முழங்கை ஆழத்திலிருந்து (மேற்பரப்புக்குக் கீழ் 30 – 40 cm) தண்ணீர் எடுங்கள், திரும்பும் ஜெட் மற்றும் ஸ்கிம்மரிலிருந்து தள்ளி."}},
+  {pic:"svg:tube", t:{
+    en:"Stand the tube on the counter — don't hold it in your hand. Fill to the 10 mL line. Add 2 scoops of R-0870 powder. Swirl until pink. Start the R-0871 drops straight away. No pink at all = FC 0 — tell the supervisor.",
+    ms:"Letak tiub tegak di atas kaunter — jangan pegang di tangan. Isi hingga garisan 10 mL. Masukkan 2 sudu penyukat serbuk R-0870. Pusingkan tiub perlahan-lahan sehingga merah jambu. Terus mula titiskan R-0871. Tiada warna merah jambu langsung = FC 0 — beritahu penyelia.",
+    ta:"சோதனைக் குழாயைக் கவுண்டரில் நேராக நிறுத்துங்கள் — கையில் பிடிக்க வேண்டாம். 10 mL கோடு வரை நிரப்புங்கள். R-0870 பொடி 2 ஸ்கூப் போடுங்கள். இளஞ்சிவப்பாகும் வரை சுழற்றுங்கள். உடனே R-0871 சொட்டுகளைத் தொடங்குங்கள். இளஞ்சிவப்பே வரவில்லை = FC 0 — மேற்பார்வையாளரிடம் சொல்லுங்கள்."}},
+  {pic:"svg:bottle", t:{
+    en:"Hold the R-0871 bottle straight down (90°). A tilted bottle makes small drops — more drops — a wrong, high reading.",
+    ms:"Pegang botol R-0871 tegak ke bawah (90°). Botol senget buat titisan kecil — lebih banyak titisan — bacaan salah dan tinggi.",
+    ta:"R-0871 பாட்டிலை நேராகக் கீழ்நோக்கிப் (90°) பிடியுங்கள். சாய்த்தால் சொட்டுகள் சிறியதாகும் — அதிக சொட்டுகள் தேவைப்படும் — தவறான, அதிக அளவு காட்டும்."}},
+  {pic:"🚫☝️", t:{
+    en:"Never cover the tube with your finger. Use the cap.",
+    ms:"Jangan tutup tiub dengan jari. Guna penutup.",
+    ta:"சோதனைக் குழாயை விரலால் மூட வேண்டாம். மூடியைப் பயன்படுத்துங்கள்."}},
+  {pic:"✖️", t:{
+    en:"Add 1 drop at a time and swirl after each drop. Count until the pink is gone. FC = drops × 0.5. Example: 6 drops = 3 ppm. Never × 1.",
+    ms:"Titiskan 1 titis setiap kali dan pusingkan tiub selepas setiap titis. Kira sehingga warna merah jambu hilang. FC = titisan × 0.5. Contoh: 6 titis = 3 ppm. Jangan × 1.",
+    ta:"ஒரு நேரத்தில் 1 சொட்டு விட்டு, ஒவ்வொரு சொட்டுக்கும் பின் சுழற்றுங்கள். இளஞ்சிவப்பு மறையும் வரை எண்ணுங்கள். FC = சொட்டுகள் × 0.5. உதாரணம்: 6 சொட்டு = 3 ppm. ஒருபோதும் × 1 செய்ய வேண்டாம்."}},
+  {pic:"📲", t:{
+    en:"First job at every outlet: water test and night report. Send the report first, then dose.",
+    ms:"Kerja pertama di setiap cawangan: ujian air dan laporan malam. Hantar laporan dahulu, kemudian dos.",
+    ta:"ஒவ்வொரு கிளையிலும் முதல் வேலை: நீர் சோதனை மற்றும் இரவு அறிக்கை. முதலில் அறிக்கை அனுப்புங்கள், பிறகு டோஸ்."}},
+  ],
+  quiz:[
+  {q:{en:"10 drops of R-0871. What is the FC?", ms:"10 titis R-0871. Berapa FC?", ta:"R-0871 10 சொட்டுகள். FC எவ்வளவு?"},
+   o:[{en:"5 ppm", ms:"5 ppm", ta:"5 ppm"},{en:"10 ppm", ms:"10 ppm", ta:"10 ppm"},{en:"20 ppm", ms:"20 ppm", ta:"20 ppm"}], a:0},
+  {q:{en:"How do you hold the R-0871 bottle?", ms:"Bagaimana pegang botol R-0871?", ta:"R-0871 பாட்டிலை எப்படிப் பிடிப்பது?"},
+   o:[{en:"Tilted a little", ms:"Senget sedikit", ta:"கொஞ்சம் சாய்த்து"},{en:"Straight down", ms:"Tegak ke bawah", ta:"நேராகக் கீழ்நோக்கி"}], a:1},
+  {q:{en:"The sample turned pink. What now?", ms:"Sampel sudah merah jambu. Apa seterusnya?", ta:"மாதிரி இளஞ்சிவப்பானது. இப்போது?"},
+   o:[{en:"Start the drops straight away", ms:"Terus mula titis", ta:"உடனே சொட்டுகளைத் தொடங்கு"},{en:"Wait 5 minutes", ms:"Tunggu 5 minit", ta:"5 நிமிடம் காத்திரு"}], a:0},
+  {q:{en:"What do you cover the tube with?", ms:"Tiub ditutup dengan apa?", ta:"சோதனைக் குழாயை எதனால் மூடுவது?"},
+   o:[{en:"My finger", ms:"Jari saya", ta:"என் விரல்"},{en:"The cap", ms:"Penutup", ta:"மூடி"}], a:1},
+  {q:{en:"First job when you reach an outlet at night?", ms:"Kerja pertama bila sampai di cawangan waktu malam?", ta:"இரவில் கிளைக்குச் சென்றதும் முதல் வேலை?"},
+   o:[{en:"Dose chlorine", ms:"Dos klorin", ta:"குளோரின் டோஸ்"},{en:"Water test and night report", ms:"Ujian air dan laporan malam", ta:"நீர் சோதனை மற்றும் இரவு அறிக்கை"}], a:1},
+  ]},
+
+/* ---------------- 5. Chemical safety ---------------- */
+{ id:"safety", icon:"🧤", mins:3,
+  title:{en:"Chemical safety", ms:"Keselamatan bahan kimia", ta:"ரசாயனப் பாதுகாப்பு"},
+  cards:[
+  {pic:"svg:nomix", t:{
+    en:"Chlorine + acid = poison gas. It can burn your lungs and can kill. NEVER mix them, not even a little.",
+    ms:"Klorin + asid = gas beracun. Ia boleh merosakkan paru-paru dan boleh membunuh. JANGAN campur, walaupun sedikit.",
+    ta:"குளோரின் + அமிலம் = விஷ வாயு. நுரையீரலை எரிக்கும், உயிரிழப்பு ஏற்படலாம். ஒருபோதும் கலக்க வேண்டாம், கொஞ்சம் கூட."}},
+  {pic:"🪣🪣", t:{
+    en:"Each chemical has its own bucket and scoop. Keep them labelled. Never put a wet or dirty scoop into the chlorine drum — it can start a fire or gas.",
+    ms:"Setiap bahan kimia ada baldi dan sudu penyukat sendiri. Labelkan. Jangan masukkan sudu penyukat basah atau kotor ke dalam dram klorin — boleh menyebabkan api atau gas.",
+    ta:"ஒவ்வொரு ரசாயனத்துக்கும் தனி வாளியும் ஸ்கூப்பும். லேபிள் ஒட்டுங்கள். ஈரமான அல்லது அழுக்கான ஸ்கூப்பைக் குளோரின் டிரம்மில் போட வேண்டாம் — தீ அல்லது வாயு உண்டாகலாம்."}},
+  {pic:"💧➡️🧂", t:{
+    en:"Always water first, then chemical. Never pour water onto chemical powder or into acid.",
+    ms:"Sentiasa air dahulu, kemudian bahan kimia. Jangan tuang air ke atas serbuk kimia atau ke dalam asid.",
+    ta:"எப்போதும் முதலில் தண்ணீர், பிறகு ரசாயனம். ரசாயனப் பொடி மீதோ அமிலத்துக்குள்ளோ தண்ணீர் ஊற்ற வேண்டாம்."}},
+  {pic:"🧤🥽", t:{
+    en:"Wear gloves and safety glasses. Keep your face away. Don't breathe the dust.",
+    ms:"Pakai sarung tangan dan cermin mata keselamatan. Jauhkan muka. Jangan sedut habuk.",
+    ta:"கையுறையும் பாதுகாப்புக் கண்ணாடியும் அணியுங்கள். முகத்தைத் தள்ளி வையுங்கள். தூசியை சுவாசிக்க வேண்டாம்."}},
+  {pic:"📦", t:{
+    en:"Storage: lid closed, dry, cool, out of the sun, off the floor. Chlorine and acid kept apart — never acid above chlorine.",
+    ms:"Simpanan: penutup rapat, kering, sejuk, tidak kena matahari, tidak di atas lantai. Klorin dan asid diasingkan — jangan letak asid di atas klorin.",
+    ta:"சேமிப்பு: மூடி மூடியிருக்க வேண்டும், உலர்வாக, குளிர்ச்சியாக, வெயில் படாமல், தரையிலிருந்து மேலே. குளோரினும் அமிலமும் தனித்தனியாக — குளோரினுக்கு மேல் அமிலத்தை வைக்க வேண்டாம்."}},
+  {pic:"🚿", t:{
+    en:"Splash on skin or in eyes: wash with lots of running water for 15 minutes; for eyes, see a doctor after. Smell of gas: walk away to fresh air, keep people away, call the supervisor. Serious: call 995.",
+    ms:"Terpercik ke kulit atau mata: basuh dengan banyak air mengalir selama 15 minit; untuk mata, jumpa doktor selepas itu. Bau gas: pergi ke udara segar, jauhkan orang, hubungi penyelia. Serius: telefon 995.",
+    ta:"தோலிலோ கண்ணிலோ தெறித்தால்: நிறைய ஓடும் தண்ணீரில் 15 நிமிடம் கழுவுங்கள்; கண்ணாக இருந்தால், பிறகு மருத்துவரைப் பாருங்கள். வாயு வாசனை: சுத்தமான காற்றுக்கு விலகிச் செல்லுங்கள், மக்களைத் தள்ளி வையுங்கள், மேற்பார்வையாளரை அழையுங்கள். தீவிரமாக இருந்தால்: 995-ஐ அழையுங்கள்."}},
+  ],
+  quiz:[
+  {q:{en:"Chlorine + acid makes…", ms:"Klorin + asid menghasilkan…", ta:"குளோரின் + அமிலம் உண்டாக்குவது…"},
+   o:[{en:"Poison gas", ms:"Gas beracun", ta:"விஷ வாயு"},{en:"Stronger cleaning", ms:"Pembersihan lebih kuat", ta:"வலுவான சுத்தம்"},{en:"Nothing", ms:"Tiada apa-apa", ta:"ஒன்றுமில்லை"}], a:0},
+  {q:{en:"Which goes first?", ms:"Mana dahulu?", ta:"எது முதலில்?"},
+   o:[{en:"Chemical, then water", ms:"Bahan kimia, kemudian air", ta:"ரசாயனம், பிறகு தண்ணீர்"},{en:"Water, then chemical", ms:"Air, kemudian bahan kimia", ta:"தண்ணீர், பிறகு ரசாயனம்"}], a:1},
+  {q:{en:"Acid splashes in your eye. What do you do?", ms:"Asid terpercik ke mata. Apa perlu buat?", ta:"அமிலம் கண்ணில் தெறித்தது. என்ன செய்வீர்கள்?"},
+   o:[{en:"Rub the eye", ms:"Gosok mata", ta:"கண்ணைத் தேய்ப்பது"},{en:"Wash with running water for 15 minutes", ms:"Basuh dengan air mengalir 15 minit", ta:"ஓடும் தண்ணீரில் 15 நிமிடம் கழுவுவது"},{en:"Wait and see", ms:"Tunggu dan lihat", ta:"காத்திருந்து பார்ப்பது"}], a:1},
+  {q:{en:"Can a wet scoop go into the chlorine drum?", ms:"Bolehkah sudu penyukat basah masuk ke dalam dram klorin?", ta:"ஈரமான ஸ்கூப்பைக் குளோரின் டிரம்மில் போடலாமா?"},
+   o:[{en:"No — it can cause fire or gas", ms:"Tidak — boleh menyebabkan api atau gas", ta:"இல்லை — தீ அல்லது வாயு உண்டாகலாம்"},{en:"Yes, no problem", ms:"Ya, tiada masalah", ta:"ஆம், பிரச்சனை இல்லை"}], a:0},
+  ]},
+
+/* ---------------- 6. Scrubbing ---------------- */
+{ id:"scrub", icon:"🧽", mins:3,
+  title:{en:"Scrubbing the pool", ms:"Menyental kolam", ta:"குளத்தைத் தேய்த்துச் சுத்தம் செய்தல்"},
+  cards:[
+  {pic:"svg:slime", t:{
+    en:"Germs and algae grow a thin, slimy layer on walls, floor and steps. Chlorine cannot get inside the slime easily.",
+    ms:"Kuman dan alga membentuk lapisan nipis berlendir di dinding, lantai dan tangga. Klorin sukar masuk ke dalam lendir itu.",
+    ta:"கிருமிகளும் பாசியும் சுவர், தரை, படிகளில் மெல்லிய வழுவழுப்பான அடுக்கை உருவாக்குகின்றன. அந்த அடுக்கிற்குள் குளோரின் எளிதில் நுழைய முடியாது."}},
+  {pic:"🧽", t:{
+    en:"Scrubbing breaks the slime so the chlorine can kill what is inside. It also stops algae before you can see it.",
+    ms:"Menyental memecahkan lendir supaya klorin boleh membunuh kuman di dalamnya. Ia juga menghalang alga sebelum ia kelihatan.",
+    ta:"தேய்ப்பது அந்த அடுக்கை உடைக்கிறது, உள்ளே இருப்பதைக் குளோரின் அழிக்க முடிகிறது. பாசி கண்ணுக்குத் தெரியும் முன்பே அதைத் தடுக்கிறது."}},
+  {pic:"📅", t:{
+    en:"Why every week? Slime and algae come back in a few days. Each pool's weekly maintenance day keeps it clean before the busy weekend.",
+    ms:"Kenapa setiap minggu? Lendir dan alga kembali dalam beberapa hari. Hari penyelenggaraan mingguan setiap kolam memastikan ia bersih sebelum hujung minggu yang sibuk.",
+    ta:"ஏன் ஒவ்வொரு வாரமும்? வழுவழுப்பும் பாசியும் சில நாட்களில் திரும்ப வரும். ஒவ்வொரு குளத்தின் வாராந்திரப் பராமரிப்பு நாள், பரபரப்பான வார இறுதிக்கு முன் அதைச் சுத்தமாக வைக்கிறது."}},
+  {pic:"🔍", t:{
+    en:"Scrub hardest where the water doesn't move much: the waterline, corners, steps, behind ladders, around lights and return jets.",
+    ms:"Sental kuat di tempat air kurang bergerak: garisan air, sudut, tangga, belakang tangga besi, sekeliling lampu dan jet pulangan.",
+    ta:"தண்ணீர் அதிகம் நகராத இடங்களில் நன்றாகத் தேயுங்கள்: நீர் மட்டக் கோடு, மூலைகள், படிகள், ஏணிகளுக்குப் பின்னால், விளக்குகள் மற்றும் திரும்பும் ஜெட்டுகளைச் சுற்றி."}},
+  {pic:"➡️", t:{
+    en:"Brush in one direction, towards where you will vacuum. Overlap each stroke. Don't skip corners. Then let the dirt settle and vacuum after.",
+    ms:"Berus ke satu arah, ke arah tempat anda akan vakum. Tindihkan setiap sapuan sedikit. Jangan tinggalkan sudut. Biarkan kotoran mendap, kemudian vakum.",
+    ta:"ஒரே திசையில், நீங்கள் வாக்யூம் செய்யும் பக்கம் நோக்கித் தேயுங்கள். ஒவ்வொரு தேய்ப்பும் முந்தையதின் மேல் கொஞ்சம் படும்படி தேயுங்கள். மூலைகளை விட வேண்டாம். அழுக்கு அடியில் படிய விட்டு, பிறகு வாக்யூம் செய்யுங்கள்."}},
+  ],
+  quiz:[
+  {q:{en:"Why do we scrub?", ms:"Kenapa kita menyental?", ta:"நாம் ஏன் தேய்க்கிறோம்?"},
+   o:[{en:"To break the slime so chlorine can kill germs", ms:"Untuk pecahkan lendir supaya klorin boleh bunuh kuman", ta:"வழுவழுப்பை உடைத்து குளோரின் கிருமிகளை அழிக்க"},
+      {en:"Only to make the floor shiny", ms:"Hanya untuk kilatkan lantai", ta:"தரையைப் பளபளப்பாக்க மட்டும்"},
+      {en:"To warm the water", ms:"Untuk panaskan air", ta:"தண்ணீரைச் சூடாக்க"}], a:0},
+  {q:{en:"Where do we scrub hardest?", ms:"Di mana perlu sental paling kuat?", ta:"எங்கே அதிகம் தேய்க்க வேண்டும்?"},
+   o:[{en:"Only the middle of the floor", ms:"Hanya tengah lantai", ta:"தரையின் நடுவில் மட்டும்"},{en:"Corners, steps and the waterline", ms:"Sudut, tangga dan garisan air", ta:"மூலைகள், படிகள், நீர் மட்டக் கோடு"}], a:1},
+  {q:{en:"Scrub or vacuum first?", ms:"Sental atau vakum dahulu?", ta:"முதலில் தேய்ப்பதா வாக்யூமா?"},
+   o:[{en:"Scrub first, vacuum after", ms:"Sental dahulu, vakum kemudian", ta:"முதலில் தேய்த்தல், பிறகு வாக்யூம்"},{en:"Vacuum first, scrub after", ms:"Vakum dahulu, sental kemudian", ta:"முதலில் வாக்யூம், பிறகு தேய்த்தல்"}], a:0},
+  {q:{en:"How often?", ms:"Berapa kerap?", ta:"எவ்வளவு அடிக்கடி?"},
+   o:[{en:"Every week", ms:"Setiap minggu", ta:"ஒவ்வொரு வாரமும்"},{en:"Once a year", ms:"Setahun sekali", ta:"வருடத்திற்கு ஒருமுறை"}], a:0},
+  ]},
+
+/* ---------------- 7. Manual vacuum ---------------- */
+{ id:"vacuum", icon:"🧹", mins:5,
+  title:{en:"Manual vacuum", ms:"Vakum manual", ta:"கைமுறை வாக்யூம்"},
+  cards:[
+  {pic:"🍂", t:{
+    en:"Dirt on the floor feeds algae, uses up chlorine, and customers see it. The vacuum pulls it out through the filter.",
+    ms:"Kotoran di lantai menjadi makanan alga, menghabiskan klorin, dan pelanggan nampak. Vakum menariknya keluar melalui penapis.",
+    ta:"தரையில் உள்ள அழுக்கு பாசிக்கு உணவாகிறது, குளோரினைச் செலவழிக்கிறது, வாடிக்கையாளர்களும் பார்க்கிறார்கள். வாக்யூம் அதை வடிகட்டி வழியாக வெளியே இழுக்கிறது."}},
+  {pic:"svg:vacsetup", t:{
+    en:"Before you start: open the vacuum port, open the vacuum valve, set the skimmer control valve as your route card shows — usually half open (more suction at the vacuum port). Take a photo of each.",
+    ms:"Sebelum mula: buka port vakum, buka injap vakum, laraskan injap kawalan skimmer seperti dalam kad laluan — biasanya separuh terbuka (sedutan lebih kuat di port vakum). Ambil gambar setiap satu.",
+    ta:"தொடங்கும் முன்: வாக்யூம் போர்ட்டைத் திறங்கள், வாக்யூம் வால்வைத் திறங்கள், ஸ்கிம்மர் கட்டுப்பாட்டு வால்வை வழி அட்டையில் காட்டியபடி வையுங்கள் — பொதுவாகப் பாதி திறந்து (வாக்யூம் போர்ட்டில் அதிக உறிஞ்சும் சக்தி). ஒவ்வொன்றுக்கும் புகைப்படம் எடுங்கள்."}},
+  {pic:"〰️💧", t:{
+    en:"Fill the hose with water first — push it slowly into the pool until no more bubbles come out. Air in the hose = the pump loses suction.",
+    ms:"Isi hos dengan air dahulu — tolak perlahan ke dalam kolam sehingga tiada gelembung keluar. Udara dalam hos = pam hilang sedutan.",
+    ta:"முதலில் ஹோஸைத் தண்ணீரால் நிரப்புங்கள் — குமிழ்கள் வருவது நிற்கும் வரை மெதுவாகக் குளத்துக்குள் தள்ளுங்கள். ஹோஸில் காற்று = பம்ப் உறிஞ்சும் சக்தியை இழக்கும்."}},
+  {pic:"🫧", t:{
+    en:"Look at the pump lid: full of water, no bubbles. Bubbles = air is getting in. Check the hose. At HB, open the balancing tank valve a bit more.",
+    ms:"Lihat penutup pam: penuh air, tiada gelembung. Gelembung = udara masuk. Periksa hos. Di HB, buka injap tangki pengimbang sedikit lagi.",
+    ta:"பம்ப் மூடியைப் பாருங்கள்: தண்ணீர் நிரம்பி, குமிழ்கள் இல்லாமல். குமிழ்கள் = காற்று உள்ளே வருகிறது. ஹோஸைச் சரிபாருங்கள். HB-இல், பேலன்சிங் டேங்க் வால்வைக் கொஞ்சம் அதிகம் திறங்கள்."}},
+  {pic:"🐢", t:{
+    en:"Vacuum slowly in straight lines, each line a little over the last. Too fast = dirt clouds up and settles again. Follow the route card and take the photo at each point.",
+    ms:"Vakum perlahan dalam garisan lurus, setiap garisan bertindih sedikit. Terlalu laju = kotoran naik dan mendap semula. Ikut kad laluan dan ambil gambar di setiap titik.",
+    ta:"மெதுவாக, நேர்க்கோட்டில், ஒவ்வொரு கோடும் முந்தையதின் மேல் கொஞ்சம் பட வாக்யூம் செய்யுங்கள். வேகமாகச் செய்தால் அழுக்கு மேலே கிளம்பி மீண்டும் படியும். வழி அட்டையைப் பின்பற்றி ஒவ்வொரு இடத்திலும் புகைப்படம் எடுங்கள்."}},
+  {pic:"✅", t:{
+    en:"After: tools kept · skimmer control valve fully open · vacuum valve closed · vacuum port closed. If you forget the skimmer valve, the pool circulates badly all night.",
+    ms:"Selepas: alatan disimpan · injap kawalan skimmer dibuka penuh · injap vakum ditutup · port vakum ditutup. Jika terlupa injap skimmer, peredaran kolam lemah sepanjang malam.",
+    ta:"முடிந்ததும்: கருவிகள் வைக்கப்பட்டன · ஸ்கிம்மர் கட்டுப்பாட்டு வால்வு முழுதாகத் திறந்தது · வாக்யூம் வால்வு மூடியது · வாக்யூம் போர்ட் மூடியது. ஸ்கிம்மர் வால்வை மறந்தால், இரவு முழுவதும் குளத்தின் நீரோட்டம் மோசமாக இருக்கும்."}},
+  {pic:"🚨", t:{
+    en:"Poop or vomit in the pool: close the pool, take it out with a net or bucket (never vacuum it), and call the supervisor at once. It needs special chlorine treatment (NEA: 20 ppm for at least 8 hours).",
+    ms:"Najis atau muntah dalam kolam: tutup kolam, keluarkan dengan jaring atau baldi (jangan vakum), dan terus hubungi penyelia. Ia perlukan rawatan klorin khas (NEA: 20 ppm sekurang-kurangnya 8 jam).",
+    ta:"குளத்தில் மலம் அல்லது வாந்தி: குளத்தை மூடுங்கள், வலை அல்லது வாளியால் அதை வெளியே எடுங்கள் (வாக்யூம் செய்ய வேண்டாம்), உடனே மேற்பார்வையாளரை அழையுங்கள். சிறப்புக் குளோரின் சிகிச்சை தேவை (NEA: குறைந்தது 8 மணி நேரம் 20 ppm)."}},
+  ],
+  quiz:[
+  {q:{en:"Before vacuuming, the hose must be…", ms:"Sebelum vakum, hos mesti…", ta:"வாக்யூமுக்கு முன் ஹோஸ்…"},
+   o:[{en:"Full of water, no air", ms:"Penuh air, tiada udara", ta:"தண்ணீர் நிரம்பி, காற்று இல்லாமல்"},{en:"Dry", ms:"Kering", ta:"உலர்வாக"}], a:0},
+  {q:{en:"Bubbles in the pump lid mean…", ms:"Gelembung dalam penutup pam bermaksud…", ta:"பம்ப் மூடியில் குமிழ்கள் என்றால்…"},
+   o:[{en:"The pump is clean", ms:"Pam bersih", ta:"பம்ப் சுத்தமாக உள்ளது"},{en:"Air is getting in", ms:"Udara masuk", ta:"காற்று உள்ளே வருகிறது"}], a:1},
+  {q:{en:"How fast do we vacuum?", ms:"Berapa laju kita vakum?", ta:"எவ்வளவு வேகத்தில் வாக்யூம் செய்ய வேண்டும்?"},
+   o:[{en:"Slowly, lines overlapping", ms:"Perlahan, garisan bertindih", ta:"மெதுவாக, கோடுகள் ஒன்றின் மேல் ஒன்று"},{en:"Fast, to finish early", ms:"Laju, supaya cepat siap", ta:"வேகமாக, சீக்கிரம் முடிக்க"}], a:0},
+  {q:{en:"After vacuuming, the skimmer control valve is…", ms:"Selepas vakum, injap kawalan skimmer…", ta:"வாக்யூம் முடிந்ததும், ஸ்கிம்மர் கட்டுப்பாட்டு வால்வு…"},
+   o:[{en:"Left half open", ms:"Dibiarkan separuh terbuka", ta:"பாதி திறந்தபடி விடப்படும்"},{en:"Opened fully", ms:"Dibuka penuh", ta:"முழுதாகத் திறக்கப்படும்"}], a:1},
+  {q:{en:"Poop in the pool. First thing?", ms:"Najis dalam kolam. Perkara pertama?", ta:"குளத்தில் மலம். முதலில் என்ன?"},
+   o:[{en:"Close the pool and call the supervisor", ms:"Tutup kolam dan hubungi penyelia", ta:"குளத்தை மூடி, மேற்பார்வையாளரை அழைப்பது"},{en:"Vacuum it and carry on", ms:"Vakum dan teruskan", ta:"வாக்யூம் செய்து தொடர்வது"}], a:0},
+  ]},
+
+/* ---------------- 8. Pump & filter ---------------- */
+{ id:"pump", icon:"⚙️", mins:4,
+  title:{en:"Pump and filter check", ms:"Pemeriksaan pam dan penapis", ta:"பம்ப் மற்றும் வடிகட்டி சோதனை"},
+  cards:[
+  {pic:"svg:loop", t:{
+    en:"The water's path: pool → skimmer and main drain → strainer basket → pump → filter → (salt chlorinator) → back to the pool through the return jets.",
+    ms:"Laluan air: kolam → skimmer dan saliran utama → bakul penapis kasar → pam → penapis → (klorinator garam) → kembali ke kolam melalui jet pulangan.",
+    ta:"தண்ணீரின் பாதை: குளம் → ஸ்கிம்மர் மற்றும் பிரதான வடிகால் → ஸ்ட்ரெய்னர் கூடை → பம்ப் → வடிகட்டி → (உப்பு குளோரினேட்டர்) → திரும்பும் ஜெட் வழியாக மீண்டும் குளத்துக்கு."}},
+  {pic:"❤️", t:{
+    en:"The pump is the heart of the pool. If it stops, the chlorine doesn't mix and the dirt isn't filtered. The pool can go cloudy in one day.",
+    ms:"Pam ialah jantung kolam. Jika ia berhenti, klorin tidak bercampur dan kotoran tidak ditapis. Kolam boleh jadi keruh dalam satu hari.",
+    ta:"பம்ப் குளத்தின் இதயம். அது நின்றால், குளோரின் கலக்காது, அழுக்கு வடிகட்டப்படாது. ஒரே நாளில் குளம் கலங்கலாகலாம்."}},
+  {pic:"👂", t:{
+    en:"Check 1 — Sound: a normal steady hum. Loud grinding or screaming = tell the supervisor.",
+    ms:"Semakan 1 — Bunyi: dengung biasa yang stabil. Bunyi mengisar atau berdesing kuat = beritahu penyelia.",
+    ta:"சோதனை 1 — சத்தம்: சாதாரண சீரான ஓசை. பலத்த அரைக்கும் அல்லது கீச்சிடும் சத்தம் = மேற்பார்வையாளரிடம் சொல்லுங்கள்."}},
+  {pic:"🧺", t:{
+    en:"Check 2 — Pump lid: full of water, no bubbles. Strainer basket: empty the leaves and hair. Switch the pump OFF before you open it (close the valves if water flows in). After: lid O-ring clean, lid tight, pump ON, lid full of water.",
+    ms:"Semakan 2 — Penutup pam: penuh air, tiada gelembung. Bakul penapis kasar: buang daun dan rambut. MATIKAN pam sebelum membukanya (tutup injap jika air masuk). Selepas itu: O-ring penutup bersih, penutup ketat, HIDUPKAN pam, penutup penuh air.",
+    ta:"சோதனை 2 — பம்ப் மூடி: தண்ணீர் நிரம்பி, குமிழ்கள் இல்லாமல். ஸ்ட்ரெய்னர் கூடை: இலைகள், முடியை அகற்றுங்கள். திறப்பதற்கு முன் பம்பை நிறுத்துங்கள் (தண்ணீர் உள்ளே வந்தால் வால்வுகளை மூடுங்கள்). பிறகு: மூடியின் O-ring சுத்தம், மூடி இறுக்கம், பம்பை இயக்குங்கள், மூடி தண்ணீரால் நிரம்பியிருக்க வேண்டும்."}},
+  {pic:"svg:gauge", t:{
+    en:"Check 3 — Pressure gauge: note the number. After a backwash it is 'normal'. If it rises 8 – 10 psi above normal, the filter is dirty — tell the supervisor to backwash.",
+    ms:"Semakan 3 — Tolok tekanan: catat nombornya. Selepas cuci balik (backwash) ialah 'biasa'. Jika naik 8 – 10 psi melebihi biasa, penapis kotor — beritahu penyelia untuk backwash.",
+    ta:"சோதனை 3 — அழுத்த அளவி: எண்ணைக் குறித்துக்கொள்ளுங்கள். பேக்வாஷ் செய்த பின் அது 'சாதாரணம்'. சாதாரணத்தை விட 8 – 10 psi உயர்ந்தால், வடிகட்டி அழுக்காக உள்ளது — பேக்வாஷ் செய்ய மேற்பார்வையாளரிடம் சொல்லுங்கள்."}},
+  {pic:"💦", t:{
+    en:"Check 4 — Leaks and water level. Water should be at the middle of the skimmer opening. Low water = the pump sucks air.",
+    ms:"Semakan 4 — Kebocoran dan paras air. Air sepatutnya di tengah bukaan skimmer. Air rendah = pam menyedut udara.",
+    ta:"சோதனை 4 — கசிவுகள் மற்றும் நீர் மட்டம். தண்ணீர் ஸ்கிம்மர் திறப்பின் நடுவில் இருக்க வேண்டும். குறைந்த நீர் = பம்ப் காற்றை இழுக்கும்."}},
+  {pic:"📸", t:{
+    en:"Take one photo of each pump panel and each salt chlorinator in the app.",
+    ms:"Ambil satu gambar setiap panel pam dan setiap klorinator garam dalam aplikasi.",
+    ta:"ஒவ்வொரு பம்ப் பேனலுக்கும் ஒவ்வொரு உப்பு குளோரினேட்டருக்கும் ஆப்பில் ஒரு புகைப்படம் எடுங்கள்."}},
+  ],
+  quiz:[
+  {q:{en:"The pump stops all night. What happens?", ms:"Pam berhenti sepanjang malam. Apa jadi?", ta:"இரவு முழுவதும் பம்ப் நின்றுவிட்டது. என்ன ஆகும்?"},
+   o:[{en:"Chlorine doesn't mix, water goes cloudy", ms:"Klorin tidak bercampur, air jadi keruh", ta:"குளோரின் கலக்காது, தண்ணீர் கலங்கும்"},{en:"Nothing, it's fine", ms:"Tiada apa, OK", ta:"ஒன்றுமில்லை, பரவாயில்லை"}], a:0},
+  {q:{en:"Before opening the strainer basket…", ms:"Sebelum buka bakul penapis kasar…", ta:"ஸ்ட்ரெய்னர் கூடையைத் திறக்கும் முன்…"},
+   o:[{en:"Switch the pump off", ms:"Matikan pam", ta:"பம்பை நிறுத்துங்கள்"},{en:"Keep the pump running", ms:"Biarkan pam berjalan", ta:"பம்பை ஓட விடுங்கள்"}], a:0},
+  {q:{en:"The pressure gauge is much higher than normal. It means…", ms:"Tolok tekanan jauh lebih tinggi dari biasa. Maksudnya…", ta:"அழுத்த அளவி சாதாரணத்தை விட மிக அதிகம். அதன் பொருள்…"},
+   o:[{en:"All good", ms:"Semua baik", ta:"எல்லாம் சரி"},{en:"Filter is dirty — needs backwash", ms:"Penapis kotor — perlu backwash", ta:"வடிகட்டி அழுக்கு — பேக்வாஷ் தேவை"}], a:1},
+  {q:{en:"Water level is too low. The pump will…", ms:"Paras air terlalu rendah. Pam akan…", ta:"நீர் மட்டம் மிகக் குறைவு. பம்ப்…"},
+   o:[{en:"Suck air", ms:"Menyedut udara", ta:"காற்றை இழுக்கும்"},{en:"Work better", ms:"Berfungsi lebih baik", ta:"இன்னும் நன்றாக வேலை செய்யும்"}], a:0},
+  ]},
+
+/* ---------------- 9. Salt chlorinator ---------------- */
+{ id:"salt", icon:"🧂", mins:3,
+  title:{en:"Salt chlorinator", ms:"Klorinator garam", ta:"உப்பு குளோரினேட்டர்"},
+  cards:[
+  {pic:"🏊‍♂️", t:{
+    en:"Some pools make their own chlorine from salt: BK, Lentor, Tengah, TPY, DR, HS and WWW.",
+    ms:"Sesetengah kolam menghasilkan klorin sendiri daripada garam: BK, Lentor, Tengah, TPY, DR, HS dan WWW.",
+    ta:"சில குளங்கள் உப்பிலிருந்து தாங்களே குளோரின் தயாரிக்கின்றன: BK, Lentor, Tengah, TPY, DR, HS, WWW."}},
+  {pic:"svg:cell", t:{
+    en:"Salty water passes through the cell. Electricity turns the salt into chlorine. After killing germs, the chlorine turns back into salt — so salt is mainly lost with splash-out, backwash, rain overflow and leaks.",
+    ms:"Air bergaram melalui sel. Elektrik menukar garam menjadi klorin. Selepas membunuh kuman, klorin kembali menjadi garam — jadi garam kebanyakannya hilang melalui percikan, backwash, limpahan air hujan dan kebocoran.",
+    ta:"உப்புத் தண்ணீர் செல் வழியாகச் செல்கிறது. மின்சாரம் உப்பைக் குளோரினாக மாற்றுகிறது. கிருமிகளை அழித்த பின் குளோரின் மீண்டும் உப்பாகிறது — அதனால் பெரும்பாலும் தெறித்தல், பேக்வாஷ், மழைநீர் வழிதல், கசிவு மூலமே உப்பு குறைகிறது."}},
+  {pic:"🔌", t:{
+    en:"It only works when the pump runs AND the chlorinator is ON. We switch it on or off based on the FC test.",
+    ms:"Ia hanya berfungsi apabila pam berjalan DAN klorinator HIDUP. Kita hidupkan atau matikan berdasarkan ujian FC.",
+    ta:"பம்ப் ஓடும்போதும் குளோரினேட்டர் இயக்கத்தில் இருக்கும்போதும் மட்டுமே அது வேலை செய்யும். FC சோதனையைப் பொறுத்து அதை இயக்குகிறோம் அல்லது நிறுத்துகிறோம்."}},
+  {pic:"🧂", t:{
+    en:"Salt too low = little chlorine is made. Look at the salt reading on the display. If it is low, tell the supervisor — salt is added by the bag.",
+    ms:"Garam terlalu rendah = sedikit klorin dihasilkan. Lihat bacaan garam pada paparan. Jika rendah, beritahu penyelia — garam ditambah mengikut beg.",
+    ta:"உப்பு குறைவு = குறைந்த குளோரின் உருவாகும். திரையில் உப்பு அளவைப் பாருங்கள். குறைவாக இருந்தால் மேற்பார்வையாளரிடம் சொல்லுங்கள் — உப்பு மூட்டையாகச் சேர்க்கப்படும்."}},
+  {pic:"📈", t:{
+    en:"A salt chlorinator pushes pH up. So salt pools often need acid.",
+    ms:"Klorinator garam menaikkan pH. Jadi kolam garam selalunya perlukan asid.",
+    ta:"உப்பு குளோரினேட்டர் pH-ஐ உயர்த்துகிறது. அதனால் உப்புக் குளங்களுக்கு அடிக்கடி அமிலம் தேவை."}},
+  ],
+  quiz:[
+  {q:{en:"A salt chlorinator turns salt into…", ms:"Klorinator garam menukar garam menjadi…", ta:"உப்பு குளோரினேட்டர் உப்பை மாற்றுவது…"},
+   o:[{en:"Chlorine", ms:"Klorin", ta:"குளோரின்"},{en:"Acid", ms:"Asid", ta:"அமிலம்"},{en:"Sugar", ms:"Gula", ta:"சர்க்கரை"}], a:0},
+  {q:{en:"It makes chlorine only when…", ms:"Ia menghasilkan klorin hanya apabila…", ta:"அது குளோரின் உருவாக்குவது…"},
+   o:[{en:"The pump runs and it is ON", ms:"Pam berjalan dan ia HIDUP", ta:"பம்ப் ஓடி, அது இயக்கத்தில் இருக்கும்போது"},{en:"The pump is off", ms:"Pam tutup", ta:"பம்ப் நின்றிருக்கும்போது"}], a:0},
+  {q:{en:"Salt pools often need extra…", ms:"Kolam garam selalunya perlukan tambahan…", ta:"உப்புக் குளங்களுக்கு அடிக்கடி கூடுதலாகத் தேவை…"},
+   o:[{en:"Bicarb", ms:"Bikarbonat", ta:"பைகார்ப்"},{en:"Acid", ms:"Asid", ta:"அமிலம்"}], a:1},
+  ]},
+];
+
+/* Words used inside the drawings. */
+const PIC_WORDS = {
+  germ:{en:"germ", ms:"kuman", ta:"கிருமி"}, chlorine:{en:"chlorine", ms:"klorin", ta:"குளோரின்"},
+  acid:{en:"acid", ms:"asid", ta:"அமிலம்"}, ours:{en:"our pools", ms:"kolam kita", ta:"நம் குளங்கள்"}, alkaline:{en:"alkaline", ms:"alkali", ta:"காரத்தன்மை"},
+  strong:{en:"strong chlorine", ms:"klorin kuat", ta:"வலுவான குளோரின்"},
+  pool:{en:"Pool", ms:"Kolam", ta:"குளம்"}, skimmer:{en:"Skimmer", ms:"Skimmer", ta:"ஸ்கிம்மர்"},
+  basket:{en:"Basket", ms:"Bakul", ta:"கூடை"}, pump:{en:"Pump", ms:"Pam", ta:"பம்ப்"}, filter:{en:"Filter", ms:"Penapis", ta:"வடிகட்டி"},
+  returns:{en:"Return jets", ms:"Jet pulangan", ta:"திரும்பும் ஜெட்"},
+  normal:{en:"normal", ms:"biasa", ta:"சாதாரணம்"}, dirty:{en:"dirty", ms:"kotor", ta:"அழுக்கு"},
+  port:{en:"Vacuum port", ms:"Port vakum", ta:"வாக்யூம் போர்ட்"}, valve:{en:"Vacuum valve", ms:"Injap vakum", ta:"வாக்யூம் வால்வு"},
+  skimv:{en:"Skimmer valve (route card)", ms:"Injap skimmer (kad laluan)", ta:"ஸ்கிம்மர் வால்வு (வழி அட்டை)"}, hose:{en:"Hose full of water", ms:"Hos penuh air", ta:"தண்ணீர் நிரம்பிய ஹோஸ்"},
+  slime:{en:"slime", ms:"lendir", ta:"வழுவழுப்பு"}, wall:{en:"wall", ms:"dinding", ta:"சுவர்"},
+  salt:{en:"salt", ms:"garam", ta:"உப்பு"}, cell:{en:"Cell", ms:"Sel", ta:"செல்"}, power:{en:"electricity", ms:"elektrik", ta:"மின்சாரம்"},
+  gas:{en:"POISON GAS", ms:"GAS BERACUN", ta:"விஷ வாயு"},
+};
+
+</script>
+<script>
+/* HF Pools Learn -- short picture lessons for the facility team (Kay, 30 Sep 2026).
+ * Languages: simple English, Malay, Tamil (switch at the top, remembered on the phone).
+ * Each lesson: picture cards (with a "Listen" read-aloud button), then a short quiz.
+ * Pass = at most one wrong answer. Results saved to Firestore learn_results/<uid>__<lesson>
+ * (best score kept). Kay and William see the whole team's progress at the bottom. */
+const firebaseConfig = {
+  apiKey: "AIzaSyANFCZbvRGO9aMRtG9MF_qONO3FL85CzSo",
+  authDomain: "maintenance-board-f931a.firebaseapp.com",
+  projectId: "maintenance-board-f931a",
+  storageBucket: "maintenance-board-f931a.firebasestorage.app",
+  messagingSenderId: "169864970579",
+  appId: "1:169864970579:web:bfb7490d0aebcfed17e1a6"
+};
+firebase.initializeApp(firebaseConfig);
+const auth = firebase.auth(), db = firebase.firestore();
+const $ = s => document.querySelector(s);
+const esc = s => String(s == null ? "" : s).replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+
+/* Same people list as the dashboard: emails kept out of this public page, only SHA-256 fingerprints. */
+const PEOPLE = {
+  "dc56ea9e3e3156675058121ac14f4b161da89f2f0fe90231583a2fce2797af32": {name:"Fik", role:"staff"},
+  "6df36b3943ca1eea63bdcb152d79273de09030ced956146f0180cc98066f3133": {name:"Sharul", role:"staff"},
+  "6ba3ddae7dbb119b31d474b6551b38f271c6df9613b44889fd8cfff6e8c47edf": {name:"William", role:"supervisor"},
+  "a5745313e6b3efdd8a6388ca5f0a6e9fa95a9cab20e45ceb28290fcffa5ce05d": {name:"Islam", role:"staff"},
+};
+async function whoIs(email){
+  const e = String(email || "").trim().toLowerCase();
+  try{
+    const h = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(e));
+    const hex = Array.from(new Uint8Array(h)).map(b => b.toString(16).padStart(2, "0")).join("");
+    if(PEOPLE[hex]) return PEOPLE[hex];
+  }catch(err){}
+  return {name: e.split("@")[0] === "chunkayseo" ? "Kay" : (e.split("@")[0] || "Me"), role:"manager"};
+}
+
+const LANGS = [{id:"en", label:"English", voice:"en"}, {id:"ms", label:"Melayu", voice:"ms"}, {id:"ta", label:"தமிழ்", voice:"ta"}];
+const UI = {
+  hi:{en:"Hi", ms:"Hai", ta:"வணக்கம்"},
+  intro:{en:"Short lessons about our pool work. Read or listen, then answer the quiz.", ms:"Pelajaran pendek tentang kerja kolam kita. Baca atau dengar, kemudian jawab kuiz.", ta:"நம் குள வேலை பற்றிய சிறு பாடங்கள். படியுங்கள் அல்லது கேளுங்கள், பிறகு வினாடி வினாவுக்குப் பதில் சொல்லுங்கள்."},
+  passed:{en:"passed", ms:"lulus", ta:"தேர்ச்சி"},
+  of:{en:"of", ms:"daripada", ta:"இல்"},
+  mins:{en:"min", ms:"min", ta:"நிமி"},
+  st_pass:{en:"Passed", ms:"Lulus", ta:"தேர்ச்சி"}, st_try:{en:"Try again", ms:"Cuba lagi", ta:"மீண்டும்"}, st_new:{en:"Start", ms:"Mula", ta:"தொடங்கு"},
+  back:{en:"‹ Lessons", ms:"‹ Pelajaran", ta:"‹ பாடங்கள்"},
+  prev:{en:"Back", ms:"Balik", ta:"பின்"}, next:{en:"Next", ms:"Seterusnya", ta:"அடுத்து"},
+  toquiz:{en:"Start quiz", ms:"Mula kuiz", ta:"வினா தொடங்கு"},
+  listen:{en:"Listen", ms:"Dengar", ta:"கேளுங்கள்"}, stop:{en:"Stop", ms:"Berhenti", ta:"நிறுத்து"},
+  novoice:{en:"This phone has no voice for this language.", ms:"Telefon ini tiada suara untuk bahasa ini.", ta:"இந்த மொழிக்கான குரல் இந்த போனில் இல்லை."},
+  question:{en:"Question", ms:"Soalan", ta:"கேள்வி"},
+  right:{en:"Correct! ✓", ms:"Betul! ✓", ta:"சரி! ✓"},
+  wrong:{en:"Not quite. The right answer is:", ms:"Kurang tepat. Jawapan betul:", ta:"சரியில்லை. சரியான பதில்:"},
+  pass_t:{en:"Well done! You passed.", ms:"Syabas! Anda lulus.", ta:"நன்று! நீங்கள் தேர்ச்சி பெற்றீர்கள்."},
+  fail_t:{en:"Almost! Read the lesson again and try once more.", ms:"Hampir! Baca pelajaran sekali lagi dan cuba semula.", ta:"கிட்டத்தட்ட! பாடத்தை மீண்டும் படித்து மறுபடி முயலுங்கள்."},
+  again:{en:"Try the quiz again", ms:"Cuba kuiz semula", ta:"மீண்டும் வினா"},
+  reread:{en:"Read the lesson again", ms:"Baca pelajaran semula", ta:"பாடத்தை மீண்டும் படி"},
+  seeres:{en:"See my result", ms:"Lihat keputusan", ta:"என் முடிவைப் பார்"},
+  home:{en:"Back to lessons", ms:"Kembali ke pelajaran", ta:"பாடங்களுக்குத் திரும்பு"},
+  saved:{en:"Saved.", ms:"Disimpan.", ta:"சேமிக்கப்பட்டது."},
+  notsaved:{en:"Couldn't save your result — check the internet and try again.", ms:"Keputusan tidak dapat disimpan — periksa internet dan cuba lagi.", ta:"முடிவைச் சேமிக்க முடியவில்லை — இணையத்தைச் சரிபார்த்து மீண்டும் முயலுங்கள்."},
+  team:{en:"Team progress", ms:"Kemajuan pasukan", ta:"குழு முன்னேற்றம்"},
+  signout:{en:"Sign out", ms:"Log keluar", ta:"வெளியேறு"},
+};
+const tx = o => (o && (o[S.lang] || o.en)) || "";
+const PASS_WRONG_MAX = 1;   // pass = at most one wrong answer
+
+const S = {user:null, me:null, lang:"en", results:{}, view:"home", lesson:null, card:0, quiz:null, team:null};
+try{ const l = localStorage.getItem("learn.lang"); if(LANGS.some(x => x.id === l)) S.lang = l; }catch(e){}
+
+/* ---------------- drawings ---------------- */
+const W = k => esc(tx(PIC_WORDS[k]));
+const PICS = {
+  germ: () => `<svg viewBox="0 0 320 150" role="img" aria-label="chlorine breaking a germ">
+    <g transform="translate(90 75)"><circle r="40" fill="#8CC46A" stroke="#4E8A33" stroke-width="3"/><circle cx="-12" cy="-8" r="6" fill="#4E8A33"/><circle cx="12" cy="10" r="5" fill="#4E8A33"/>
+    <path d="M-40 0 l-14 -6 M40 0 l14 6 M0 -40 l-4 -14 M0 40 l4 14 M28 -28 l10 -10 M-28 28 l-10 10" stroke="#4E8A33" stroke-width="3"/>
+    <path d="M22 -33 l8 12 l-10 6 l8 12" fill="none" stroke="#B23A2E" stroke-width="4"/></g>
+    <text x="90" y="140" text-anchor="middle" font-size="14" fill="#33474D">${W("germ")}</text>
+    <g fill="#2F7FB8"><circle cx="190" cy="50" r="9"/><circle cx="215" cy="85" r="9"/><circle cx="185" cy="105" r="9"/><circle cx="235" cy="40" r="9"/><circle cx="250" cy="100" r="9"/></g>
+    <g fill="#fff" font-size="10" font-weight="700" text-anchor="middle"><text x="190" y="54">Cl</text><text x="215" y="89">Cl</text><text x="185" y="109">Cl</text><text x="235" y="44">Cl</text><text x="250" y="104">Cl</text></g>
+    <path d="M175 75 H140" stroke="#2F7FB8" stroke-width="4" marker-end="url(#ah)"/>
+    <defs><marker id="ah" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="5" markerHeight="5" orient="auto"><path d="M0 0 L10 5 L0 10z" fill="#2F7FB8"/></marker></defs>
+    <text x="220" y="140" text-anchor="middle" font-size="14" fill="#33474D">${W("chlorine")}</text></svg>`,
+  phscale: () => { let bars = ""; const cols = ["#D0452F","#DB6A2E","#E48D2F","#EBB030","#E7CE3A","#C8D63F","#8EC64A","#4FB35A","#3AA58A","#2F8FB0","#3A74B8","#4B5DB4","#5B4CA8","#6A3F97","#76358A"];
+    for(let i = 0; i < 15; i++) bars += `<rect x="${10 + i * 20}" y="40" width="20" height="36" fill="${cols[i]}"/><text x="${20 + i * 20}" y="94" text-anchor="middle" font-size="11" fill="#33474D">${i}</text>`;
+    const x1 = 10 + 7.2 * 20 + 10, x2 = 10 + 7.6 * 20 + 10;
+    return `<svg viewBox="0 0 320 130" role="img" aria-label="pH scale 0 to 14, pools 7.2 to 7.6">${bars}
+      <rect x="${x1 - 10}" y="32" width="${x2 - x1 + 20}" height="52" fill="none" stroke="#0A1417" stroke-width="3" rx="4"/>
+      <text x="${(x1 + x2) / 2}" y="24" text-anchor="middle" font-size="13" font-weight="700" fill="#0A1417">7.2 – 7.6 ${W("ours")}</text>
+      <text x="10" y="118" font-size="12" fill="#B23A2E">◀ ${W("acid")}</text><text x="310" y="118" text-anchor="end" font-size="12" fill="#4B5DB4">${W("alkaline")} ▶</text></svg>`; },
+  strength: () => { const d = [[7.0, 75], [7.5, 50], [8.0, 20]];
+    return `<svg viewBox="0 0 320 168" role="img" aria-label="strong chlorine: pH 7.0 about 75 percent, pH 7.5 about 50, pH 8.0 about 20">
+      ${d.map(([p, v], i) => { const x = 40 + i * 95, h = v * 1.1; return `<rect x="${x}" y="${110 - h}" width="60" height="${h}" rx="4" fill="${v > 60 ? "#256B4C" : v > 30 ? "#C9A227" : "#B23A2E"}"/>
+        <text x="${x + 30}" y="${104 - h}" text-anchor="middle" font-size="15" font-weight="700" fill="#0A1417">~${v}%</text>
+        <text x="${x + 30}" y="130" text-anchor="middle" font-size="14" fill="#33474D">pH ${p.toFixed(1)}</text>`; }).join("")}
+      <text x="160" y="160" text-anchor="middle" font-size="12" fill="#5B7378">${W("strong")}</text></svg>`; },
+  tube: () => `<svg viewBox="0 0 320 150" role="img" aria-label="test tube 10 mL turning pink">
+    <rect x="30" y="126" width="260" height="8" rx="3" fill="#C7D6D6"/>
+    <path d="M70 20 v96 a14 14 0 0 0 28 0 v-96" fill="#fff" stroke="#33474D" stroke-width="3"/><rect x="72" y="60" width="24" height="58" fill="#E9F3FA"/>
+    <line x1="64" y1="60" x2="104" y2="60" stroke="#0A1417" stroke-width="2"/><text x="108" y="64" font-size="12" fill="#0A1417">10 mL</text>
+    <path d="M150 70 h30" stroke="#5B7378" stroke-width="3" marker-end="url(#ah2)"/>
+    <defs><marker id="ah2" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="5" markerHeight="5" orient="auto"><path d="M0 0 L10 5 L0 10z" fill="#5B7378"/></marker></defs>
+    <path d="M210 20 v96 a14 14 0 0 0 28 0 v-96" fill="#fff" stroke="#33474D" stroke-width="3"/><rect x="212" y="60" width="24" height="58" fill="#F08BB5"/>
+    <text x="224" y="14" text-anchor="middle" font-size="12" fill="#33474D">R-0870 ×2</text></svg>`,
+  bottle: () => `<svg viewBox="0 0 320 150" role="img" aria-label="bottle straight down is right, tilted is wrong">
+    <g transform="translate(90 10)"><rect x="-16" y="0" width="32" height="60" rx="6" fill="#fff" stroke="#33474D" stroke-width="3"/><path d="M-6 60 h12 l-3 16 h-6z" fill="#33474D"/><circle cx="0" cy="90" r="6" fill="#2F7FB8"/><circle cx="0" cy="112" r="6" fill="#2F7FB8"/>
+      <text x="0" y="138" text-anchor="middle" font-size="26" fill="#256B4C">✓ 90°</text></g>
+    <g transform="translate(225 10) rotate(35)"><rect x="-16" y="0" width="32" height="60" rx="6" fill="#fff" stroke="#33474D" stroke-width="3"/><path d="M-6 60 h12 l-3 16 h-6z" fill="#33474D"/></g>
+    <circle cx="190" cy="100" r="3" fill="#2F7FB8"/><circle cx="185" cy="112" r="3" fill="#2F7FB8"/>
+    <text x="215" y="148" text-anchor="middle" font-size="26" fill="#B23A2E">✗</text></svg>`,
+  nomix: () => `<svg viewBox="0 0 320 150" role="img" aria-label="chlorine plus acid makes poison gas">
+    <g font-size="13" text-anchor="middle" fill="#0A1417"><path d="M10 60 h86 l-8 60 h-70z" fill="#DCEEEE" stroke="#33474D" stroke-width="3"/><text x="53" y="95" font-size="12">${W("chlorine")}</text>
+    <text x="112" y="100" font-size="30">+</text>
+    <path d="M128 60 h86 l-8 60 h-70z" fill="#F6EAD4" stroke="#33474D" stroke-width="3"/><text x="171" y="95" font-size="12">${W("acid")}</text></g>
+    <text x="222" y="100" font-size="26" fill="#0A1417">=</text>
+    <text x="275" y="92" font-size="40" text-anchor="middle">☠️</text><text x="275" y="125" font-size="12" font-weight="700" text-anchor="middle" fill="#B23A2E">${W("gas")}</text></svg>`,
+  slime: () => `<svg viewBox="0 0 320 150" role="img" aria-label="slime layer on the wall hiding germs">
+    <rect x="20" y="10" width="60" height="130" fill="#C7D6D6"/><text x="50" y="80" text-anchor="middle" font-size="13" fill="#33474D" transform="rotate(-90 50 80)">${W("wall")}</text>
+    <path d="M80 10 q14 20 0 40 q14 20 0 40 q14 20 0 50 h14 q10 -25 0 -50 q10 -20 0 -40 q10 -20 0 -40z" fill="#9CC76F" opacity=".9"/>
+    <g fill="#4E8A33"><circle cx="86" cy="35" r="4"/><circle cx="88" cy="75" r="4"/><circle cx="85" cy="115" r="4"/></g>
+    <g fill="#2F7FB8"><circle cx="160" cy="40" r="8"/><circle cx="190" cy="80" r="8"/><circle cx="150" cy="110" r="8"/></g>
+    <path d="M140 75 h-30" stroke="#2F7FB8" stroke-width="3" stroke-dasharray="4 4"/><text x="118" y="68" font-size="18" fill="#B23A2E">✗</text>
+    <text x="100" y="146" font-size="13" fill="#4E8A33">${W("slime")}</text><text x="175" y="146" font-size="13" fill="#2F7FB8">${W("chlorine")}</text>
+    <text x="270" y="90" font-size="46" text-anchor="middle">🧽</text></svg>`,
+  vacsetup: () => `<svg viewBox="0 0 320 160" role="img" aria-label="vacuum set-up: port, hose, valve, skimmer valve half">
+    <rect x="10" y="20" width="170" height="110" rx="6" fill="#D9ECF7" stroke="#2F7FB8" stroke-width="2"/><text x="95" y="40" text-anchor="middle" font-size="12" fill="#2F7FB8">${W("pool")}</text>
+    <rect x="165" y="95" width="15" height="15" fill="#0A1417"/><text x="150" y="126" text-anchor="end" font-size="11" fill="#0A1417">① ${W("port")}</text>
+    <path d="M40 100 q30 -40 70 -20 t65 22" fill="none" stroke="#256B4C" stroke-width="5"/><text x="60" y="68" font-size="11" fill="#256B4C">${W("hose")}</text>
+    <path d="M180 102 H240" stroke="#33474D" stroke-width="6"/><circle cx="240" cy="102" r="10" fill="#fff" stroke="#0A1417" stroke-width="3"/><path d="M233 102 h14" stroke="#0A1417" stroke-width="3"/>
+    <text x="240" y="130" text-anchor="middle" font-size="11" fill="#0A1417">② ${W("valve")}</text>
+    <path d="M250 102 H300 V60" stroke="#33474D" stroke-width="6" fill="none"/><text x="316" y="152" text-anchor="end" font-size="11" font-weight="600" fill="#0A1417">${W("pump")} ▲</text><path d="M300 102 V138" stroke="#33474D" stroke-width="6"/>
+    <path d="M180 60 H240" stroke="#33474D" stroke-width="6"/><circle cx="240" cy="60" r="10" fill="#fff" stroke="#0A1417" stroke-width="3"/><path d="M234 55 l12 10" stroke="#0A1417" stroke-width="3"/>
+    <text x="240" y="38" text-anchor="middle" font-size="11" fill="#0A1417">③ ${W("skimv")}</text><path d="M250 60 H300" stroke="#33474D" stroke-width="6"/></svg>`,
+  loop: () => { const boxes = [["pool", 10, 60], ["skimmer", 100, 10], ["basket", 210, 10], ["pump", 210, 100], ["filter", 100, 100]];
+    return `<svg viewBox="0 0 320 160" role="img" aria-label="water path: pool, skimmer, basket, pump, filter, back to pool">
+    <defs><marker id="ah3" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="5" markerHeight="5" orient="auto"><path d="M0 0 L10 5 L0 10z" fill="#2F7FB8"/></marker></defs>
+    ${boxes.map(([k, x, y]) => `<rect x="${x}" y="${y}" width="${k === "pool" ? 70 : 100}" height="${k === "pool" ? 50 : 44}" rx="8" fill="${k === "pool" ? "#D9ECF7" : "#fff"}" stroke="#33474D" stroke-width="2"/>
+      <text x="${x + (k === "pool" ? 35 : 50)}" y="${y + (k === "pool" ? 30 : 27)}" text-anchor="middle" font-size="11.5" font-weight="600" fill="#0A1417">${W(k)}</text>`).join("")}
+    <g stroke="#2F7FB8" stroke-width="3" fill="none" marker-end="url(#ah3)"><path d="M45 58 V32 H96"/><path d="M200 32 H206"/><path d="M260 56 V96"/><path d="M208 122 H204"/><path d="M98 122 H48 V114"/></g>
+    <text x="72" y="150" text-anchor="middle" font-size="11" fill="#2F7FB8">${W("returns")}</text></svg>`; },
+  gauge: () => `<svg viewBox="0 0 320 165" role="img" aria-label="pressure gauge: normal and dirty filter">
+    ${[[90, -40, "normal", "#256B4C"], [230, 20, "dirty", "#B23A2E"]].map(([cx, ang, k, c]) => `<g transform="translate(${cx} 80)"><circle r="52" fill="#fff" stroke="#33474D" stroke-width="4"/>
+      <path d="M-40 25 A46 46 0 1 1 40 25" fill="none" stroke="#C7D6D6" stroke-width="6"/><path d="M20 -36 A46 46 0 0 1 40 25" fill="none" stroke="#B23A2E" stroke-width="6"/>
+      <line x1="0" y1="0" x2="0" y2="-40" stroke="${c}" stroke-width="4" transform="rotate(${ang})"/><circle r="5" fill="#0A1417"/>
+      <text y="40" text-anchor="middle" font-size="13" font-weight="700" fill="${c}">${W(k)}</text></g>`).join("")}
+    <text x="160" y="158" text-anchor="middle" font-size="13" font-weight="600" fill="#B23A2E">▲ +8–10 psi</text></svg>`,
+  cell: () => `<svg viewBox="0 0 320 140" role="img" aria-label="salt water through the cell becomes chlorine">
+    <defs><marker id="ah4" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="5" markerHeight="5" orient="auto"><path d="M0 0 L10 5 L0 10z" fill="#2F7FB8"/></marker></defs>
+    <path d="M10 70 H100" stroke="#2F7FB8" stroke-width="6" marker-end="url(#ah4)"/><text x="50" y="58" text-anchor="middle" font-size="12" fill="#33474D">${W("salt")} 🧂</text>
+    <rect x="105" y="45" width="110" height="50" rx="10" fill="#fff" stroke="#33474D" stroke-width="3"/><text x="160" y="76" text-anchor="middle" font-size="14" font-weight="700" fill="#0A1417">${W("cell")}</text>
+    <text x="160" y="30" text-anchor="middle" font-size="22">⚡</text><text x="160" y="120" text-anchor="middle" font-size="11" fill="#5B7378">${W("power")}</text>
+    <path d="M220 70 H305" stroke="#2F7FB8" stroke-width="6" marker-end="url(#ah4)"/><text x="262" y="58" text-anchor="middle" font-size="12" fill="#2F7FB8">${W("chlorine")}</text></svg>`,
+};
+const picHtml = p => p.startsWith("svg:") ? (PICS[p.slice(4)] ? PICS[p.slice(4)]() : "") : `<span>${esc(p)}</span>`;
+
+/* ---------------- read aloud ---------------- */
+let speaking = false;
+function voiceFor(lang){
+  const vs = (window.speechSynthesis && speechSynthesis.getVoices()) || [];
+  return vs.find(v => v.lang && v.lang.toLowerCase().startsWith(lang)) || null;
+}
+function speak(text){
+  if(!window.speechSynthesis) return false;
+  speechSynthesis.cancel();
+  const v = voiceFor(S.lang);
+  if(!v && S.lang !== "en") return false;
+  const u = new SpeechSynthesisUtterance(text);
+  if(v){ u.voice = v; u.lang = v.lang; }
+  u.rate = 0.9;
+  u.onend = u.onerror = () => { speaking = false; const b = $("#listen"); if(b){ b.classList.remove("on"); b.innerHTML = "🔊 " + esc(tx(UI.listen)); } };
+  speaking = true; speechSynthesis.speak(u); return true;
+}
+function stopSpeak(){ try{ speechSynthesis.cancel(); }catch(e){} speaking = false; }
+if(window.speechSynthesis) speechSynthesis.onvoiceschanged = () => {};
+
+/* ---------------- screens ---------------- */
+function setLang(l){ S.lang = l; try{ localStorage.setItem("learn.lang", l); }catch(e){} stopSpeak(); render(); }
+function langBar(){ return `<div class="langs">${LANGS.map(l => `<button data-lang="${l.id}" class="${S.lang === l.id ? "on" : ""}">${esc(l.label)}</button>`).join("")}</div>`; }
+function headerHtml(){ return `<header><h1>HF Pools <small>Learn</small></h1><span class="me">${esc(S.me ? S.me.name : "")} · <button id="out">${esc(tx(UI.signout))}</button></span></header>`; }
+const statusOf = id => { const r = S.results[id]; return !r ? "new" : r.passed ? "pass" : "try"; };
+
+function homeView(){
+  const done = LESSONS.filter(l => statusOf(l.id) === "pass").length;
+  return `${headerHtml()}${langBar()}
+  <div class="card hello"><b>${esc(tx(UI.hi))} ${esc(S.me.name)} 👋</b><div class="muted" style="margin-top:4px">${esc(tx(UI.intro))}</div>
+    <div class="progress"><i style="width:${Math.round(done / LESSONS.length * 100)}%"></i></div>
+    <div class="muted" style="font-size:13.5px;margin-top:4px">${done} ${esc(tx(UI.of))} ${LESSONS.length} ${esc(tx(UI.passed))}</div></div>
+  <div class="list">${LESSONS.map((l, i) => { const st = statusOf(l.id), r = S.results[l.id];
+    return `<button class="lesson" data-open="${l.id}"><span class="ic">${esc(l.icon)}</span>
+      <span><span class="num">${i + 1}</span><div class="tt">${esc(tx(l.title))}</div><div class="sub">⏱ ${l.mins} ${esc(tx(UI.mins))}${r ? ` · ${r.best}/${r.total}` : ""}</div></span>
+      <span class="st ${st}">${esc(tx(UI["st_" + st]))}</span></button>`; }).join("")}</div>
+  ${S.me.role !== "staff" ? `<div class="card team"><h2>${esc(tx(UI.team))}</h2><div id="teamtbl" class="scroll"><span class="muted">…</span></div></div>` : ""}`;
+}
+function lessonView(){
+  const l = S.lesson, c = l.cards[S.card], last = S.card === l.cards.length - 1;
+  return `${headerHtml()}${langBar()}
+  <div class="top"><button class="btnlink back" id="home">${esc(tx(UI.back))}</button>
+    <div class="dots">${l.cards.map((_, i) => `<i class="${i < S.card ? "done" : i === S.card ? "on" : ""}"></i>`).join("")}</div></div>
+  <div class="card slide"><div class="num" style="text-align:left">${esc(l.icon)} ${esc(tx(l.title))}</div>
+    <div class="pic">${picHtml(c.pic)}</div>
+    <p class="say" id="say">${esc(tx(c.t))}</p>
+    <div style="text-align:left"><button class="listen" id="listen">🔊 ${esc(tx(UI.listen))}</button><div class="hint" id="vhint"></div></div>
+    <div class="nav"><button class="b" id="prev" ${S.card === 0 ? "disabled" : ""}>${esc(tx(UI.prev))}</button>
+      <button class="b main" id="next">${esc(tx(last ? UI.toquiz : UI.next))}</button></div></div>`;
+}
+function quizView(){
+  const l = S.lesson, qz = S.quiz, q = l.quiz[qz.i], order = qz.orders[qz.i], ans = qz.answers[qz.i];
+  return `${headerHtml()}${langBar()}
+  <div class="top"><button class="btnlink back" id="home">${esc(tx(UI.back))}</button>
+    <div class="dots">${l.quiz.map((_, i) => `<i class="${i < qz.i ? "done" : i === qz.i ? "on" : ""}"></i>`).join("")}</div></div>
+  <div class="card"><div class="num">${esc(tx(UI.question))} ${qz.i + 1} / ${l.quiz.length}</div>
+    <div class="q">${esc(tx(q.q))}</div>
+    <div class="opts">${order.map((oi, k) => { let cls = "";
+      if(ans != null){ if(oi === q.a) cls = "right"; else if(oi === ans) cls = "wrong"; }
+      return `<button class="opt ${cls}" data-opt="${oi}" ${ans != null ? "disabled" : ""}><span class="l">${"ABCD"[k]}</span>${esc(tx(q.o[oi]))}</button>`; }).join("")}</div>
+    ${ans != null ? `<div class="fb ${ans === q.a ? "ok" : "no"}">${ans === q.a ? esc(tx(UI.right)) : esc(tx(UI.wrong)) + " <b>" + esc(tx(q.o[q.a])) + "</b>"}</div>
+      <div class="nav"><button class="b main" id="qnext">${esc(tx(qz.i === l.quiz.length - 1 ? UI.seeres : UI.next))}</button></div>` : ""}
+  </div>`;
+}
+function resultView(){
+  const l = S.lesson, qz = S.quiz, score = qz.answers.filter((a, i) => a === l.quiz[i].a).length, pass = l.quiz.length - score <= PASS_WRONG_MAX;
+  return `${headerHtml()}${langBar()}
+  <div class="card result"><div class="big">${pass ? "🎉" : "💪"}</div>
+    <div class="score" style="color:${pass ? "var(--ok)" : "var(--warn)"}">${score} / ${l.quiz.length}</div>
+    <div style="font-size:19px">${esc(tx(pass ? UI.pass_t : UI.fail_t))}</div>
+    <div class="msg ${qz.saveErr ? "err" : "ok"}" id="savemsg">${qz.saved ? esc(tx(UI.saved)) : qz.saveErr ? esc(tx(UI.notsaved)) : "…"}</div>
+    <div class="nav" style="flex-direction:column">
+      ${pass ? "" : `<button class="b main" id="again">${esc(tx(UI.again))}</button><button class="b" id="reread">${esc(tx(UI.reread))}</button>`}
+      <button class="b ${pass ? "main" : ""}" id="home2">${esc(tx(UI.home))}</button></div></div>`;
+}
+
+function render(){
+  document.body.className = S.lang === "ta" ? "ta" : "";
+  document.documentElement.lang = S.lang;
+  const v = S.view;
+  $("#app").innerHTML = v === "lesson" ? lessonView() : v === "quiz" ? quizView() : v === "result" ? resultView() : homeView();
+  window.scrollTo(0, 0);
+  document.querySelectorAll("[data-lang]").forEach(b => b.onclick = () => setLang(b.dataset.lang));
+  const out = $("#out"); if(out) out.onclick = () => { stopSpeak(); auth.signOut(); };
+  const home = $("#home") || $("#home2"); if(home) home.onclick = goHome;
+  if(v === "home"){
+    document.querySelectorAll("[data-open]").forEach(b => b.onclick = () => { S.lesson = LESSONS.find(l => l.id === b.dataset.open); S.card = 0; S.view = "lesson"; stopSpeak(); render(); });
+    if(S.me.role !== "staff") loadTeam();
+  }
+  if(v === "lesson"){
+    $("#prev").onclick = () => { stopSpeak(); S.card = Math.max(0, S.card - 1); render(); };
+    $("#next").onclick = () => { stopSpeak(); if(S.card < S.lesson.cards.length - 1){ S.card++; render(); } else startQuiz(); };
+    $("#listen").onclick = () => { const b = $("#listen");
+      if(speaking){ stopSpeak(); b.classList.remove("on"); b.innerHTML = "🔊 " + esc(tx(UI.listen)); return; }
+      if(speak($("#say").textContent)){ b.classList.add("on"); b.innerHTML = "■ " + esc(tx(UI.stop)); }
+      else $("#vhint").textContent = tx(UI.novoice); };
+  }
+  if(v === "quiz"){
+    document.querySelectorAll("[data-opt]").forEach(b => b.onclick = () => { S.quiz.answers[S.quiz.i] = +b.dataset.opt; render(); });
+    const n = $("#qnext"); if(n) n.onclick = () => { if(S.quiz.i < S.lesson.quiz.length - 1){ S.quiz.i++; render(); } else finishQuiz(); };
+  }
+  if(v === "result"){
+    const a = $("#again"); if(a) a.onclick = startQuiz;
+    const r = $("#reread"); if(r) r.onclick = () => { S.card = 0; S.view = "lesson"; render(); };
+  }
+}
+function goHome(){ stopSpeak(); S.view = "home"; S.lesson = null; render(); }
+function shuffle(n){ const a = [...Array(n).keys()]; for(let i = n - 1; i > 0; i--){ const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; }
+function startQuiz(){ stopSpeak(); S.quiz = {i:0, answers:S.lesson.quiz.map(() => null), orders:S.lesson.quiz.map(q => shuffle(q.o.length)), saved:false, saveErr:false}; S.view = "quiz"; render(); }
+async function finishQuiz(){
+  const l = S.lesson, qz = S.quiz, score = qz.answers.filter((a, i) => a === l.quiz[i].a).length, total = l.quiz.length;
+  const passed = total - score <= PASS_WRONG_MAX, prev = S.results[l.id];
+  S.view = "result"; render();
+  const rec = {person:S.me.name, login:S.user.email, lesson:l.id, total, last:score, best:Math.max(score, prev ? prev.best || 0 : 0),
+    passed:passed || !!(prev && prev.passed), attempts:(prev ? prev.attempts || 0 : 0) + 1, lang:S.lang, at:new Date().toISOString(),
+    passedAt:(prev && prev.passedAt) || (passed ? new Date().toISOString() : null)};
+  try{ await db.doc("learn_results/" + S.user.uid + "__" + l.id).set(rec); S.results[l.id] = rec; qz.saved = true; }
+  catch(e){ qz.saveErr = true; }
+  S.team = null;
+  if(S.view === "result") render();
+}
+async function loadMine(){
+  S.results = {};
+  try{ const q = await db.collection("learn_results").where("login", "==", S.user.email).get(); q.forEach(d => { const r = d.data(); S.results[r.lesson] = r; }); }catch(e){}
+}
+async function loadTeam(){
+  const box = $("#teamtbl"); if(!box) return;
+  if(!S.team){ try{ const q = await db.collection("learn_results").get(); S.team = []; q.forEach(d => S.team.push(d.data())); }catch(e){ box.textContent = "—"; return; } }
+  const people = [...new Set(S.team.map(r => r.person))].sort();
+  if(!people.length){ box.innerHTML = `<span class="muted">—</span>`; return; }
+  const cell = (p, l) => { const r = S.team.find(x => x.person === p && x.lesson === l.id);
+    return !r ? `<span class="n">·</span>` : r.passed ? `<span class="p" title="${esc(r.best + "/" + r.total)}">✓</span>` : `<span class="f">${esc(r.best + "/" + r.total)}</span>`; };
+  box.innerHTML = `<table><tr><th></th>${LESSONS.map((l, i) => `<th title="${esc(tx(l.title))}">${i + 1} ${esc(l.icon)}</th>`).join("")}<th>✓</th></tr>
+    ${people.map(p => `<tr><td>${esc(p)}</td>${LESSONS.map(l => `<td>${cell(p, l)}</td>`).join("")}<td>${S.team.filter(r => r.person === p && r.passed).length}/${LESSONS.length}</td></tr>`).join("")}</table>`;
+}
+
+/* ---------------- sign-in ---------------- */
+function loginView(msg, cls){
+  $("#app").innerHTML = `<div class="card login"><h1 style="font-size:24px">HF Pools <small>Learn</small></h1>
+    <form id="lf"><label>Email<input id="em" type="email" autocomplete="username" required></label>
+      <label>Password<input id="pw" type="password" autocomplete="current-password" required></label>
+      <button class="b main" style="width:100%;margin-top:16px" id="go" type="submit">Sign in</button></form>
+    <div class="msg ${cls || ""}" id="msg">${esc(msg || "")}</div>
+    <p style="font-size:13px;color:var(--ink-3);margin:8px 0 0">Same login as hfpools.com/dash. <button class="btnlink" id="forgot" type="button">Forgot password?</button></p></div>`;
+  $("#lf").addEventListener("submit", async e => {
+    e.preventDefault(); $("#go").disabled = true; $("#msg").textContent = "…"; $("#msg").className = "msg";
+    try{ await auth.signInWithEmailAndPassword($("#em").value.trim(), $("#pw").value); }
+    catch(err){ $("#go").disabled = false; $("#msg").className = "msg err";
+      $("#msg").textContent = /wrong-password|invalid-credential|user-not-found|invalid-login/.test(err.code || err.message) ? "Email or password is not right." : "Couldn't sign in: " + (err.message || err); }
+  });
+  $("#forgot").addEventListener("click", async () => {
+    const em = $("#em").value.trim();
+    if(!em){ $("#msg").className = "msg err"; $("#msg").textContent = "Type your email first, then tap Forgot password."; return; }
+    try{ await auth.sendPasswordResetEmail(em); }catch(err){}
+    $("#msg").className = "msg ok"; $("#msg").textContent = "If that email has an account, a reset link is on its way.";
+  });
+}
+auth.onAuthStateChanged(async u => {
+  S.user = u; stopSpeak();
+  if(!u){ loginView(); return; }
+  S.me = await whoIs(u.email);
+  await loadMine();
+  S.view = "home"; render();
+});
+</script>
+</body></html>
