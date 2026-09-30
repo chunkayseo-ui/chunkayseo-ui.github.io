@@ -281,14 +281,28 @@ async function loadBoardActivity(){
   }));
   S.boardAct = ev; render();
 }
+// Water tests come from the sheet's web app, which answers one pool at a time and takes a few seconds
+// each. So: show the readings saved on this phone/computer straight away, then refresh in the
+// background, updating each pool as it arrives (3 at a time; bursts of 13 get refused).
+const HIST_CACHE = "dash.hist.v1", HIST_KEEP_DAYS = 45;
+try{
+  const c = JSON.parse(localStorage.getItem(HIST_CACHE) || "null");
+  if(c && c.hist){ S.hist = c.hist; S.histAt = c.at; S.histCached = true; }
+}catch(e){}
+function saveHistCache(){
+  try{
+    const cut = addDays(calDay(), -HIST_KEEP_DAYS), keep = {};
+    Object.entries(S.hist).forEach(([p, rows]) => { if(Array.isArray(rows)) keep[p] = rows.filter(r => r && r.date >= cut); });
+    localStorage.setItem(HIST_CACHE, JSON.stringify({at:S.histAt, hist:keep}));
+  }catch(e){}
+}
 async function loadHistory(){
   if(S.histLoading) return; S.histLoading = true; render();
-  // 3 pools at a time, up to 3 tries each: the sheet's web app refuses bursts of 13 requests.
   const queue = POOLS.slice();
   const one = async p => { for(let i = 0; i < 3; i++){ try{ const r = await fetch(HISTORY_API + "?pool=" + encodeURIComponent(p)); if(!r.ok) throw 0; const j = await r.json(); if(!j || !Array.isArray(j[p])) throw 0; return j[p]; }catch(e){ if(i < 2) await new Promise(ok => setTimeout(ok, 800 * (i + 1) + Math.random() * 400)); } } return null; };
-  const worker = async () => { while(queue.length){ const p = queue.shift(); const rows = await one(p); if(rows) S.hist[p] = rows; else if(!S.hist[p]) S.hist[p] = false; } };
+  const worker = async () => { while(queue.length){ const p = queue.shift(); const rows = await one(p); if(rows){ S.hist[p] = rows; render(); } else if(!S.hist[p]) S.hist[p] = false; } };
   await Promise.all([worker(), worker(), worker()]);
-  S.histLoading = false; S.histAt = new Date().toISOString(); render();
+  S.histLoading = false; S.histCached = false; S.histAt = new Date().toISOString(); saveHistCache(); render();
 }
 // The Maintenance Board's task lists live inside its own page (const DATA = {...}),
 // so read them from there -- the dashboard stays in step when the board changes.
@@ -759,7 +773,7 @@ function drawWater(){
 
   return `
   <div class="grid"><div class="stack">
-    <div class="card"><h2>Water quality today <small>${S.histLoading ? "updating…" : S.histAt ? "as of " + clock(S.histAt) : ""} · <button class="btnlink" id="rf">Refresh</button></small></h2>
+    <div class="card"><h2>Water quality today <small>${S.histLoading ? (S.histAt ? "showing " + clock(S.histAt) + " · updating…" : "updating…") : S.histAt ? "as of " + clock(S.histAt) : ""} · <button class="btnlink" id="rf">Refresh</button></small></h2>
       <div class="scroll"><table><thead><tr><th>Pool</th><th>AM</th><th>PM</th><th>Night</th><th>pH</th><th class="ln">Last night FC</th><th>Last night dose</th></tr></thead><tbody>${todayRows}</tbody></table></div>
       <div class="legend"><span><span class="fc lo">1</span> below ${FC_LOW}</span><span><span class="fc ok">2.5</span> ${FC_LOW}–${FC_HIGH}</span><span><span class="fc hi">5</span> above ${FC_HIGH}</span><span>⚡ salt chlorinator · “hit target” = this morning ${TARGET_LO}–${TARGET_HI} · <span class="src">app</span> = dose from the tracker, not in the sheet yet</span></div></div>
     <div class="card"><h2>Morning FC · last 7 days <small>hover a box for the full day</small></h2>
