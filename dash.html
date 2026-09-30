@@ -108,6 +108,7 @@ td.txt{font-family:"IBM Plex Sans",system-ui,sans-serif;font-size:13px}
 .cal .m{color:var(--warn);font-weight:600}
 .cal .b{color:var(--travel);font-weight:600;font-size:11px}
 .cal .fo{color:var(--ink-3);font-size:10px}
+.cal .mw{color:var(--ink-2);font-weight:600}
 .cal td.ot{background:var(--warn-soft);box-shadow:inset 0 0 0 1.5px var(--warn)}
 .cal .lv{font:700 10px/1.4 "Barlow Condensed",sans-serif;border-radius:3px;padding:0 2px}
 .cal .lv.mc{background:var(--urgent-soft);color:var(--urgent)}
@@ -445,7 +446,9 @@ function teamData(){
   return {skills, staff:[{name:"William", skills:lv(all)}, {name:"Islam", skills:lv(all)}, {name:"Sharul", skills:lv(five)}, {name:"Guru", skills:lv(five)}, {name:"Fik", skills:lv(["s3","s5"])}]};
 }
 const leaveType = t => ({mc:"MC", al:"Annual leave", ul:"Unpaid leave", off:"Off", other:"Other"})[t] || t;
-const leaveEntries = () => Object.values(S.leave).filter(e => e && e.date && !e.removed);
+const leaveEntries = () => Object.values(S.leave).filter(e => e && e.date && !e.removed && e.type !== "work");
+// "Worked" entries: a day worked that the apps didn't catch (e.g. vacuum done, photos sent to Telegram instead).
+const workEntries = () => Object.values(S.leave).filter(e => e && e.date && !e.removed && e.type === "work");
 // Fixed weekly off days (Sun = 0 … Sat = 6). Working on one = a swapped off day or OT.
 const OFF_DAYS = {Sharul:[0, 1], William:[2, 3], Guru:[2, 3], Fik:[6, 0]};
 const isFixedOff = (n, day) => (OFF_DAYS[n] || []).includes(parseKey(day).getDay());
@@ -748,6 +751,7 @@ function drawTeam(){
   // Hours = time covered by rounds and board visits, overlaps counted once.
   const spanMs = spans => { let tot = 0, end = -Infinity; spans.slice().sort((x, y) => x[0] - y[0]).forEach(([a, b]) => { if(a > end){ tot += b - a; end = b; } else if(b > end){ tot += b - end; end = b; } }); return tot; };
   const lv = {}; leaveEntries().filter(e => e.date.startsWith(month)).forEach(e => lv[canonName(e.person) + "|" + e.date] = e.type);
+  workEntries().filter(e => e.date.startsWith(month)).forEach(e => { const w = W(canonName(e.person), e.date); w.manual = e.note || "worked"; });
   const calRows = people.map(n => {
     let daysWorked = 0, ms = 0, mc = 0, al = 0, ul = 0, offWork = 0;
     const cells = days.map(k => {
@@ -758,10 +762,10 @@ function drawTeam(){
       if(l === "mc") mc++; if(l === "al") al++; if(l === "ul") ul++;
       const onOff = w && !away && fixedOff && k <= today;          // worked on a weekly off day = swap or OT
       if(onOff) offWork++;
-      const marks = w ? `${w.night ? '<span class="w">●</span>' : ""}${w.morning ? '<span class="m">☀</span>' : ""}${w.board ? '<span class="b">◆</span>' : ""}` : "";
+      const marks = w ? `${w.night ? '<span class="w">●</span>' : ""}${w.morning ? '<span class="m">☀</span>' : ""}${w.board ? '<span class="b">◆</span>' : ""}${w.manual ? '<span class="mw">✎</span>' : ""}` : "";
       const inner = l ? `<span class="lv ${l === "mc" ? "mc" : l === "al" ? "al" : l === "ul" ? "ul" : "off"}">${l === "mc" ? "MC" : l === "al" ? "AL" : l === "ul" ? "UL" : "OFF"}</span>`
         : w ? marks : fixedOff ? '<span class="fo">off</span>' : "";
-      const what = w ? [w.night && "night round", w.morning && "morning round", w.board && `Tasklists ${clock(new Date(w.bA).toISOString())}–${clock(new Date(w.bB).toISOString())} (${w.jobs} job${w.jobs === 1 ? "" : "s"} done · ${w.outlets.join(", ")})`].filter(Boolean).join(" + ") : "";
+      const what = w ? [w.night && "night round", w.morning && "morning round", w.manual && `worked (added by hand: ${w.manual})`, w.board && `Tasklists ${clock(new Date(w.bA).toISOString())}–${clock(new Date(w.bB).toISOString())} (${w.jobs} job${w.jobs === 1 ? "" : "s"} done · ${w.outlets.join(", ")})`].filter(Boolean).join(" + ") : "";
       const tip = `${n} · ${shortDate(k)}${what ? " · " + what : ""}${t ? " · " + mins(t) : ""}${l ? " · " + leaveType(l) : ""}${onOff ? " · worked on off day: swap or OT" : !w && fixedOff && !l ? " · off day" : ""}`;
       return `<td class="${[we, onOff ? "ot" : ""].filter(Boolean).join(" ")}" title="${esc(tip)}">${inner}</td>`;
     }).join("");
@@ -791,7 +795,7 @@ function drawTeam(){
   return `
   <div class="card" style="margin-bottom:12px"><h2>${esc(new Date(y, m - 1, 1).toLocaleDateString("en-SG", {month:"long", year:"numeric"}))} · who worked which day <small><a href="/tasklists/dosing-round-tracker.html#calendar">Tracker calendar</a></small></h2>
     <div class="scroll" id="calscroll"><table class="cal"><thead><tr><th>Person</th>${days.map(k => `<th class="${[0, 6].includes(parseKey(k).getDay()) ? "we" : ""}${k === today ? " today" : ""}">${Number(k.slice(8))}<br><span class="muted" style="font-weight:400">${DOW[parseKey(k).getDay()][0]}</span></th>`).join("")}<th>Days</th><th>Hours</th><th title="Worked on a weekly off day: swap or OT">Off-day work</th><th>MC</th><th>AL</th><th title="Unpaid leave">UL</th></tr></thead><tbody>${calRows}</tbody></table></div>
-    <div class="legend"><span><span class="w">●</span> night round</span><span><span class="m">☀</span> morning round</span><span><span class="b">◆</span> Tasklists jobs (Maintenance Board)</span><span><span style="background:var(--warn-soft);box-shadow:inset 0 0 0 1.5px var(--warn);padding:0 4px;border-radius:3px">&nbsp;</span> worked on off day (swap or OT)</span><span><span class="fo">off</span> weekly off day</span><span><span class="lv mc" style="font:700 10px/1.4 'Barlow Condensed';padding:0 2px;border-radius:3px;background:var(--urgent-soft);color:var(--urgent)">MC</span> MC</span><span>AL annual leave · UL unpaid leave · OFF off day · hover a day for hours</span></div></div>
+    <div class="legend"><span><span class="w">●</span> night round</span><span><span class="m">☀</span> morning round</span><span><span class="b">◆</span> Tasklists jobs (Maintenance Board)</span><span><span style="background:var(--warn-soft);box-shadow:inset 0 0 0 1.5px var(--warn);padding:0 4px;border-radius:3px">&nbsp;</span> worked on off day (swap or OT)</span><span><span class="fo">off</span> weekly off day</span><span><span class="mw" style="font-weight:600">✎</span> worked, added by hand</span><span><span class="lv mc" style="font:700 10px/1.4 'Barlow Condensed';padding:0 2px;border-radius:3px;background:var(--urgent-soft);color:var(--urgent)">MC</span> MC</span><span>AL annual leave · UL unpaid leave · OFF off day · hover a day for hours</span></div></div>
   <div class="grid"><div class="stack">
     <div class="card"><h2>Off · today and next 3 weeks</h2>${upHtml}</div>
     <div class="card"><h2>Skill cover <small><a href="/tasklists/dosing-round-tracker.html#team">Team tab</a></small></h2><p class="lead">Skills only one person can do, or with cover gone because someone is off today.</p>${skHtml}</div>
