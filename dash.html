@@ -350,7 +350,7 @@ function nightDose(p, day){
   const rec = poolDay(p, day), app = trackerNight(p, day);
   const sheet = rec && rec.dosing && rec.dosing.chlorine ? String(rec.dosing.chlorine) : "";
   if(sheet) return {text:sheet, g:toG(sheet), from:"sheet", app};
-  if(app.clG !== null) return {text:fmtG(app.clG), g:app.clG, from:"app", app};
+  if(app.clG !== null) return {text:app.clG === 0 ? "none" : fmtG(app.clG), g:app.clG, from:"app", app};
   return null;
 }
 const hitMark = am => am === null || am === undefined ? "" : am >= TARGET_LO && am <= TARGET_HI ? "✓" : am > TARGET_HI ? "✗ high" : "✗ low";
@@ -365,12 +365,12 @@ function mismatches(day){
     const add = (what, sheet, app, lvl) => out.push({day, pool:p, what, sheet, app, lvl, who:a.who.join(", ")});
     const sg = toG(sCl), sml = toMl(sAc);
     // Nothing for the night in the sheet but the tracker has it: one row, not three.
-    if(!sCl && !sAc && sFc === null && (a.clG !== null || a.acidMl || a.fc !== null)){
+    if(!sCl && !sAc && sFc === null && (a.clG || a.acidMl || a.fc !== null)){
       add("Night report missing in the sheet", "–", [a.fc !== null ? "FC " + a.fc : "", a.clG !== null ? fmtG(a.clG) : "", a.acidMl ? fmtMl(a.acidMl) + " acid" : ""].filter(Boolean).join(" · "), "warn");
       return;
     }
     if(sCl && a.clG === null && a.visited) add("Chlorine not in the tracker", sCl, "–", "info");
-    else if(!sCl && a.clG !== null) add("Chlorine missing in the sheet", "–", fmtG(a.clG), "warn");
+    else if(!sCl && a.clG) add("Chlorine missing in the sheet", "–", fmtG(a.clG), "warn");   // 0 g = no chlorine needed; a blank sheet agrees
     else if(sg !== null && a.clG !== null && Math.abs(sg - a.clG) >= Math.max(50, 0.1 * Math.max(sg, a.clG))) add("Chlorine differs", sCl, fmtG(a.clG), "warn");
     else if(sCl && sg === null && a.clG !== null) add("Chlorine: sheet value can't be read", sCl, fmtG(a.clG), "info");
     if(!sAc && a.acidMl) add("Acid missing in the sheet", "–", fmtMl(a.acidMl), "warn");
@@ -615,7 +615,7 @@ function drawToday(att){
    pool's latest logged dosing change count, so a new table is judged on its own results.
    Advice: middle (median) morning FC below 2.5 -> raise; above 3.5 -> lower. Size of the change = how many
    grams it took to lift FC by 1 ppm on those nights (dose / (morning FC - night FC before the dose)),
-   times the gap to 3, rounded to 50 g and kept within half the usual dose. */
+   times the gap to 3, rounded to 50 g and kept within a quarter of the usual dose (change in steps). */
 const REVIEW_NIGHTS = 14, MIN_NIGHTS = 3, TARGET_MID = 3;
 const dosingChanges = () => Object.entries(S.dchanges || {}).map(([id, e]) => Object.assign({id}, e)).filter(e => e && e.date && e.pool && !e.removed).sort((a, b) => b.date.localeCompare(a.date));
 const lastChange = p => dosingChanges().find(e => samePool(e.pool, p)) || null;
@@ -642,7 +642,7 @@ function reviewPool(p){
     if(mid < TARGET_LO || mid > TARGET_HI){
       verdict = mid < TARGET_LO ? "raise" : "lower";
       const raw = gPerPpm ? gPerPpm * (TARGET_MID - mid) : usual * 0.3 * (TARGET_MID - mid);   // no rate yet: ~30% of the dose per ppm
-      change = Math.max(-usual * 0.5, Math.min(usual * 0.5, raw));
+      change = Math.max(-usual * 0.25, Math.min(usual * 0.25, raw));   // one step at most 25% of the dose, then re-check
       change = round50(change) || (verdict === "raise" ? 50 : -50);
     }
     return {n:list.length, mid, usual, hits, verdict, change, gPerPpm};
