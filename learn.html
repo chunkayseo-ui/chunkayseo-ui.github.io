@@ -1052,14 +1052,16 @@ function startQuiz(){ stopSpeak(); S.quiz = {i:0, answers:S.lesson.quiz.map(() =
 async function finishQuiz(){
   const l = S.lesson, qz = S.quiz, score = qz.answers.filter((a, i) => a === l.quiz[i].a).length, total = l.quiz.length;
   const passed = total - score <= PASS_WRONG_MAX, prev = S.results[l.id];
-  S.view = "result"; render();
   const rec = {person:S.me.name, login:S.user.email, lesson:l.id, total, last:score, best:Math.max(score, prev ? prev.best || 0 : 0),
     passed:passed || !!(prev && prev.passed), attempts:(prev ? prev.attempts || 0 : 0) + 1, lang:S.lang, at:new Date().toISOString(),
     passedAt:(prev && prev.passedAt) || (passed ? new Date().toISOString() : null)};
-  try{ await db.doc("learn_results/" + S.user.uid + "__" + l.id).set(rec); S.results[l.id] = rec; qz.saved = true; }
-  catch(e){ qz.saveErr = true; }
+  // Show the new status straight away (the list must say Passed even if they tap back before the save finishes).
+  S.results[l.id] = rec; S.team = null;
+  S.view = "result"; render();
+  try{ await db.doc("learn_results/" + S.user.uid + "__" + l.id).set(rec); qz.saved = true; }
+  catch(e){ qz.saveErr = true; if(prev) S.results[l.id] = prev; else delete S.results[l.id]; }
   S.team = null;
-  if(S.view === "result") render();
+  if(S.view === "result" || S.view === "home") render();
 }
 async function loadMine(){
   S.results = {};
