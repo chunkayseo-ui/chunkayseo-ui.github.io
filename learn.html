@@ -448,6 +448,10 @@ const LESSONS = [
     en:"A salt chlorinator pushes pH up. So salt pools often need acid.",
     ms:"Klorinator garam menaikkan pH. Jadi kolam garam selalunya perlukan asid.",
     ta:"உப்பு குளோரினேட்டர் pH-ஐ உயர்த்துகிறது. அதனால் உப்புக் குளங்களுக்கு அடிக்கடி அமிலம் தேவை."}},
+  {pic:"🌙🔌❌", t:{
+    en:"Before night dosing, always make sure the salt chlorinator is switched OFF. The night dose table counts only the chlorine from your bucket. If the salt chlorinator also runs all night, the two add up — too much chlorine by morning, and the pool may not be able to open.",
+    ms:"Sebelum dos malam, sentiasa pastikan klorinator garam DIMATIKAN. Jadual dos malam hanya mengira klorin daripada baldi anda. Jika klorinator garam juga berjalan sepanjang malam, kedua-duanya bertambah — klorin terlalu banyak pada waktu pagi, dan kolam mungkin tidak boleh dibuka.",
+    ta:"இரவு டோஸிங்கிற்கு முன், உப்பு குளோரினேட்டர் நிறுத்தப்பட்டுள்ளதா என்று எப்போதும் உறுதிசெய்யுங்கள். இரவு டோஸ் அட்டவணை உங்கள் வாளியிலிருந்து வரும் குளோரினை மட்டுமே கணக்கிடுகிறது. உப்பு குளோரினேட்டரும் இரவு முழுவதும் ஓடினால், இரண்டும் சேர்ந்து — காலையில் குளோரின் மிக அதிகமாகும், குளத்தைத் திறக்க முடியாமல் போகலாம்."}},
   ],
   quiz:[
   {q:{en:"A salt chlorinator turns salt into…", ms:"Klorinator garam menukar garam menjadi…", ta:"உப்பு குளோரினேட்டர் உப்பை மாற்றுவது…"},
@@ -456,6 +460,8 @@ const LESSONS = [
    o:[{en:"The pump runs and it is ON", ms:"Pam berjalan dan ia HIDUP", ta:"பம்ப் ஓடி, அது இயக்கத்தில் இருக்கும்போது"},{en:"The pump is off", ms:"Pam tutup", ta:"பம்ப் நின்றிருக்கும்போது"}], a:0},
   {q:{en:"Salt pools often need extra…", ms:"Kolam garam selalunya perlukan tambahan…", ta:"உப்புக் குளங்களுக்கு அடிக்கடி கூடுதலாகத் தேவை…"},
    o:[{en:"Bicarb", ms:"Bikarbonat", ta:"பைகார்ப்"},{en:"Acid", ms:"Asid", ta:"அமிலம்"}], a:1},
+  {q:{en:"Before night dosing at a salt pool, the salt chlorinator must be…", ms:"Sebelum dos malam di kolam garam, klorinator garam mesti…", ta:"உப்புக் குளத்தில் இரவு டோஸிங்கிற்கு முன், உப்பு குளோரினேட்டர்…"},
+   o:[{en:"Switched OFF", ms:"DIMATIKAN", ta:"நிறுத்தப்பட்டிருக்க வேண்டும்"},{en:"Left ON all night", ms:"Dibiarkan HIDUP sepanjang malam", ta:"இரவு முழுவதும் இயக்கத்தில் இருக்க வேண்டும்"}], a:0},
   ]},
 /* ---------------- 10. Work safely (Kay, 30 Sep 2026) ---------------- */
 { id:"worksafe", icon:"⛑️", mins:5,
@@ -674,6 +680,51 @@ const LESSONS = [
    o:[{en:"No — it must be easy to reach", ms:"Tidak — mesti mudah dicapai", ta:"இல்லை — எளிதில் அணுக வேண்டும்"},{en:"Yes, if there is no space", ms:"Ya, jika tiada ruang", ta:"ஆம், இடம் இல்லையென்றால்"}], a:0},
   {q:{en:"Before leaving the pump room, the multiport valve should be on…", ms:"Sebelum keluar bilik pam, injap multiport mesti pada…", ta:"பம்ப் அறையை விட்டு வெளியேறும் முன், மல்டிபோர்ட் வால்வு…"},
    o:[{en:"BACKWASH", ms:"BACKWASH", ta:"BACKWASH"},{en:"FILTER", ms:"FILTER", ta:"FILTER"},{en:"CLOSED", ms:"CLOSED", ta:"CLOSED"}], a:1},
+  ]},
+/* ---------------- 14. Don't overdose, don't waste (Kay, 30 Sep 2026) ---------------- */
+{ id:"overdose", icon:"⚖️", mins:4,
+  title:{en:"Don't overdose, don't waste", ms:"Jangan dos berlebihan, jangan membazir", ta:"அதிக டோஸ் வேண்டாம், வீணாக்க வேண்டாம்"},
+  cards:[
+  {pic:"🚫🏊", t:{
+    en:"Overdosing a pool is a serious problem. Too much chlorine stings swimmers' eyes, skin and breathing. The pool must close until it comes down — sometimes we even have to drain water. Classes are cancelled, and water, chemicals and time are lost.",
+    ms:"Dos berlebihan ialah masalah serius. Klorin terlalu banyak memedihkan mata, kulit dan pernafasan perenang. Kolam mesti ditutup sehingga ia turun — kadang-kadang kita terpaksa mengalirkan keluar air. Kelas dibatalkan, dan air, bahan kimia serta masa terbuang.",
+    ta:"குளத்தில் அதிக டோஸ் போடுவது ஒரு கடுமையான பிரச்சனை. அதிக குளோரின் நீச்சல்காரர்களின் கண், தோல், சுவாசத்தை எரிச்சலூட்டும். அது குறையும் வரை குளத்தை மூட வேண்டும் — சில நேரம் தண்ணீரை வெளியேற்றவும் வேண்டியிருக்கும். வகுப்புகள் ரத்தாகும், தண்ணீர், ரசாயனம், நேரம் வீணாகும்."}},
+  {pic:"❓", t:{
+    en:"How overdosing happens: the salt chlorinator left ON, the same pool dosed twice, the weekend table used on a weekday, kg and g mixed up, the scale not set to zero with the bucket on it, or a wrong water test.",
+    ms:"Bagaimana dos berlebihan berlaku: klorinator garam dibiarkan HIDUP, kolam yang sama didos dua kali, jadual hujung minggu digunakan pada hari biasa, kg dan g tertukar, penimbang tidak disifarkan dengan baldi di atasnya, atau ujian air yang salah.",
+    ta:"அதிக டோஸ் எப்படி நடக்கிறது: உப்பு குளோரினேட்டர் இயக்கத்தில் விடப்பட்டது, ஒரே குளத்துக்கு இருமுறை டோஸ், வார நாளில் வார இறுதி அட்டவணை, kg-ம் g-ம் குழப்பம், வாளியை வைத்து எடைக்கருவியை பூஜ்ஜியம் செய்யாதது, அல்லது தவறான நீர் சோதனை."}},
+  {pic:"📲✅", t:{
+    en:"Not sure if this pool was already dosed tonight? Check the app or ask the team first. Never dose 'just in case'.",
+    ms:"Tidak pasti sama ada kolam ini sudah didos malam ini? Semak aplikasi atau tanya pasukan dahulu. Jangan dos 'untuk berjaga-jaga'.",
+    ta:"இந்தக் குளத்துக்கு இன்றிரவு ஏற்கனவே டோஸ் போடப்பட்டதா என்று தெரியவில்லையா? முதலில் ஆப்பைப் பாருங்கள் அல்லது குழுவிடம் கேளுங்கள். 'ஒருவேளைக்காக' டோஸ் போட வேண்டாம்."}},
+  {pic:"⚖️", t:{
+    en:"Weigh every time. Put the empty bucket on the scale, press ZERO, then add the chlorine. Follow the calculator — no 'a bit extra to be safe'. Extra chlorine only with permission from Kay or William.",
+    ms:"Timbang setiap kali. Letak baldi kosong di atas penimbang, tekan ZERO, kemudian masukkan klorin. Ikut kalkulator — jangan tambah 'sedikit lagi untuk selamat'. Klorin tambahan hanya dengan kebenaran Kay atau William.",
+    ta:"ஒவ்வொரு முறையும் எடை போடுங்கள். காலி வாளியை எடைக்கருவியில் வைத்து ZERO அழுத்துங்கள், பிறகு குளோரினைப் போடுங்கள். கால்குலேட்டரைப் பின்பற்றுங்கள் — 'பாதுகாப்புக்காகக் கொஞ்சம் அதிகம்' வேண்டாம். கூடுதல் குளோரின் Kay அல்லது William அனுமதியுடன் மட்டுமே."}},
+  {pic:"💸", t:{
+    en:"Wasting chemicals wastes money. Every drum and bag is paid for by the company. Use only what the table says.",
+    ms:"Membazir bahan kimia membazir wang. Setiap dram dan beg dibayar oleh syarikat. Guna hanya apa yang jadual tetapkan.",
+    ta:"ரசாயனங்களை வீணாக்குவது பணத்தை வீணாக்குவது. ஒவ்வொரு டிரம்மும் மூட்டையும் நிறுவனத்தின் பணம். அட்டவணை சொல்வதை மட்டுமே பயன்படுத்துங்கள்."}},
+  {pic:"🔓📉", t:{
+    en:"Close the lids straight after use. Open chlorine gets weaker in the humid air and sun. Open bicarb and acid get wet and turn into hard lumps — then they are thrown away.",
+    ms:"Tutup penutup sejurus selepas guna. Klorin yang terbuka menjadi lemah dalam udara lembap dan matahari. Bikarbonat dan asid yang terbuka menjadi basah dan bergumpal keras — akhirnya dibuang.",
+    ta:"பயன்படுத்திய உடனே மூடியை மூடுங்கள். திறந்த குளோரின் ஈரக் காற்றிலும் வெயிலிலும் பலவீனமாகும். திறந்த பைகார்பும் அமிலமும் ஈரமாகிக் கட்டியாகும் — பிறகு தூக்கி எறியப்படும்."}},
+  {pic:"🎯", t:{
+    en:"Dose the right way so nothing is wasted: pump running, pour in front of the return jets, chlorine and acid at different places. Don't spill — pour slowly and close to the water.",
+    ms:"Dos dengan cara betul supaya tiada pembaziran: pam berjalan, tuang di hadapan jet pulangan, klorin dan asid di tempat berbeza. Jangan tumpah — tuang perlahan dan dekat dengan air.",
+    ta:"எதுவும் வீணாகாமல் சரியாக டோஸ் செய்யுங்கள்: பம்ப் ஓட வேண்டும், திரும்பும் ஜெட் முன் ஊற்றுங்கள், குளோரினும் அமிலமும் வெவ்வேறு இடங்களில். சிந்த வேண்டாம் — மெதுவாக, தண்ணீருக்கு அருகில் ஊற்றுங்கள்."}},
+  ],
+  quiz:[
+  {q:{en:"A pool is overdosed. What can happen?", ms:"Sebuah kolam didos berlebihan. Apa boleh berlaku?", ta:"ஒரு குளத்தில் அதிக டோஸ் போடப்பட்டது. என்ன நடக்கலாம்?"},
+   o:[{en:"Pool closes, maybe water must be drained", ms:"Kolam ditutup, mungkin air perlu dialirkan keluar", ta:"குளம் மூடப்படும், தண்ணீரை வெளியேற்ற வேண்டியிருக்கலாம்"},{en:"Nothing, more chlorine is always better", ms:"Tiada apa, lebih klorin sentiasa lebih baik", ta:"ஒன்றுமில்லை, அதிக குளோரின் எப்போதும் நல்லது"}], a:0},
+  {q:{en:"You're not sure if the pool was already dosed tonight.", ms:"Anda tidak pasti sama ada kolam sudah didos malam ini.", ta:"இன்றிரவு குளத்துக்கு டோஸ் போடப்பட்டதா என்று தெரியவில்லை."},
+   o:[{en:"Dose anyway, just in case", ms:"Dos saja, untuk berjaga-jaga", ta:"ஒருவேளைக்காக டோஸ் போடுவேன்"},{en:"Check the app or ask first", ms:"Semak aplikasi atau tanya dahulu", ta:"முதலில் ஆப்பைப் பார்ப்பேன் அல்லது கேட்பேன்"}], a:1},
+  {q:{en:"Weighing chlorine in a bucket — first you…", ms:"Menimbang klorin dalam baldi — mula-mula anda…", ta:"வாளியில் குளோரின் எடை போடும்போது — முதலில்…"},
+   o:[{en:"Put the empty bucket on and press ZERO", ms:"Letak baldi kosong dan tekan ZERO", ta:"காலி வாளியை வைத்து ZERO அழுத்துவேன்"},{en:"Guess the weight of the bucket", ms:"Agak berat baldi", ta:"வாளியின் எடையை ஊகிப்பேன்"}], a:0},
+  {q:{en:"Can you add a bit extra chlorine 'to be safe'?", ms:"Bolehkah tambah sedikit klorin 'untuk selamat'?", ta:"'பாதுகாப்புக்காக' கொஞ்சம் அதிக குளோரின் போடலாமா?"},
+   o:[{en:"Yes, always", ms:"Ya, sentiasa", ta:"ஆம், எப்போதும்"},{en:"No — only with Kay or William's permission", ms:"Tidak — hanya dengan kebenaran Kay atau William", ta:"இல்லை — Kay அல்லது William அனுமதியுடன் மட்டுமே"}], a:1},
+  {q:{en:"A chemical lid is left open. What happens?", ms:"Penutup bahan kimia dibiarkan terbuka. Apa jadi?", ta:"ரசாயன மூடி திறந்தே விடப்பட்டது. என்ன ஆகும்?"},
+   o:[{en:"It gets weak or lumpy — wasted", ms:"Ia jadi lemah atau bergumpal — membazir", ta:"பலவீனமாகும் அல்லது கட்டியாகும் — வீண்"},{en:"Nothing", ms:"Tiada apa", ta:"ஒன்றுமில்லை"}], a:0},
   ]},
 ];
 
