@@ -520,6 +520,161 @@ const LESSONS = [
   {q:{en:"You feel dizzy on a hot afternoon. What do you do?", ms:"Anda rasa pening pada petang yang panas. Apa perlu buat?", ta:"வெப்பமான மதியம் தலைசுற்றுகிறது. என்ன செய்வீர்கள்?"},
    o:[{en:"Keep working to finish", ms:"Terus bekerja sampai siap", ta:"முடிக்கும் வரை வேலை செய்வேன்"},{en:"Stop, shade, drink water, tell the supervisor", ms:"Berhenti, tempat teduh, minum air, beritahu penyelia", ta:"நிறுத்தி, நிழலில் அமர்ந்து, தண்ணீர் குடித்து, மேற்பார்வையாளரிடம் சொல்வேன்"}], a:1},
   ]},
+/* ---------------- 11. Sand filter & multiport valve (Kay, 30 Sep 2026) ---------------- */
+{ id:"filter", icon:"🏺", mins:5,
+  title:{en:"Sand filter and multiport valve", ms:"Penapis pasir dan injap multiport", ta:"மணல் வடிகட்டி மற்றும் மல்டிபோர்ட் வால்வு"},
+  cards:[
+  {pic:"svg:sandfilter", t:{
+    en:"Our pools use sand filters. Water comes in at the top, goes DOWN through the sand, and comes out clean at the bottom. The dirt stays in the sand.",
+    ms:"Kolam kita guna penapis pasir. Air masuk dari atas, turun MELALUI pasir, dan keluar bersih di bawah. Kotoran tertinggal dalam pasir.",
+    ta:"நம் குளங்கள் மணல் வடிகட்டியைப் பயன்படுத்துகின்றன. தண்ணீர் மேலே நுழைந்து, மணல் வழியாகக் கீழே இறங்கி, அடியில் சுத்தமாக வெளியேறுகிறது. அழுக்கு மணலில் தங்குகிறது."}},
+  {pic:"📈", t:{
+    en:"The sand catches very small dirt — smaller than you can see. As the sand gets dirty, water flows slower and the pressure gauge goes up.",
+    ms:"Pasir menangkap kotoran yang sangat halus — lebih kecil daripada yang boleh dilihat. Apabila pasir kotor, air mengalir perlahan dan tolok tekanan naik.",
+    ta:"கண்ணுக்குத் தெரியாத அளவு சிறிய அழுக்கையும் மணல் பிடிக்கிறது. மணல் அழுக்கானதும் தண்ணீர் மெதுவாகப் பாயும், அழுத்த அளவி உயரும்."}},
+  {pic:"svg:multiport", t:{
+    en:"The multiport valve chooses where the water goes. Main positions: FILTER · BACKWASH · RINSE · WASTE · RECIRCULATE · CLOSED.",
+    ms:"Injap multiport memilih ke mana air pergi. Kedudukan utama: FILTER · BACKWASH · RINSE · WASTE · RECIRCULATE · CLOSED.",
+    ta:"மல்டிபோர்ட் வால்வு தண்ணீர் எங்கே போக வேண்டும் என்பதைத் தேர்ந்தெடுக்கிறது. முக்கிய நிலைகள்: FILTER · BACKWASH · RINSE · WASTE · RECIRCULATE · CLOSED."}},
+  {pic:"🧭", t:{
+    en:"FILTER = normal, every day. WASTE = water goes to the drain, not the pool (only when the supervisor says). RECIRCULATE = water skips the filter. CLOSED = no flow — never run the pump on CLOSED.",
+    ms:"FILTER = biasa, setiap hari. WASTE = air ke longkang, bukan ke kolam (hanya bila penyelia suruh). RECIRCULATE = air tidak melalui penapis. CLOSED = tiada aliran — jangan sekali-kali hidupkan pam pada CLOSED.",
+    ta:"FILTER = சாதாரணம், தினமும். WASTE = தண்ணீர் குளத்துக்கு அல்ல, வடிகாலுக்குப் போகும் (மேற்பார்வையாளர் சொன்னால் மட்டும்). RECIRCULATE = தண்ணீர் வடிகட்டியைத் தவிர்க்கும். CLOSED = ஓட்டம் இல்லை — CLOSED-இல் பம்பை ஒருபோதும் இயக்க வேண்டாம்."}},
+  {pic:"svg:backwash", t:{
+    en:"BACKWASH = water goes UP through the sand and washes the dirt out to the drain. Do it when the gauge is 8 – 10 psi above normal, or when the supervisor says.",
+    ms:"BACKWASH = air naik MELALUI pasir dan membasuh kotoran keluar ke longkang. Buat apabila tolok 8 – 10 psi lebih tinggi dari biasa, atau bila penyelia suruh.",
+    ta:"BACKWASH = தண்ணீர் மணல் வழியாக மேலே சென்று அழுக்கை வடிகாலுக்குக் கழுவி வெளியேற்றும். அளவி சாதாரணத்தை விட 8 – 10 psi அதிகமானால், அல்லது மேற்பார்வையாளர் சொன்னால் செய்யுங்கள்."}},
+  {pic:"🔢", t:{
+    en:"Backwash steps: 1 Pump OFF. 2 Press the handle down, turn to BACKWASH. 3 Pump ON, watch the sight glass until the water is clear (about 2 – 3 min). 4 Pump OFF, turn to RINSE. 5 Pump ON for 30 – 60 seconds. 6 Pump OFF, turn back to FILTER. 7 Pump ON — write down the new pressure.",
+    ms:"Langkah backwash: 1 MATIKAN pam. 2 Tekan pemegang ke bawah, pusing ke BACKWASH. 3 HIDUPKAN pam, lihat cermin pandang sehingga air jernih (kira-kira 2 – 3 min). 4 MATIKAN pam, pusing ke RINSE. 5 HIDUPKAN pam 30 – 60 saat. 6 MATIKAN pam, pusing semula ke FILTER. 7 HIDUPKAN pam — catat tekanan baru.",
+    ta:"பேக்வாஷ் படிகள்: 1 பம்பை நிறுத்து. 2 கைப்பிடியைக் கீழே அழுத்தி BACKWASH-க்குத் திருப்பு. 3 பம்பை இயக்கு, பார்வைக் கண்ணாடியில் தண்ணீர் தெளிவாகும் வரை பார் (சுமார் 2 – 3 நிமி). 4 பம்பை நிறுத்தி RINSE-க்குத் திருப்பு. 5 பம்பை 30 – 60 விநாடி இயக்கு. 6 பம்பை நிறுத்தி மீண்டும் FILTER-க்குத் திருப்பு. 7 பம்பை இயக்கு — புதிய அழுத்தத்தை எழுது."}},
+  {pic:"✋", t:{
+    en:"Always switch the pump OFF before you turn the handle. Turning it while the pump runs damages the seal inside the valve and the water can hit you.",
+    ms:"Sentiasa MATIKAN pam sebelum memusing pemegang. Memusing semasa pam berjalan merosakkan pelapik di dalam injap dan air boleh terpancut kepada anda.",
+    ta:"கைப்பிடியைத் திருப்பும் முன் எப்போதும் பம்பை நிறுத்துங்கள். பம்ப் ஓடும்போது திருப்பினால் வால்வின் உள்ளே உள்ள சீல் சேதமாகும், தண்ணீர் உங்கள் மீது பீய்ச்சலாம்."}},
+  {pic:"🌊", t:{
+    en:"Backwash takes water out of the pool. After backwash check the level — top up if it is below the middle of the skimmer. Check the valve for leaks.",
+    ms:"Backwash mengeluarkan air dari kolam. Selepas backwash semak paras air — tambah jika di bawah tengah skimmer. Periksa injap jika bocor.",
+    ta:"பேக்வாஷ் குளத்திலிருந்து தண்ணீரை வெளியேற்றும். பேக்வாஷ் முடிந்ததும் நீர் மட்டத்தைப் பாருங்கள் — ஸ்கிம்மரின் நடுவுக்குக் கீழே இருந்தால் நிரப்புங்கள். வால்வில் கசிவு உள்ளதா பாருங்கள்."}},
+  {pic:"⏳", t:{
+    en:"Sand lasts for years but gets old and clumpy. If the pressure is still high right after a backwash, or dirt blows back into the pool, tell the supervisor.",
+    ms:"Pasir tahan bertahun-tahun tetapi menjadi lama dan bergumpal. Jika tekanan masih tinggi selepas backwash, atau kotoran keluar semula ke kolam, beritahu penyelia.",
+    ta:"மணல் பல ஆண்டுகள் நீடிக்கும், ஆனால் பழையதாகிக் கட்டியாகும். பேக்வாஷ் செய்த உடனேயும் அழுத்தம் அதிகமாக இருந்தால், அல்லது அழுக்கு மீண்டும் குளத்துக்குள் வந்தால், மேற்பார்வையாளரிடம் சொல்லுங்கள்."}},
+  ],
+  quiz:[
+  {q:{en:"In FILTER mode the water goes…", ms:"Dalam mod FILTER air mengalir…", ta:"FILTER நிலையில் தண்ணீர்…"},
+   o:[{en:"Down through the sand", ms:"Turun melalui pasir", ta:"மணல் வழியாகக் கீழே"},{en:"Up through the sand", ms:"Naik melalui pasir", ta:"மணல் வழியாக மேலே"},{en:"Around the sand", ms:"Di sekeliling pasir", ta:"மணலைச் சுற்றி"}], a:0},
+  {q:{en:"Before you turn the multiport handle…", ms:"Sebelum memusing pemegang multiport…", ta:"மல்டிபோர்ட் கைப்பிடியைத் திருப்பும் முன்…"},
+   o:[{en:"Switch the pump OFF", ms:"MATIKAN pam", ta:"பம்பை நிறுத்துங்கள்"},{en:"Keep the pump running", ms:"Biarkan pam berjalan", ta:"பம்பை ஓட விடுங்கள்"}], a:0},
+  {q:{en:"After BACKWASH, the next position is…", ms:"Selepas BACKWASH, kedudukan seterusnya…", ta:"BACKWASH-க்குப் பிறகு அடுத்த நிலை…"},
+   o:[{en:"CLOSED", ms:"CLOSED", ta:"CLOSED"},{en:"RINSE", ms:"RINSE", ta:"RINSE"},{en:"WASTE", ms:"WASTE", ta:"WASTE"}], a:1},
+  {q:{en:"The normal everyday position is…", ms:"Kedudukan biasa setiap hari…", ta:"தினசரி சாதாரண நிலை…"},
+   o:[{en:"RECIRCULATE", ms:"RECIRCULATE", ta:"RECIRCULATE"},{en:"WASTE", ms:"WASTE", ta:"WASTE"},{en:"FILTER", ms:"FILTER", ta:"FILTER"}], a:2},
+  {q:{en:"Can the pump run with the valve on CLOSED?", ms:"Bolehkah pam berjalan dengan injap pada CLOSED?", ta:"வால்வு CLOSED-இல் இருக்கும்போது பம்ப் ஓடலாமா?"},
+   o:[{en:"Never", ms:"Tidak sekali-kali", ta:"ஒருபோதும் இல்லை"},{en:"Yes, for a short time", ms:"Ya, sekejap sahaja", ta:"ஆம், சிறிது நேரம்"}], a:0},
+  ]},
+
+/* ---------------- 12. Pool pumps (Kay, 30 Sep 2026) ---------------- */
+{ id:"pumps", icon:"🔌", mins:5,
+  title:{en:"Our pool pumps", ms:"Pam kolam kita", ta:"நம் குளப் பம்புகள்"},
+  cards:[
+  {pic:"svg:pumpparts", t:{
+    en:"Parts of a pump: the strainer lid and basket at the front, the impeller inside (it spins and pushes the water), the motor at the back, the fan cover that cools the motor, and the nameplate (label).",
+    ms:"Bahagian pam: penutup dan bakul penapis kasar di depan, pendesak (impeller) di dalam (ia berputar dan menolak air), motor di belakang, penutup kipas yang menyejukkan motor, dan plat nama (label).",
+    ta:"பம்பின் பாகங்கள்: முன்பக்கம் ஸ்ட்ரெய்னர் மூடியும் கூடையும், உள்ளே இம்பெல்லர் (அது சுழன்று தண்ணீரைத் தள்ளும்), பின்பக்கம் மோட்டார், மோட்டாரைக் குளிர்விக்கும் ஃபேன் மூடி, பெயர்ப்பலகை (லேபிள்)."}},
+  {pic:"🏷️", t:{
+    en:"We have 3 kinds: single-phase, three-phase, and single-phase 3 HP. Read the nameplate: HP or kW = power, V = volts (230 V single-phase, 400 V three-phase), A = amps.",
+    ms:"Kita ada 3 jenis: satu fasa, tiga fasa, dan satu fasa 3 HP. Baca plat nama: HP atau kW = kuasa, V = volt (230 V satu fasa, 400 V tiga fasa), A = ampere.",
+    ta:"நம்மிடம் 3 வகை: சிங்கிள் பேஸ், த்ரீ பேஸ், சிங்கிள் பேஸ் 3 HP. பெயர்ப்பலகையைப் படியுங்கள்: HP அல்லது kW = சக்தி, V = வோல்ட் (சிங்கிள் பேஸ் 230 V, த்ரீ பேஸ் 400 V), A = ஆம்ப்."}},
+  {pic:"1️⃣", t:{
+    en:"Single-phase (230 V): the normal type. If it hums but the shaft does not turn, the start part (capacitor) may be bad. Switch it OFF at once — a stuck motor burns quickly. Tell the supervisor.",
+    ms:"Satu fasa (230 V): jenis biasa. Jika ia berdengung tetapi aci tidak berputar, bahagian permulaan (kapasitor) mungkin rosak. MATIKAN segera — motor tersekat cepat terbakar. Beritahu penyelia.",
+    ta:"சிங்கிள் பேஸ் (230 V): சாதாரண வகை. ஒலி எழுப்பியும் ஷாஃப்ட் சுழலவில்லை என்றால், ஸ்டார்ட் பாகம் (கேபாசிட்டர்) பழுதாக இருக்கலாம். உடனே நிறுத்துங்கள் — சிக்கிய மோட்டார் விரைவில் எரிந்துவிடும். மேற்பார்வையாளரிடம் சொல்லுங்கள்."}},
+  {pic:"3️⃣", t:{
+    en:"Three-phase (400 V): stronger, for bigger pools. After any electrical work, check the motor turns the same way as the arrow on the fan cover. Wrong way = very little water flow.",
+    ms:"Tiga fasa (400 V): lebih kuat, untuk kolam besar. Selepas sebarang kerja elektrik, pastikan motor berputar mengikut arah anak panah pada penutup kipas. Arah salah = aliran air sangat sedikit.",
+    ta:"த்ரீ பேஸ் (400 V): அதிக சக்தி, பெரிய குளங்களுக்கு. எந்த மின் வேலைக்குப் பிறகும், ஃபேன் மூடியில் உள்ள அம்புக்குறி திசையில் மோட்டார் சுழல்கிறதா பாருங்கள். தவறான திசை = மிகக் குறைந்த நீரோட்டம்."}},
+  {pic:"💪", t:{
+    en:"Single-phase 3 HP: a big single-phase pump. It pulls a lot of current, so it gets hot and trips more easily when something is wrong — blocked basket, air in the pump, closed valve.",
+    ms:"Satu fasa 3 HP: pam satu fasa yang besar. Ia menarik arus yang tinggi, jadi mudah panas dan trip jika ada masalah — bakul tersumbat, udara dalam pam, injap tertutup.",
+    ta:"சிங்கிள் பேஸ் 3 HP: பெரிய சிங்கிள் பேஸ் பம்ப். அதிக மின்னோட்டம் இழுப்பதால், ஏதாவது பிரச்சனை என்றால் எளிதில் சூடாகி டிரிப் ஆகும் — அடைத்த கூடை, பம்பில் காற்று, மூடிய வால்வு."}},
+  {pic:"🚱", t:{
+    en:"Never run a pump dry (no water). The seal burns in minutes and starts leaking. Before switching on: valves open, pump lid full of water.",
+    ms:"Jangan sekali-kali jalankan pam tanpa air. Pelapik (seal) terbakar dalam beberapa minit dan mula bocor. Sebelum hidupkan: injap terbuka, penutup pam penuh air.",
+    ta:"தண்ணீர் இல்லாமல் பம்பை ஒருபோதும் ஓட்ட வேண்டாம். சில நிமிடங்களில் சீல் எரிந்து கசியத் தொடங்கும். இயக்கும் முன்: வால்வுகள் திறந்திருக்க வேண்டும், பம்ப் மூடி தண்ணீரால் நிரம்பியிருக்க வேண்டும்."}},
+  {pic:"🌬️", t:{
+    en:"The motor needs air. Keep the fan cover clear — no bags, cloths or chemicals on or next to the pump. Warm is normal. Too hot to keep your hand on = tell the supervisor.",
+    ms:"Motor perlukan udara. Pastikan penutup kipas tidak dihalang — tiada beg, kain atau bahan kimia di atas atau di sebelah pam. Suam adalah biasa. Terlalu panas untuk diletakkan tangan = beritahu penyelia.",
+    ta:"மோட்டாருக்குக் காற்று தேவை. ஃபேன் மூடியை மறைக்க வேண்டாம் — பம்பின் மேலோ அருகிலோ பை, துணி, ரசாயனம் வேண்டாம். மிதமான சூடு சாதாரணம். கையை வைக்க முடியாத அளவு சூடு = மேற்பார்வையாளரிடம் சொல்லுங்கள்."}},
+  {pic:"👂🔧", t:{
+    en:"Warning signs: screaming or grinding noise (bearings), water dripping under the pump (seal), bubbles in the lid (air leak). Take a video and report it in the app.",
+    ms:"Tanda amaran: bunyi berdesing atau mengisar (galas), air menitis di bawah pam (seal), gelembung dalam penutup (udara bocor masuk). Rakam video dan laporkan dalam aplikasi.",
+    ta:"எச்சரிக்கை அறிகுறிகள்: கீச்சிடும் அல்லது அரைக்கும் சத்தம் (பேரிங்), பம்பின் கீழே தண்ணீர் சொட்டுதல் (சீல்), மூடியில் குமிழ்கள் (காற்றுக் கசிவு). வீடியோ எடுத்து ஆப்பில் தெரிவியுங்கள்."}},
+  {pic:"⚡", t:{
+    en:"Breaker tripped? Reset it only once. If it trips again, leave it OFF and call the supervisor. Never open an electrical panel yourself.",
+    ms:"Pemutus litar trip? Set semula sekali sahaja. Jika trip lagi, biarkan OFF dan hubungi penyelia. Jangan sekali-kali buka panel elektrik sendiri.",
+    ta:"பிரேக்கர் டிரிப் ஆனதா? ஒரே ஒருமுறை மட்டும் ரீசெட் செய்யுங்கள். மீண்டும் டிரிப் ஆனால், OFF-இல் விட்டு மேற்பார்வையாளரை அழையுங்கள். மின் பேனலை நீங்களே ஒருபோதும் திறக்க வேண்டாம்."}},
+  ],
+  quiz:[
+  {q:{en:"A single-phase pump hums but does not turn. What do you do?", ms:"Pam satu fasa berdengung tetapi tidak berputar. Apa perlu buat?", ta:"சிங்கிள் பேஸ் பம்ப் ஒலிக்கிறது, ஆனால் சுழலவில்லை. என்ன செய்வீர்கள்?"},
+   o:[{en:"Switch it off and tell the supervisor", ms:"Matikan dan beritahu penyelia", ta:"நிறுத்தி மேற்பார்வையாளரிடம் சொல்வேன்"},{en:"Leave it on, it will start soon", ms:"Biarkan hidup, nanti ia berputar", ta:"ஓடவிடுவேன், விரைவில் சுழலும்"}], a:0},
+  {q:{en:"A three-phase motor turns the wrong way. What happens?", ms:"Motor tiga fasa berputar arah salah. Apa jadi?", ta:"த்ரீ பேஸ் மோட்டார் தவறான திசையில் சுழல்கிறது. என்ன ஆகும்?"},
+   o:[{en:"More water flow", ms:"Lebih banyak aliran air", ta:"அதிக நீரோட்டம்"},{en:"Very little water flow", ms:"Aliran air sangat sedikit", ta:"மிகக் குறைந்த நீரோட்டம்"}], a:1},
+  {q:{en:"Can you run a pump with no water in it?", ms:"Bolehkah pam dijalankan tanpa air?", ta:"தண்ணீர் இல்லாமல் பம்பை ஓட்டலாமா?"},
+   o:[{en:"Never — the seal burns", ms:"Tidak — seal terbakar", ta:"ஒருபோதும் இல்லை — சீல் எரியும்"},{en:"Yes, for a few minutes", ms:"Ya, beberapa minit", ta:"ஆம், சில நிமிடங்கள்"}], a:0},
+  {q:{en:"The breaker trips again after you reset it once.", ms:"Pemutus litar trip lagi selepas set semula sekali.", ta:"ஒருமுறை ரீசெட் செய்த பிறகும் பிரேக்கர் மீண்டும் டிரிப் ஆனது."},
+   o:[{en:"Keep resetting it", ms:"Terus set semula", ta:"தொடர்ந்து ரீசெட் செய்வேன்"},{en:"Leave it OFF and call the supervisor", ms:"Biarkan OFF dan hubungi penyelia", ta:"OFF-இல் விட்டு மேற்பார்வையாளரை அழைப்பேன்"}], a:1},
+  {q:{en:"A cloth is lying on the motor's fan cover.", ms:"Ada kain di atas penutup kipas motor.", ta:"மோட்டாரின் ஃபேன் மூடி மேல் ஒரு துணி கிடக்கிறது."},
+   o:[{en:"Remove it — the motor needs air", ms:"Alihkan — motor perlukan udara", ta:"அகற்றுவேன் — மோட்டாருக்குக் காற்று தேவை"},{en:"Leave it, no problem", ms:"Biarkan, tiada masalah", ta:"விட்டுவிடுவேன், பிரச்சனை இல்லை"}], a:0},
+  ]},
+
+/* ---------------- 13. Pump room housekeeping & tools (Kay, 30 Sep 2026) ---------------- */
+{ id:"house", icon:"🧰", mins:3,
+  title:{en:"Pump room housekeeping and tools", ms:"Kebersihan bilik pam dan alatan", ta:"பம்ப் அறைப் பராமரிப்பும் கருவிகளும்"},
+  cards:[
+  {pic:"✨", t:{
+    en:"A clean pump room is a safe pump room. You see leaks early, you smell problems early, and you find your tools fast.",
+    ms:"Bilik pam yang bersih ialah bilik pam yang selamat. Anda nampak kebocoran awal, bau masalah awal, dan cepat jumpa alatan.",
+    ta:"சுத்தமான பம்ப் அறை = பாதுகாப்பான பம்ப் அறை. கசிவுகளை முன்பே பார்க்கலாம், பிரச்சனைகளை முன்பே மணக்கலாம், கருவிகளை விரைவில் கண்டுபிடிக்கலாம்."}},
+  {pic:"🧹", t:{
+    en:"Floor dry and clear. Mop up water. No boxes or rubbish on the floor. Keep the floor drain open.",
+    ms:"Lantai kering dan kosong. Mop air. Tiada kotak atau sampah di lantai. Pastikan longkang lantai tidak tersumbat.",
+    ta:"தரை உலர்வாகவும் காலியாகவும். தண்ணீரைத் துடையுங்கள். தரையில் பெட்டிகளோ குப்பையோ வேண்டாம். தரை வடிகாலை அடைக்காமல் வையுங்கள்."}},
+  {pic:"🧪📦", t:{
+    en:"Chemicals: lids closed, labelled, on a shelf or pallet, chlorine and acid apart. Spilled chlorine powder never goes into the rubbish bin — it can start a fire. Tell the supervisor.",
+    ms:"Bahan kimia: penutup rapat, berlabel, di atas rak atau palet, klorin dan asid diasingkan. Serbuk klorin yang tumpah jangan dibuang ke tong sampah — boleh menyebabkan kebakaran. Beritahu penyelia.",
+    ta:"ரசாயனங்கள்: மூடி மூடியிருக்க வேண்டும், லேபிள், அலமாரி அல்லது பலகை மேல், குளோரினும் அமிலமும் தனித்தனியாக. சிந்திய குளோரின் பொடியைக் குப்பைத் தொட்டியில் போட வேண்டாம் — தீ பிடிக்கலாம். மேற்பார்வையாளரிடம் சொல்லுங்கள்."}},
+  {pic:"🚿🪝", t:{
+    en:"Tools after use: rinse the brush, vacuum head and hose with clean water, let them dry, hang them up. Coil the hose loosely — no sharp bends.",
+    ms:"Alatan selepas guna: bilas berus, kepala vakum dan hos dengan air bersih, biar kering, gantung. Gulung hos longgar — jangan lipat tajam.",
+    ta:"பயன்படுத்திய பின் கருவிகள்: பிரஷ், வாக்யூம் தலை, ஹோஸை சுத்தமான தண்ணீரில் அலசி, உலர விட்டு, தொங்கவிடுங்கள். ஹோஸைத் தளர்வாகச் சுருட்டுங்கள் — கூர்மையான மடிப்பு வேண்டாம்."}},
+  {pic:"📍", t:{
+    en:"Every tool goes back to its place. Missing or broken tool? Report it in the app so it gets replaced before the next job.",
+    ms:"Setiap alatan kembali ke tempatnya. Alatan hilang atau rosak? Laporkan dalam aplikasi supaya diganti sebelum kerja seterusnya.",
+    ta:"ஒவ்வொரு கருவியும் அதன் இடத்துக்குத் திரும்ப வேண்டும். கருவி காணவில்லையா, உடைந்ததா? அடுத்த வேலைக்கு முன் மாற்றப்பட ஆப்பில் தெரிவியுங்கள்."}},
+  {pic:"🧴", t:{
+    en:"Test kit: close the bottles tightly, rinse the tube, keep it out of the sun. Reagent almost empty or old? Tell the supervisor.",
+    ms:"Kit ujian: tutup botol dengan ketat, bilas tiub, jauhkan dari matahari. Reagen hampir habis atau lama? Beritahu penyelia.",
+    ta:"சோதனைக் கிட்: பாட்டில்களை இறுக்கமாக மூடுங்கள், சோதனைக் குழாயை அலசுங்கள், வெயில் படாமல் வையுங்கள். ரீஏஜென்ட் கிட்டத்தட்ட தீர்ந்ததா அல்லது பழையதா? மேற்பார்வையாளரிடம் சொல்லுங்கள்."}},
+  {pic:"🚫📦⚡", t:{
+    en:"Nothing stored in front of electrical panels or switches — they must be easy to reach in an emergency.",
+    ms:"Jangan simpan apa-apa di hadapan panel elektrik atau suis — mesti mudah dicapai semasa kecemasan.",
+    ta:"மின் பேனல்கள், சுவிட்சுகளுக்கு முன்னால் எதையும் வைக்க வேண்டாம் — அவசரத்தில் எளிதில் அணுக வேண்டும்."}},
+  {pic:"✅🚪", t:{
+    en:"Before you leave: pump running, valve on FILTER, lids on, tools away, lights off, door closed. Take the photo in the app.",
+    ms:"Sebelum keluar: pam berjalan, injap pada FILTER, penutup dipasang, alatan disimpan, lampu tutup, pintu ditutup. Ambil gambar dalam aplikasi.",
+    ta:"வெளியேறும் முன்: பம்ப் ஓடுகிறது, வால்வு FILTER-இல், மூடிகள் போடப்பட்டன, கருவிகள் வைக்கப்பட்டன, விளக்கு அணைக்கப்பட்டது, கதவு மூடப்பட்டது. ஆப்பில் புகைப்படம் எடுங்கள்."}},
+  ],
+  quiz:[
+  {q:{en:"After vacuuming, what do you do with the hose and brush?", ms:"Selepas vakum, apa dibuat dengan hos dan berus?", ta:"வாக்யூம் முடிந்ததும் ஹோஸையும் பிரஷையும் என்ன செய்வீர்கள்?"},
+   o:[{en:"Rinse, dry and hang them up", ms:"Bilas, keringkan dan gantung", ta:"அலசி, உலர்த்தி, தொங்கவிடுவேன்"},{en:"Leave them on the deck", ms:"Tinggalkan di tepi kolam", ta:"குளக்கரையில் விட்டுவிடுவேன்"}], a:0},
+  {q:{en:"Chlorine powder spilled on the floor. Into the rubbish bin?", ms:"Serbuk klorin tumpah di lantai. Buang ke tong sampah?", ta:"குளோரின் பொடி தரையில் சிந்தியது. குப்பைத் தொட்டியில் போடலாமா?"},
+   o:[{en:"Yes", ms:"Ya", ta:"ஆம்"},{en:"No — it can start a fire", ms:"Tidak — boleh menyebabkan kebakaran", ta:"இல்லை — தீ பிடிக்கலாம்"}], a:1},
+  {q:{en:"Can you store boxes in front of the electrical panel?", ms:"Bolehkah simpan kotak di hadapan panel elektrik?", ta:"மின் பேனலுக்கு முன்னால் பெட்டிகளை வைக்கலாமா?"},
+   o:[{en:"No — it must be easy to reach", ms:"Tidak — mesti mudah dicapai", ta:"இல்லை — எளிதில் அணுக வேண்டும்"},{en:"Yes, if there is no space", ms:"Ya, jika tiada ruang", ta:"ஆம், இடம் இல்லையென்றால்"}], a:0},
+  {q:{en:"Before leaving the pump room, the multiport valve should be on…", ms:"Sebelum keluar bilik pam, injap multiport mesti pada…", ta:"பம்ப் அறையை விட்டு வெளியேறும் முன், மல்டிபோர்ட் வால்வு…"},
+   o:[{en:"BACKWASH", ms:"BACKWASH", ta:"BACKWASH"},{en:"FILTER", ms:"FILTER", ta:"FILTER"},{en:"CLOSED", ms:"CLOSED", ta:"CLOSED"}], a:1},
+  ]},
 ];
 
 /* Words used inside the drawings. */
@@ -535,6 +690,10 @@ const PIC_WORDS = {
   skimv:{en:"Skimmer valve (route card)", ms:"Injap skimmer (kad laluan)", ta:"ஸ்கிம்மர் வால்வு (வழி அட்டை)"}, hose:{en:"Hose full of water", ms:"Hos penuh air", ta:"தண்ணீர் நிரம்பிய ஹோஸ்"},
   slime:{en:"slime", ms:"lendir", ta:"வழுவழுப்பு"}, wall:{en:"wall", ms:"dinding", ta:"சுவர்"},
   salt:{en:"salt", ms:"garam", ta:"உப்பு"}, cell:{en:"Cell", ms:"Sel", ta:"செல்"}, power:{en:"electricity", ms:"elektrik", ta:"மின்சாரம்"},
+  sand:{en:"sand", ms:"pasir", ta:"மணல்"}, gravel:{en:"gravel", ms:"batu kerikil", ta:"சரளைக் கல்"}, dirtyin:{en:"dirty water in", ms:"air kotor masuk", ta:"அழுக்கு நீர் உள்ளே"},
+  cleanout:{en:"clean water out", ms:"air bersih keluar", ta:"சுத்த நீர் வெளியே"}, todrain:{en:"to drain", ms:"ke longkang", ta:"வடிகாலுக்கு"},
+  lid:{en:"Lid & basket", ms:"Penutup & bakul", ta:"மூடி & கூடை"}, impeller:{en:"Impeller", ms:"Pendesak", ta:"இம்பெல்லர்"}, motor:{en:"Motor", ms:"Motor", ta:"மோட்டார்"},
+  fan:{en:"Fan cover", ms:"Penutup kipas", ta:"ஃபேன் மூடி"}, plate:{en:"Nameplate", ms:"Plat nama", ta:"பெயர்ப்பலகை"}, fromPool:{en:"from pool", ms:"dari kolam", ta:"குளத்திலிருந்து"}, toFilter:{en:"to filter", ms:"ke penapis", ta:"வடிகட்டிக்கு"},
   gas:{en:"POISON GAS", ms:"GAS BERACUN", ta:"விஷ வாயு"},
 };
 
@@ -684,6 +843,26 @@ const PICS = {
       <line x1="0" y1="0" x2="0" y2="-40" stroke="${c}" stroke-width="4" transform="rotate(${ang})"/><circle r="5" fill="#0A1417"/>
       <text y="40" text-anchor="middle" font-size="13" font-weight="700" fill="${c}">${W(k)}</text></g>`).join("")}
     <text x="160" y="158" text-anchor="middle" font-size="13" font-weight="600" fill="#B23A2E">▲ +8–10 psi</text></svg>`,
+  sandfilter: () => filterSvg(false),
+  backwash: () => filterSvg(true),
+  multiport: () => { const pos = ["FILTER", "BACKWASH", "RINSE", "WASTE", "RECIRC.", "CLOSED"];
+    return `<svg viewBox="0 0 320 170" role="img" aria-label="multiport valve positions, handle on FILTER">
+    <circle cx="160" cy="88" r="70" fill="#F6F9F9" stroke="#33474D" stroke-width="3"/>
+    ${pos.map((p, i) => { const a = (-90 + i * 60) * Math.PI / 180, x = 160 + Math.cos(a) * 52, y = 88 + Math.sin(a) * 52;
+      return `<text x="${x.toFixed(1)}" y="${(y + 4).toFixed(1)}" text-anchor="middle" font-size="${i === 0 ? 12 : 10.5}" font-weight="${i === 0 ? 700 : 600}" fill="${i === 0 ? "#256B4C" : i === 5 ? "#B23A2E" : "#33474D"}">${p}</text>`; }).join("")}
+    <rect x="154" y="44" width="12" height="46" rx="5" fill="#0A1417"/><circle cx="160" cy="88" r="10" fill="#0A1417"/>
+    <text x="160" y="166" text-anchor="middle" font-size="12" fill="#5B7378">✋ OFF → ⬇ → ↻</text></svg>`; },
+  pumpparts: () => `<svg viewBox="0 0 320 170" role="img" aria-label="pump parts: lid and basket, impeller, motor, fan cover, nameplate">
+    <rect x="20" y="50" width="70" height="80" rx="10" fill="#fff" stroke="#33474D" stroke-width="3"/><rect x="28" y="40" width="54" height="12" rx="4" fill="#2F7FB8"/>
+    <rect x="34" y="62" width="42" height="50" rx="4" fill="none" stroke="#5B7378" stroke-width="2" stroke-dasharray="4 3"/>
+    <circle cx="112" cy="95" r="26" fill="#fff" stroke="#33474D" stroke-width="3"/><path d="M112 75 v40 M92 95 h40 M98 81 l28 28 M126 81 l-28 28" stroke="#5B7378" stroke-width="2"/>
+    <rect x="140" y="62" width="110" height="66" rx="10" fill="#DCEEEE" stroke="#33474D" stroke-width="3"/><rect x="165" y="80" width="46" height="24" rx="3" fill="#fff" stroke="#33474D" stroke-width="1.5"/>
+    <text x="188" y="96" text-anchor="middle" font-size="9" fill="#0A1417">HP V A</text>
+    <path d="M250 68 h26 a8 8 0 0 1 8 8 v38 a8 8 0 0 1 -8 8 h-26z" fill="#fff" stroke="#33474D" stroke-width="3"/><path d="M258 80 v30 M266 80 v30 M274 80 v30" stroke="#5B7378" stroke-width="2"/>
+    <rect x="10" y="140" width="300" height="6" rx="3" fill="#C7D6D6"/>
+    <g font-size="11" font-weight="600" fill="#0A1417" text-anchor="middle">
+      <text x="55" y="30">${W("lid")}</text><text x="112" y="162">${W("impeller")}</text><text x="195" y="52">${W("motor")}</text>
+      <text x="270" y="162">${W("fan")}</text><text x="188" y="120" font-size="10">${W("plate")}</text></g></svg>`,
   cell: () => `<svg viewBox="0 0 320 140" role="img" aria-label="salt water through the cell becomes chlorine">
     <defs><marker id="ah4" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="5" markerHeight="5" orient="auto"><path d="M0 0 L10 5 L0 10z" fill="#2F7FB8"/></marker></defs>
     <path d="M10 70 H100" stroke="#2F7FB8" stroke-width="6" marker-end="url(#ah4)"/><text x="50" y="58" text-anchor="middle" font-size="12" fill="#33474D">${W("salt")} 🧂</text>
@@ -691,6 +870,23 @@ const PICS = {
     <text x="160" y="30" text-anchor="middle" font-size="22">⚡</text><text x="160" y="120" text-anchor="middle" font-size="11" fill="#5B7378">${W("power")}</text>
     <path d="M220 70 H305" stroke="#2F7FB8" stroke-width="6" marker-end="url(#ah4)"/><text x="262" y="58" text-anchor="middle" font-size="12" fill="#2F7FB8">${W("chlorine")}</text></svg>`,
 };
+function filterSvg(back){
+  const c = back ? "#8A590D" : "#2F7FB8";
+  return `<svg viewBox="0 0 320 175" role="img" aria-label="${back ? "backwash: water goes up through the sand to the drain" : "filter: water goes down through the sand"}">
+    <defs><marker id="fa${back ? 1 : 0}" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="5" markerHeight="5" orient="auto"><path d="M0 0 L10 5 L0 10z" fill="${c}"/></marker></defs>
+    <path d="M110 30 h100 a20 20 0 0 1 20 20 v90 a20 20 0 0 1 -20 20 h-100 a20 20 0 0 1 -20 -20 v-90 a20 20 0 0 1 20 -20z" fill="#fff" stroke="#33474D" stroke-width="3"/>
+    <rect x="93" y="70" width="134" height="55" fill="#E8D6A8"/><rect x="93" y="125" width="134" height="18" fill="#B9A58A"/>
+    ${Array.from({length: 40}, (_, i) => `<circle cx="${100 + (i * 37) % 120}" cy="${76 + (i * 13) % 46}" r="1.6" fill="#A8905E"/>`).join("")}
+    <text x="160" y="100" text-anchor="middle" font-size="12" font-weight="600" fill="#6B5424">${W("sand")}</text>
+    <text x="160" y="138" text-anchor="middle" font-size="10" fill="#fff">${W("gravel")}</text>
+    <g stroke="${c}" stroke-width="3" fill="none" marker-end="url(#fa${back ? 1 : 0})">
+      ${back ? `<path d="M130 130 V58"/><path d="M160 130 V58"/><path d="M190 130 V58"/><path d="M230 45 H300"/>`
+             : `<path d="M130 50 V122"/><path d="M160 50 V122"/><path d="M190 50 V122"/><path d="M230 150 H300"/>`}</g>
+    ${back ? `<path d="M20 150 H90" stroke="${c}" stroke-width="3" fill="none" marker-end="url(#fa1)"/>` : `<path d="M20 45 H90" stroke="${c}" stroke-width="3" fill="none" marker-end="url(#fa0)"/>`}
+    <text x="55" y="36" text-anchor="middle" font-size="11" fill="#33474D">${back ? "" : W("dirtyin")}</text>
+    <text x="268" y="${back ? 36 : 168}" text-anchor="middle" font-size="11" font-weight="600" fill="${c}">${back ? W("todrain") : W("cleanout")}</text>
+    <text x="160" y="22" text-anchor="middle" font-size="13" font-weight="700" fill="${c}">${back ? "BACKWASH ⬆" : "FILTER ⬇"}</text></svg>`;
+}
 const picHtml = p => p.startsWith("svg:") ? (PICS[p.slice(4)] ? PICS[p.slice(4)]() : "") : `<span>${esc(p)}</span>`;
 
 /* ---------------- read aloud ---------------- */
