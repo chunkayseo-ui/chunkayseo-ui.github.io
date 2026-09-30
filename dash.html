@@ -247,9 +247,11 @@ async function whoIs(email){
    Stored in staff_profiles/<login uid>. That collection is locked by the database rules so only the person,
    Kay and William can read it. Until those rules are switched on, saving is blocked (the page checks by trying
    to read a record that isn't theirs: if that works, the lock isn't on yet).
-   Deliberately NOT collected: NRIC/FIN number, race, religion — HR keeps those. */
+   NRIC/FIN added 30 Sep 2026 at Kay's request (quick access in an emergency). Shown masked on the managers' card;
+   tap to reveal. Still NOT collected: race, religion. */
 const PROFILE_FIELDS = [
   {k:"fullName", l:"Full name (as per IC / work pass)", req:true},
+  {k:"nric", l:"NRIC / FIN number", req:true, id:true},
   {k:"preferredName", l:"Name we call you"},
   {k:"mobile", l:"Mobile number", type:"tel", req:true},
   {k:"email", l:"Personal email", type:"email"},
@@ -289,7 +291,7 @@ function staffView(p){
     const v = esc(d[x.k] || (x.k === "email" && !f.data ? S.user.email : "") || "");
     const input = x.opts ? `<select data-pf="${x.k}">${x.opts.map(o => `<option ${String(d[x.k] || "") === o ? "selected" : ""}>${o}</option>`).join("")}</select>`
       : x.area ? `<textarea data-pf="${x.k}" rows="2">${v}</textarea>`
-      : `<input data-pf="${x.k}" type="${x.type || "text"}" value="${v}">`;
+      : `<input data-pf="${x.k}" type="${x.type || "text"}" value="${v}"${x.id ? ' autocomplete="off" autocapitalize="characters" placeholder="e.g. S1234567A"' : ""}>`;
     return `<label class="pf-f"><span>${esc(x.l)}${x.req ? ' <b style="color:var(--urgent)">*</b>' : ""}</span>${input}</label>`;
   };
   const photo = f.photo || d.photo;
@@ -311,7 +313,7 @@ function staffView(p){
         <div class="muted" style="font-size:11.5px">Face the camera, plain background, shoulders up.</div></div>
       <div class="pf-grid">${PROFILE_FIELDS.map(field).join("")}</div>
     </div>
-    <p class="muted" style="font-size:12px;margin:8px 0">We don't ask for your NRIC/FIN number, race or religion here — HR already keeps those.</p>
+    <p class="muted" style="font-size:12px;margin:8px 0">🔒 Your NRIC/FIN is only for emergencies. Only you, Kay and William can see it, and it stays hidden on screen until tapped.</p>
     <button class="btn" id="pf-save" ${f.saving || f.locked === false ? "disabled" : ""}>${f.saving ? "Saving…" : "Save my details"}</button>
     <span class="pf-msg ${f.msgCls || ""}">${esc(f.msg || "")}</span>
     ${d.updatedAt ? `<div class="muted" style="font-size:12px;margin-top:6px">Last saved ${esc(new Date(d.updatedAt).toLocaleString("en-SG"))}</div>` : ""}`}
@@ -327,6 +329,8 @@ function staffView(p){
     if(!data.email) data.email = S.user.email;
     const miss = PROFILE_FIELDS.filter(x => x.req && !String(data[x.k] || "").trim()).map(x => x.l.split(" (")[0].split(" —")[0] + (x.k.startsWith("em") ? " (emergency)" : ""));
     if(miss.length){ f.msg = "Please fill in: " + miss.join(", "); f.msgCls = "err"; staffView(p); return; }
+    data.nric = String(data.nric || "").replace(/\s+/g, "").toUpperCase();
+    if(!/^[STFGM]\d{7}[A-Z]$/.test(data.nric)){ f.msg = "NRIC / FIN should look like S1234567A (1 letter, 7 numbers, 1 letter)."; f.msgCls = "err"; staffView(p); return; }
     if(!(await profileLockOn())){ f.locked = false; staffView(p); return; }
     f.saving = true; f.msg = ""; staffView(p);
     const rec = {}; PROFILE_FIELDS.forEach(x => rec[x.k] = String(data[x.k] || "").trim().slice(0, 300));
@@ -991,6 +995,12 @@ function drawWork(){
 
 /* ---- Team & HR ---- */
 
+// NRIC/FIN on the managers' card: masked until tapped, hides again after 20 seconds.
+document.addEventListener("click", e => { const b = e.target.closest && e.target.closest(".sp-id"); if(!b) return;
+  const id = b.dataset.id, masked = "•••••" + id.slice(-4) + " · tap to show";
+  if(b.dataset.shown){ b.textContent = masked; delete b.dataset.shown; return; }
+  b.textContent = id + " · tap to hide"; b.dataset.shown = "1";
+  setTimeout(() => { if(b.dataset.shown){ b.textContent = masked; delete b.dataset.shown; } }, 20000); });
 function staffProfilesHtml(){
   if(!S.profilesLoading && !S.profiles){ S.profilesLoading = true;
     db.collection("staff_profiles").get().then(q => { S.profiles = []; q.forEach(d => { if(d.id !== "lock-check") S.profiles.push(Object.assign({id:d.id}, d.data())); }); S.profilesLoading = false; render(); },
@@ -1002,7 +1012,7 @@ function staffProfilesHtml(){
   return `<div class="sp-list">${S.profiles.sort((a, b) => String(a.person).localeCompare(String(b.person))).map(x => `
     <details class="sp"><summary>${x.photo ? `<img src="${x.photo}" alt="">` : `<span class="sp-nop">${esc(String(x.person || "?")[0])}</span>`}
       <span><b>${esc(x.preferredName || x.person || x.fullName)}</b><br><span class="muted">${esc(x.mobile || "")}</span></span></summary>
-      <div class="sp-body">${row("Full name", x.fullName)}${row("Mobile", x.mobile)}${row("Email", x.email)}${row("Date of birth", x.dob)}${row("Nationality", x.nationality)}${row("Address", x.address)}
+      <div class="sp-body">${row("Full name", x.fullName)}${x.nric ? `<div><span class="muted">NRIC / FIN</span> <button class="btnlink sp-id" data-id="${esc(x.nric)}" type="button">•••••${esc(String(x.nric).slice(-4))} · tap to show</button></div>` : ""}${row("Mobile", x.mobile)}${row("Email", x.email)}${row("Date of birth", x.dob)}${row("Nationality", x.nationality)}${row("Address", x.address)}
         ${row("Emergency", [x.emName, x.emRelation && "(" + x.emRelation + ")", x.emPhone].filter(Boolean).join(" "))}${row("Language", x.language)}${row("Uniform size", x.shirt)}
         <div class="muted" style="font-size:11.5px">Updated ${esc(x.updatedAt ? new Date(x.updatedAt).toLocaleDateString("en-SG") : "–")}</div></div></details>`).join("")}</div>`;
 }
