@@ -106,6 +106,9 @@ td.txt{font-family:"IBM Plex Sans",system-ui,sans-serif;font-size:13px}
 .cal th.today{color:var(--accent);box-shadow:inset 0 -2px 0 var(--accent)}
 .cal .w{color:var(--ok);font-weight:600}
 .cal .m{color:var(--warn);font-weight:600}
+.cal .b{color:var(--travel);font-weight:600;font-size:11px}
+.cal .fo{color:var(--ink-3);font-size:10px}
+.cal td.ot{background:var(--warn-soft);box-shadow:inset 0 0 0 1.5px var(--warn)}
 .cal .lv{font:700 10px/1.4 "Barlow Condensed",sans-serif;border-radius:3px;padding:0 2px}
 .cal .lv.mc{background:var(--urgent-soft);color:var(--urgent)}
 .cal .lv.al{background:var(--travel-soft);color:var(--travel)}
@@ -170,7 +173,7 @@ function calDay(){ const d = new Date(); if(d.getHours() < 4) d.setDate(d.getDat
 const tabNow = () => { const h = (location.hash || "").replace("#", ""); return TABS.some(t => t.id === h) ? h : "today"; };
 
 const S = {user:null, rounds:{}, month:{}, issues:{}, roster:[], leave:{}, versions:{}, cfg:null, team:null,
-           hist:{}, histAt:null, histLoading:false, board:null, boardErr:false, unsubs:[]};
+           hist:{}, histAt:null, histLoading:false, board:null, boardErr:false, boardAct:[], unsubs:[]};
 
 /* ---------------- sign-in ---------------- */
 function loginView(msg, cls){
@@ -233,6 +236,21 @@ async function loadMonth(){
   try{ const s = await db.collection("dosing_rounds").where("date", ">=", from).get(); S.month = {}; s.forEach(d => { S.month[d.id] = Object.assign({id:d.id}, d.data()); }); render(); }catch(e){ console.warn(e); }
   // Weekend dose on a weekday (asked by a technician, OK'd by Kay or William).
   try{ const t = await db.collection("dosing_topups").where("date", ">=", from).get(); S.topups = []; t.forEach(d => S.topups.push(Object.assign({id:d.id}, d.data()))); render(); }catch(e){}
+  loadBoardActivity();
+}
+// Maintenance Board jobs (afternoon lists, Fik's early-morning jobs) are logged per outlet in
+// activity/<outlet>/events {ts, who, action}. The Team calendar counts a day worked from these too.
+const BOARD_OUTLETS = ["CC","DR","Lentor","Tengah","JE","HB","HS","BK","WWW","TPY"];
+async function loadBoardActivity(){
+  const first = parseKey(nightDay().slice(0, 8) + "01").getTime();
+  const outlets = boardLists ? Object.keys(boardLists) : BOARD_OUTLETS, ev = [];
+  await Promise.all(outlets.map(async o => {
+    try{
+      const s = await db.collection("activity").doc(o).collection("events").where("ts", ">=", first).get();
+      s.forEach(d => { const x = d.data(); if(x && x.who && x.ts) ev.push({outlet:o, who:x.who, ts:Number(x.ts), action:x.action}); });
+    }catch(e){ console.warn("board activity", o, e); }
+  }));
+  S.boardAct = ev; render();
 }
 async function loadHistory(){
   if(S.histLoading) return; S.histLoading = true; render();
@@ -409,9 +427,24 @@ function teamData(){
 }
 const leaveType = t => ({mc:"MC", al:"Annual leave", off:"Off", other:"Other"})[t] || t;
 const leaveEntries = () => Object.values(S.leave).filter(e => e && e.date && !e.removed);
-function offOn(day){ return leaveEntries().filter(e => e.date === day).map(e => ({name:e.person, type:leaveType(e.type), code:e.type, note:e.note || ""})); }
+// Fixed weekly off days (Sun = 0 … Sat = 6). Working on one = a swapped off day or OT.
+const OFF_DAYS = {Sharul:[0, 1], William:[2, 3], Guru:[2, 3], Fik:[6, 0]};
+const isFixedOff = (n, day) => (OFF_DAYS[n] || []).includes(parseKey(day).getDay());
+// The Maintenance Board saves whatever name was typed ("GURU", "Shahrul"), so match names loosely.
+const NAME_ALIASES = {shahrul:"Sharul"};
+function canonName(n){
+  const t = String(n || "").trim(), low = t.toLowerCase();
+  if(NAME_ALIASES[low]) return NAME_ALIASES[low];
+  const known = S.roster.concat(Object.keys(OFF_DAYS)).find(r => String(r).toLowerCase() === low);
+  return known || t;
+}
+function offOn(day){
+  const out = leaveEntries().filter(e => e.date === day).map(e => ({name:e.person, type:leaveType(e.type), code:e.type, note:e.note || ""}));
+  Object.keys(OFF_DAYS).forEach(n => { if(isFixedOff(n, day) && !out.some(o => o.name === n)) out.push({name:n, type:"off day", code:"weekly", note:""}); });
+  return out;
+}
 const offToday = () => offOn(calDay());
-const teamNames = () => [...new Set(S.roster.filter(n => !isTest(n)).concat(allRounds().map(r => r.person).filter(Boolean)))];
+const teamNames = () => [...new Set(S.roster.filter(n => !isTest(n)).concat(allRounds().map(r => r.person).filter(Boolean)).map(canonName))];
 function versionRows(){
   const newest = Object.values(S.versions).map(v => v && v.build).filter(Boolean).sort(cmpBuild).pop();
   return {newest, rows:teamNames().map(n => { const v = S.versions[slug(n)] || null; return {n, v, old:!v || cmpBuild(v.build, newest) < 0}; })};
@@ -674,27 +707,45 @@ function drawTeam(){
   const [y, m] = month.split("-").map(Number), nDays = new Date(y, m, 0).getDate();
   const days = []; for(let d = 1; d <= nDays; d++) days.push(month + "-" + pad(d));
   const people = teamNames();
-  // per person per day: worked (night / morning) + hours
-  const work = {};
-  allRounds().filter(r => r.date && r.date.startsWith(month) && (r.stops || []).some(s => s.arriveAt)).forEach(r => {
-    const k = r.person + "|" + r.date, w = work[k] = work[k] || {night:false, morning:false, ms:0};
+  // per person per day: what they worked (night round / morning round / Maintenance Board) + time spans
+  const work = {}, W = (n, day) => work[n + "|" + day] = work[n + "|" + day] || {night:false, morning:false, board:false, jobs:0, outlets:[], spans:[]};
+  allRounds().filter(r => r.date && r.date.startsWith(month) && (r.stops || []).some(s => s.arriveAt || (s.tasks || []).some(t => t.doneAt || t.startedAt))).forEach(r => {
+    const w = W(canonName(r.person), r.date);
     if(r.kind === "vacuum") w.morning = true; else w.night = true;
     const arr = (r.stops || []).map(s => s.arriveAt).filter(Boolean).sort(), dep = (r.stops || []).map(s => s.departAt).filter(Boolean).sort();
-    if(arr.length && dep.length){ const ms = new Date(dep[dep.length - 1]) - new Date(arr[0]); if(ms > 0 && ms < 16 * 36e5) w.ms += ms; }
+    if(arr.length && dep.length){ const a = new Date(arr[0]).getTime(), b = new Date(dep[dep.length - 1]).getTime(); if(b > a && b - a < 16 * 36e5) w.spans.push([a, b]); }
   });
-  const lv = {}; leaveEntries().filter(e => e.date.startsWith(month)).forEach(e => lv[e.person + "|" + e.date] = e.type);
+  // Board jobs: a day counts if someone claimed or finished a job. Before 4am belongs to the day before (night work).
+  const visits = {};
+  S.boardAct.filter(e => e.action === "claimed" || e.action === "done").forEach(e => {
+    const d = new Date(e.ts); if(d.getHours() < 4) d.setDate(d.getDate() - 1);
+    const day = dateKey(d); if(!day.startsWith(month)) return;
+    const n = canonName(e.who), w = W(n, day); w.board = true; if(e.action === "done") w.jobs++;
+    if(!w.outlets.includes(e.outlet)) w.outlets.push(e.outlet);
+    const v = visits[n + "|" + day + "|" + e.outlet] = visits[n + "|" + day + "|" + e.outlet] || {w, a:e.ts, b:e.ts};
+    v.a = Math.min(v.a, e.ts); v.b = Math.max(v.b, e.ts);
+  });
+  Object.values(visits).forEach(v => { if(v.b > v.a && v.b - v.a < 12 * 36e5) v.w.spans.push([v.a, v.b]); });
+  // Hours = time covered by rounds and board visits, overlaps counted once.
+  const spanMs = spans => { let tot = 0, end = -Infinity; spans.slice().sort((x, y) => x[0] - y[0]).forEach(([a, b]) => { if(a > end){ tot += b - a; end = b; } else if(b > end){ tot += b - end; end = b; } }); return tot; };
+  const lv = {}; leaveEntries().filter(e => e.date.startsWith(month)).forEach(e => lv[canonName(e.person) + "|" + e.date] = e.type);
   const calRows = people.map(n => {
-    let nights = 0, mornings = 0, ms = 0, mc = 0, al = 0;
+    let daysWorked = 0, ms = 0, mc = 0, al = 0, offWork = 0;
     const cells = days.map(k => {
-      const w = work[n + "|" + k], l = lv[n + "|" + k], we = [0, 6].includes(parseKey(k).getDay()) ? " we" : "";
-      if(w){ if(w.night) nights++; if(w.morning) mornings++; ms += w.ms; }
+      const w = work[n + "|" + k], l = lv[n + "|" + k], fixedOff = isFixedOff(n, k), we = [0, 6].includes(parseKey(k).getDay()) ? "we" : "";
+      const t = w ? spanMs(w.spans) : 0;
+      if(w){ daysWorked++; ms += t; }
       if(l === "mc") mc++; if(l === "al") al++;
+      const onOff = w && fixedOff && k <= today;          // worked on a weekly off day = swap or OT
+      if(onOff) offWork++;
+      const marks = w ? `${w.night ? '<span class="w">●</span>' : ""}${w.morning ? '<span class="m">☀</span>' : ""}${w.board ? '<span class="b">◆</span>' : ""}` : "";
       const inner = l ? `<span class="lv ${l === "mc" ? "mc" : l === "al" ? "al" : "off"}">${l === "mc" ? "MC" : l === "al" ? "AL" : "OFF"}</span>`
-        : w ? `${w.night ? '<span class="w">●</span>' : ""}${w.morning ? '<span class="m">☀</span>' : ""}` : "";
-      const tip = `${n} · ${shortDate(k)}${w ? " · " + (w.night ? "round" : "") + (w.morning ? (w.night ? " + " : "") + "morning round" : "") + (w.ms ? " · " + mins(w.ms) : "") : ""}${l ? " · " + leaveType(l) : ""}`;
-      return `<td class="${we.trim()}" title="${esc(tip)}">${inner}</td>`;
+        : w ? marks : fixedOff ? '<span class="fo">off</span>' : "";
+      const what = w ? [w.night && "night round", w.morning && "morning round", w.board && `Maintenance Board (${w.jobs} job${w.jobs === 1 ? "" : "s"} done · ${w.outlets.join(", ")})`].filter(Boolean).join(" + ") : "";
+      const tip = `${n} · ${shortDate(k)}${what ? " · " + what : ""}${t ? " · " + mins(t) : ""}${l ? " · " + leaveType(l) : ""}${onOff ? " · worked on off day: swap or OT" : !w && fixedOff && !l ? " · off day" : ""}`;
+      return `<td class="${[we, onOff ? "ot" : ""].filter(Boolean).join(" ")}" title="${esc(tip)}">${inner}</td>`;
     }).join("");
-    return `<tr><td>${esc(n)}</td>${cells}<td>${nights || (mornings ? "" : 0)}${mornings ? ` <span class="m">${nights ? "+" : ""}☀${mornings}</span>` : ""}</td><td>${ms ? Math.round(ms / 36e5) + "h" : "–"}</td><td>${mc || "–"}</td><td>${al || "–"}</td></tr>`;
+    return `<tr><td>${esc(n)}</td>${cells}<td>${daysWorked}</td><td>${ms ? Math.round(ms / 36e5) + "h" : "–"}</td><td>${offWork ? `<span class="chip c-warn">${offWork}</span>` : "–"}</td><td>${mc || "–"}</td><td>${al || "–"}</td></tr>`;
   }).join("");
 
   const upcoming = leaveEntries().filter(e => e.date >= today && e.date <= addDays(today, 21)).sort((a, b) => a.date.localeCompare(b.date));
@@ -719,8 +770,8 @@ function drawTeam(){
 
   return `
   <div class="card" style="margin-bottom:12px"><h2>${esc(new Date(y, m - 1, 1).toLocaleDateString("en-SG", {month:"long", year:"numeric"}))} · who worked which day <small><a href="/tasklists/dosing-round-tracker.html#calendar">Tracker calendar</a></small></h2>
-    <div class="scroll" id="calscroll"><table class="cal"><thead><tr><th>Person</th>${days.map(k => `<th class="${[0, 6].includes(parseKey(k).getDay()) ? "we" : ""}${k === today ? " today" : ""}">${Number(k.slice(8))}<br><span class="muted" style="font-weight:400">${DOW[parseKey(k).getDay()][0]}</span></th>`).join("")}<th>Rounds</th><th>Hours</th><th>MC</th><th>AL</th></tr></thead><tbody>${calRows}</tbody></table></div>
-    <div class="legend"><span><span class="w">●</span> round</span><span><span class="m">☀</span> morning round</span><span><span class="lv mc" style="font:700 10px/1.4 'Barlow Condensed';padding:0 2px;border-radius:3px;background:var(--urgent-soft);color:var(--urgent)">MC</span> MC</span><span>AL annual leave · OFF off day · hover a day for hours</span></div></div>
+    <div class="scroll" id="calscroll"><table class="cal"><thead><tr><th>Person</th>${days.map(k => `<th class="${[0, 6].includes(parseKey(k).getDay()) ? "we" : ""}${k === today ? " today" : ""}">${Number(k.slice(8))}<br><span class="muted" style="font-weight:400">${DOW[parseKey(k).getDay()][0]}</span></th>`).join("")}<th>Days</th><th>Hours</th><th title="Worked on a weekly off day: swap or OT">Off-day work</th><th>MC</th><th>AL</th></tr></thead><tbody>${calRows}</tbody></table></div>
+    <div class="legend"><span><span class="w">●</span> night round</span><span><span class="m">☀</span> morning round</span><span><span class="b">◆</span> Maintenance Board jobs</span><span><span style="background:var(--warn-soft);box-shadow:inset 0 0 0 1.5px var(--warn);padding:0 4px;border-radius:3px">&nbsp;</span> worked on off day (swap or OT)</span><span><span class="fo">off</span> weekly off day</span><span><span class="lv mc" style="font:700 10px/1.4 'Barlow Condensed';padding:0 2px;border-radius:3px;background:var(--urgent-soft);color:var(--urgent)">MC</span> MC</span><span>AL annual leave · OFF off day · hover a day for hours</span></div></div>
   <div class="grid"><div class="stack">
     <div class="card"><h2>Off · today and next 3 weeks</h2>${upHtml}</div>
     <div class="card"><h2>Skill cover <small><a href="/tasklists/dosing-round-tracker.html#team">Team tab</a></small></h2><p class="lead">Skills only one person can do, or with cover gone because someone is off today.</p>${skHtml}</div>
