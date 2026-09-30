@@ -107,6 +107,10 @@ td.txt{font-family:"IBM Plex Sans",system-ui,sans-serif;font-size:13px}
 .cal .w{color:var(--ok);font-weight:600}
 .cal .m{color:var(--warn);font-weight:600}
 .cal .b{color:var(--travel);font-weight:600;font-size:11px}
+table.nd td,table.nd th{text-align:center;white-space:nowrap;padding:5px 6px}
+table.nd td:first-child,table.nd th:first-child{text-align:left}
+table.nd .we{background:var(--surface-2)}
+table.nd .dz{font-size:11.5px;color:var(--ink-2);margin-bottom:2px}
 .cal .fo{color:var(--ink-3);font-size:10px}
 .cal .mw{color:var(--ink-2);font-weight:600}
 .cal td.ot{background:var(--warn-soft);box-shadow:inset 0 0 0 1.5px var(--warn)}
@@ -621,20 +625,29 @@ function drawWater(){
     return `<tr><td>${p}${salt(p)}</td><td>${fcCell(am)}</td><td>${fcCell(pm)}</td><td>${fcCell(ni)}</td><td>${ph ?? "–"}</td><td class="ln">${lnFc}</td><td>${dose}</td></tr>`;
   }).join("");
 
-  const [sat, sun] = lastWeekend();
-  let hits = 0, checked = 0;
+  // Night dose -> next morning FC for the last 7 nights (oldest first). Weekend nights shaded, since
+  // they're the peak; the header counts weekend hits separately. Last night's result waits for this morning's test.
+  const nights = []; for(let i = 7; i >= 1; i--) nights.push(addDays(today, -i));
+  const isWkNight = k => [6, 0].includes(parseKey(k).getDay());   // Sat + Sun nights
+  const tally = {all:[0, 0], wk:[0, 0]};
   const wkRows = POOLS.map(p => {
-    const lr = loadingRow(p, 2); if(lr) return lr;
+    const lr = loadingRow(p, nights.length + 1); if(lr) return lr;
+    let ph = 0, pc = 0;
     const cell = night => {
-      const d = nightDose(p, night), next = poolDay(p, addDays(night, 1)), am = next && num(next.fc && next.fc.morning);
-      if(!d && (am === null || am === undefined)) return `<td class="muted">–</td>`;
-      if(!d) return `<td><span class="muted">no dose</span> → ${fcCell(am)}</td>`;
-      const h = hitMark(am); if(h){ checked++; if(h === "✓") hits++; }
-      return `<td>${esc(d.text)}${d.from === "app" ? ' <span class="src">app</span>' : ""} → ${fcCell(am)} <b style="color:var(--${h === "✓" ? "ok" : "urgent"})">${h || "?"}</b></td>`;
+      const we = isWkNight(night) ? ' class="we"' : "";
+      const d = nightDose(p, night), nextDay = addDays(night, 1), next = poolDay(p, nextDay), am = next && num(next.fc && next.fc.morning);
+      const pending = (am === null || am === undefined) && nextDay === today;
+      if(!d && (am === null || am === undefined)) return `<td${we}><span class="muted">–</span></td>`;
+      if(!d) return `<td${we} title="${esc(p + " · " + shortDate(night) + " night · no dose recorded")}"><div class="dz muted">no dose</div>${fcCell(am)}</td>`;
+      const h = hitMark(am);
+      if(h){ pc++; tally.all[1]++; if(isWkNight(night)) tally.wk[1]++; if(h === "✓"){ ph++; tally.all[0]++; if(isWkNight(night)) tally.wk[0]++; } }
+      const mark = pending ? '<span class="muted" title="Waiting for this morning\'s test">…</span>' : `<b style="color:var(--${h === "✓" ? "ok" : "urgent"})">${h === "✓" ? "✓" : h ? (h === "✗ high" ? "↑" : "↓") : "?"}</b>`;
+      const tip = `${p} · ${shortDate(night)} night: ${d.text}${d.from === "app" ? " (from the tracker)" : ""} → ${shortDate(nextDay)} morning ${am ?? (pending ? "not tested yet" : "no test")}${h ? " · " + (h === "✓" ? "hit target" : h.replace("✗ ", "")) : ""}`;
+      return `<td${we} title="${esc(tip)}"><div class="dz">${esc(d.text)}${d.from === "app" ? ' <span class="src">app</span>' : ""}</div>${fcCell(am)} ${mark}</td>`;
     };
-    return `<tr><td>${p}${salt(p)}</td>${cell(sat)}${cell(sun)}</tr>`;
+    const cells = nights.map(cell).join("");
+    return `<tr><td>${p}${salt(p)}</td>${cells}<td>${pc ? `<b style="color:var(--${ph / pc >= 0.6 ? "ok" : ph / pc >= 0.3 ? "warn" : "urgent"})">${ph}/${pc}</b>` : "–"}</td></tr>`;
   }).join("");
-
   const days = []; for(let i = 6; i >= 0; i--) days.push(addDays(today, -i));
   const trendRows = POOLS.map(p => {
     const lr = loadingRow(p, 7); if(lr) return lr;
@@ -659,14 +672,15 @@ function drawWater(){
       <div class="scroll"><table class="trend"><thead><tr><th>Pool</th>${days.map(k => `<th>${shortDate(k)}</th>`).join("")}</tr></thead><tbody>${trendRows}</tbody></table></div>
       <div class="legend">Rows of red mean the night dose for that pool is too small; rows of amber mean too big.</div></div>
   </div><div class="stack">
-    <div class="card"><h2>Last weekend · did the dose hit ${TARGET_LO}–${TARGET_HI}? <small>${checked ? hits + " of " + checked + " ✓" : ""}</small></h2>
-      <p class="lead">Night dose → next morning FC. Weekends are checked because they're the peak.</p>
-      <div class="scroll"><table><thead><tr><th>Pool</th><th>${shortDate(sat)} night</th><th>${shortDate(sun)} night</th></tr></thead><tbody>${wkRows}</tbody></table></div></div>
     <div class="card"><h2>Weekend dose on weekdays <small>this month · asked when a pool turned cloudy</small></h2>${topupHtml()}</div>
     <div class="card"><h2>Sheet vs tracker <small>last two nights</small></h2>
       <p class="lead">The night report sheet and the tracker should say the same thing. "Check" rows are worth a look; "note" rows are usually harmless.</p>
       ${mmHtml}</div>
-  </div></div>`;
+  </div></div>
+    <div class="card" style="margin-top:12px"><h2>Night dose → next morning · last 7 nights <small>${tally.all[1] ? `all ${tally.all[0]} of ${tally.all[1]} ✓` : ""}${tally.wk[1] ? ` · weekend ${tally.wk[0]} of ${tally.wk[1]} ✓` : ""}</small></h2>
+      <p class="lead">Each box: the night's dose, then the next morning's FC. ✓ = ${TARGET_LO}–${TARGET_HI} · ↓ low · ↑ high · ? no morning test. Shaded = Sat and Sun nights, the peak.</p>
+      <div class="scroll"><table class="nd"><thead><tr><th>Pool</th>${nights.map(k => `<th${isWkNight(k) ? ' class="we"' : ""}>${shortDate(k)}</th>`).join("")}<th>Hit</th></tr></thead><tbody>${wkRows}</tbody></table></div></div>
+  `;
 }
 
 function topupHtml(){
