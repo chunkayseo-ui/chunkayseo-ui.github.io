@@ -263,7 +263,7 @@ const PROFILE_FIELDS = [
   {k:"shirt", l:"Uniform / T-shirt size", opts:["", "S", "M", "L", "XL", "XXL"]},
 ];
 async function profileLockOn(){
-  try{ await db.doc("staff_profiles/__lock_check__").get(); return false; }   // readable -> not locked yet
+  try{ await db.doc("staff_profiles/lock-check").get(); return false; }   // readable -> not locked yet
   catch(e){ return /permission|insufficient/i.test(String(e && (e.code || e.message))); }
 }
 // Portrait: centre-crop to 3:4, 360x480 JPEG, about 30–60 KB, kept inside the record.
@@ -993,7 +993,7 @@ function drawWork(){
 
 function staffProfilesHtml(){
   if(!S.profilesLoading && !S.profiles){ S.profilesLoading = true;
-    db.collection("staff_profiles").get().then(q => { S.profiles = []; q.forEach(d => { if(d.id !== "__lock_check__") S.profiles.push(Object.assign({id:d.id}, d.data())); }); S.profilesLoading = false; render(); },
+    db.collection("staff_profiles").get().then(q => { S.profiles = []; q.forEach(d => { if(d.id !== "lock-check") S.profiles.push(Object.assign({id:d.id}, d.data())); }); S.profilesLoading = false; render(); },
       () => { S.profiles = []; S.profilesLoading = false; S.profilesErr = true; render(); }); }
   if(!S.profiles) return `<div class="empty">Loading…</div>`;
   if(S.profilesErr) return `<div class="empty">Couldn't load the staff details.</div>`;
