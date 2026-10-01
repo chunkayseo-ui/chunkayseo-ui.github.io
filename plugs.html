@@ -1,0 +1,230 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>HF Pools · Smart plugs</title>
+<meta name="robots" content="noindex">
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700&family=IBM+Plex+Mono:wght@400;600&family=IBM+Plex+Sans:wght@400;600&display=swap" rel="stylesheet">
+<style>
+:root{--ground:#EEF3F3;--surface:#fff;--surface-2:#F6F9F9;--line:#C7D6D6;--line-soft:#DCE6E6;--ink:#0A1417;--ink-2:#33474D;--ink-3:#5B7378;
+--accent:#00676F;--accent-soft:#DCEEEE;--ok:#256B4C;--ok-soft:#DDEEE5;--warn:#8A590D;--warn-soft:#F6EAD4;--urgent:#B23A2E;--urgent-soft:#F8DEDA}
+*{box-sizing:border-box}
+body{margin:0;background:var(--ground);color:var(--ink);font:15px/1.45 "IBM Plex Sans",system-ui,sans-serif}
+.wrap{max-width:760px;margin:0 auto;padding:14px 16px 40px}
+header{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:12px}
+h1{font:700 26px/1 "Barlow Condensed",sans-serif;text-transform:uppercase;letter-spacing:.02em;margin:0}
+h1 small{font-size:15px;color:var(--accent);margin-left:6px}
+h2{font:700 15px/1 "Barlow Condensed",sans-serif;text-transform:uppercase;letter-spacing:.06em;color:var(--ink-2);margin:0 0 10px;display:flex;gap:8px;align-items:center}
+h2 small{margin-left:auto;font:400 12px "IBM Plex Sans";text-transform:none;letter-spacing:0;color:var(--ink-3)}
+.me{margin-left:auto;font-size:13px;color:var(--ink-3)}
+.link,.me button{border:0;background:none;color:var(--accent);text-decoration:underline;font:inherit;cursor:pointer;padding:0}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:14px;margin-bottom:12px}
+.note{font-size:13px;color:var(--ink-3)}
+.warnbox{background:var(--warn-soft);color:var(--warn);border-radius:8px;padding:9px 11px;font-size:13.5px;margin-bottom:10px}
+.errbox{background:var(--urgent-soft);color:var(--urgent);border-radius:8px;padding:9px 11px;font-size:13.5px;margin-bottom:10px}
+.plug{border:1px solid var(--line);border-radius:12px;padding:12px;margin-bottom:10px}
+.plug-top{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+.dot{width:14px;height:14px;border-radius:50%;background:var(--line);flex:none}
+.dot.on{background:#2FA35A;box-shadow:0 0 0 4px #2FA35A33}
+.dot.off{background:#9AA9AC}
+.dot.offline{background:var(--urgent)}
+.pname{font-weight:600;font-size:17px}
+.pmeta{font-size:12.5px;color:var(--ink-3);font-family:"IBM Plex Mono",monospace}
+.state{margin-left:auto;font:700 14px "Barlow Condensed",sans-serif;letter-spacing:.06em;text-transform:uppercase;padding:4px 9px;border-radius:6px}
+.state.on{background:var(--ok-soft);color:var(--ok)}
+.state.off{background:var(--surface-2);color:var(--ink-3);border:1px solid var(--line)}
+.state.offline{background:var(--urgent-soft);color:var(--urgent)}
+.btns{display:flex;gap:8px;margin-top:10px}
+.b{flex:1;padding:12px;border-radius:10px;border:2px solid var(--accent);background:var(--surface);color:var(--accent);font:600 15px "IBM Plex Sans";cursor:pointer}
+.b.main{background:var(--accent);color:#fff}
+.b:disabled{opacity:.45;cursor:default}
+.b.sm{flex:none;padding:7px 11px;font-size:13px;border-width:1px}
+.rule{margin-top:10px;padding:9px 11px;border-radius:8px;background:var(--surface-2);font-size:13.5px}
+.rule b.on{color:var(--ok)} .rule b.off{color:var(--ink-2)}
+.rule .why{color:var(--ink-3)}
+.fc{font-family:"IBM Plex Mono",monospace;font-size:12.5px;color:var(--ink-2)}
+form.row,.row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+input,select{font:inherit;padding:8px 10px;border:1px solid var(--line);border-radius:7px;background:var(--surface);min-width:0}
+.log{font-size:13px}
+.log div{display:flex;gap:8px;padding:5px 0;border-top:1px solid var(--line-soft)}
+.log div:first-child{border-top:0}
+.log .t{font-family:"IBM Plex Mono",monospace;color:var(--ink-3);flex:none;width:88px}
+.login{max-width:380px;margin:12vh auto 0}
+.login input{width:100%;margin-top:4px}
+.login label{display:block;font-size:13px;color:var(--ink-3);margin-top:12px}
+.msg{font-size:13px;margin-top:10px;min-height:18px}.msg.err{color:var(--urgent)}.msg.ok{color:var(--ok)}
+</style></head><body>
+<div class="wrap" id="app"><p class="note">Loading…</p></div>
+<script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore-compat.js"></script>
+<script>
+/* HF Pools — smart plug test page (Kay, 1 Oct 2026).
+ * Test the Shelly plugs before they go on the salt chlorinators: see each plug's state, switch it
+ * ON/OFF, and see what the automatic rule WOULD do right now from the pool's real water tests.
+ * Nothing switches by itself on this page — "Apply" is a button you press.
+ * The Shelly key never touches this page: switching goes through Kay's Apps Script (plugs.gs),
+ * which checks the sign-in and keeps the key in its Script Properties.
+ * Plug list + relay address: Firestore dosing_config/plugs. Switch log: plug_log. */
+firebase.initializeApp({
+  apiKey: "AIzaSyANFCZbvRGO9aMRtG9MF_qONO3FL85CzSo", authDomain: "maintenance-board-f931a.firebaseapp.com",
+  projectId: "maintenance-board-f931a", storageBucket: "maintenance-board-f931a.firebasestorage.app",
+  messagingSenderId: "169864970579", appId: "1:169864970579:web:bfb7490d0aebcfed17e1a6"
+});
+const auth = firebase.auth(), db = firebase.firestore();
+const HISTORY_API = "https://script.google.com/macros/s/AKfycbwYJLfkw5lwKnjwqmEtuRiREzbahnf2l63YhmX_7jMR9uqM9MpeqoxeVTTVw5rc76eZ6g/exec";
+const SALT_POOLS = ["BK","Lentor","Tengah","TPY","DR","HS","WWW"];
+/* Rules agreed 27 Sep 2026 (claude/salt-chlorinator-alert.md). One place to change them. */
+const RULES = {
+  onBelow: 1.5,          // morning FC below this -> ON
+  offAtOrAbove: 1.5,     // an afternoon test at/above this -> OFF
+  dosingOffHour: 17,     // night-dosing day: OFF by 5 pm
+  overnightOnHour: 21,   // overnight pools on non-dosing nights: ON at 9 pm
+  noTestHour: 11,        // no morning test by 11 am -> OFF + tell Kay
+  overnightPools: ["Tengah","HS","WWW"],
+  // Night dosing schedule (salt branches only). 0 = Sun.
+  dosing: {0:SALT_POOLS, 1:["Tengah","BK","Lentor"], 2:["WWW","BK","Lentor"], 3:["TPY","Tengah"], 4:["HS","DR"], 5:SALT_POOLS, 6:SALT_POOLS}
+};
+const $ = s => document.querySelector(s);
+const esc = s => String(s == null ? "" : s).replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const pad = n => String(n).padStart(2, "0");
+const sgNow = () => new Date(new Date().toLocaleString("en-US", {timeZone:"Asia/Singapore"}));
+const dayKey = d => d.getFullYear() + "-" + pad(d.getMonth() + 1) + "-" + pad(d.getDate());
+const hhmm = iso => { const d = new Date(iso); return pad(d.getHours()) + ":" + pad(d.getMinutes()); };
+const S = {user:null, cfg:{plugs:[], apiUrl:""}, status:{}, fc:{}, log:[], busy:{}, err:"", note:""};
+
+/* ---------- the rule, worked out from today's tests ---------- */
+function ruleFor(pool){
+  if(!pool) return null;
+  const now = sgNow(), h = now.getHours() + now.getMinutes() / 60, dow = now.getDay(), weekend = dow === 0 || dow === 6;
+  const t = S.fc[pool] || {}, dosingTonight = (RULES.dosing[dow] || []).includes(pool);
+  const m = t.morning, a = t.afternoon;
+  if(dosingTonight && h >= RULES.dosingOffHour) return {on:false, why:`night dosing at ${pool} tonight — OFF from 5 pm`};
+  if(!dosingTonight && h >= RULES.overnightOnHour) return RULES.overnightPools.includes(pool)
+    ? {on:true, why:`no night dosing at ${pool} tonight — runs overnight from 9 pm`} : {on:false, why:`${pool} stays off overnight`};
+  if(weekend && h < RULES.dosingOffHour) return {on:true, why:"weekend — on all day until 5 pm"};
+  if(a !== null && a !== undefined) return a >= RULES.offAtOrAbove ? {on:false, why:`afternoon FC ${a} is ${RULES.offAtOrAbove} or more`} : {on:true, why:`afternoon FC ${a} is still below ${RULES.offAtOrAbove}`};
+  if(m !== null && m !== undefined) return m < RULES.onBelow ? {on:true, why:`morning FC ${m} is below ${RULES.onBelow}`} : {on:false, why:`morning FC ${m} is ${RULES.onBelow} or more`};
+  if(h >= RULES.noTestHour) return {on:false, why:"no morning test by 11 am — OFF, Kay would be told", alert:true};
+  return {on:null, why:"waiting for the morning water test"};
+}
+async function loadFc(pools){
+  const today = dayKey(sgNow());
+  await Promise.all([...new Set(pools.filter(Boolean))].map(async p => {
+    try{
+      const j = await fetch(HISTORY_API + "?pool=" + encodeURIComponent(p) + "&_=" + Date.now()).then(r => r.json());
+      const row = (j[p] || []).find(x => x.date === today) || {};
+      const n = v => (v === null || v === undefined || v === "" || isNaN(Number(v))) ? null : Number(v);
+      S.fc[p] = {morning:n(row.fc && row.fc.morning), afternoon:n(row.fc && row.fc.afternoon), night:n(row.fc && row.fc.night)};
+    }catch(e){ S.fc[p] = {err:true}; }
+  }));
+  render();
+}
+
+/* ---------- talking to the relay ---------- */
+async function relay(payload){
+  if(!S.cfg.apiUrl) throw new Error("Add the Apps Script web app address in Settings first.");
+  const idToken = await auth.currentUser.getIdToken();
+  const ac = new AbortController(), timer = setTimeout(() => ac.abort(), 30000);
+  try{
+    const r = await fetch(S.cfg.apiUrl, {method:"POST", signal:ac.signal, headers:{"Content-Type":"text/plain;charset=utf-8"}, body:JSON.stringify(Object.assign({idToken}, payload))});
+    const j = await r.json().catch(() => null);
+    if(!j) throw new Error("The relay sent something unexpected (HTTP " + r.status + ").");
+    if(!j.ok) throw new Error(j.error || "refused");
+    return j;
+  }catch(e){ throw new Error(e.name === "AbortError" ? "No answer from the relay in 30 s." : e.message); }
+  finally{ clearTimeout(timer); }
+}
+async function refreshStatus(){
+  const ids = S.cfg.plugs.map(p => p.id).filter(Boolean);
+  if(!ids.length || !S.cfg.apiUrl) return;
+  S.loading = true; render();
+  try{ const j = await relay({action:"status", ids}); S.status = {}; (j.devices || []).forEach(d => S.status[d.id] = d); S.err = ""; S.checkedAt = new Date().toISOString(); }
+  catch(e){ S.err = e.message; }
+  S.loading = false; render();
+}
+async function switchPlug(p, on, reason){
+  S.busy[p.id] = true; S.err = ""; render();
+  try{
+    await relay({action:"switch", id:p.id, on});
+    S.status[p.id] = Object.assign({}, S.status[p.id] || {}, {on, online:true});
+    const entry = {at:new Date().toISOString(), by:S.user.email, id:p.id, name:p.name, pool:p.pool || null, on, reason:reason || "manual"};
+    S.log.unshift(entry);
+    db.collection("plug_log").add(entry).catch(() => {});
+    setTimeout(refreshStatus, 2500);   // Shelly allows 1 request a second
+  }catch(e){ S.err = p.name + ": " + e.message; }
+  S.busy[p.id] = false; render();
+}
+
+/* ---------- screens ---------- */
+function plugHtml(p){
+  const st = S.status[p.id], cls = !st ? "" : !st.online ? "offline" : st.on ? "on" : "off";
+  const label = !st ? (S.loading ? "checking…" : "—") : !st.online ? "Offline" : st.on ? "ON" : "OFF";
+  const rule = ruleFor(p.pool), t = p.pool ? S.fc[p.pool] : null;
+  const fcLine = !p.pool ? "" : !t ? `<span class="fc">${esc(p.pool)} · reading tests…</span>`
+    : t.err ? `<span class="fc">${esc(p.pool)} · couldn't read the water tests</span>`
+    : `<span class="fc">${esc(p.pool)} today · morning FC ${t.morning ?? "–"} · afternoon ${t.afternoon ?? "–"} · night ${t.night ?? "–"}</span>`;
+  const differs = rule && rule.on !== null && st && st.online && st.on !== rule.on;
+  return `<div class="plug">
+    <div class="plug-top"><span class="dot ${cls}"></span>
+      <div><div class="pname">${esc(p.name)}</div><div class="pmeta">${esc(p.id)}${st && st.watts !== null && st.watts !== undefined ? ` · ${st.watts} W` : ""}${st && st.volts ? ` · ${st.volts} V` : ""}</div></div>
+      <span class="state ${cls}">${label}</span></div>
+    <div class="btns"><button class="b ${st && !st.on ? "main" : ""}" data-sw="${esc(p.id)}" data-on="1" ${S.busy[p.id] ? "disabled" : ""}>Switch ON</button>
+      <button class="b ${st && st.on ? "main" : ""}" data-sw="${esc(p.id)}" data-on="0" ${S.busy[p.id] ? "disabled" : ""}>Switch OFF</button></div>
+    ${p.pool ? `<div class="rule">${fcLine}<br>Rule says now: ${rule.on === null ? "<b>wait</b>" : `<b class="${rule.on ? "on" : "off"}">${rule.on ? "ON" : "OFF"}</b>`} <span class="why">— ${esc(rule.why)}</span>
+      ${differs ? `<div style="margin-top:6px"><button class="b sm main" data-apply="${esc(p.id)}">Apply: switch ${rule.on ? "ON" : "OFF"}</button></div>` : ""}</div>` : `<div class="note" style="margin-top:8px">Not linked to a pool — manual only.</div>`}
+  </div>`;
+}
+function render(){
+  if(!S.user) return;
+  const plugs = S.cfg.plugs || [];
+  $("#app").innerHTML = `
+  <header><h1>HF Pools <small>Smart plugs</small></h1><span class="me">${esc(S.user.email)} · <button id="out">Sign out</button></span></header>
+  <div class="warnbox">🧪 <b>Test page.</b> Nothing switches by itself — "Rule says" shows what the automatic rule <i>would</i> do from the pool's real water tests; press Apply to try it. Test with a lamp first, not a chlorinator.</div>
+  ${S.err ? `<div class="errbox">${esc(S.err)}</div>` : ""}
+  <div class="card"><h2>Plugs <small>${S.checkedAt ? "checked " + hhmm(S.checkedAt) : ""} · <button class="link" id="refresh">Refresh</button></small></h2>
+    ${plugs.length ? plugs.map(plugHtml).join("") : `<div class="note">No plugs yet — add one below.</div>`}</div>
+  <div class="card"><h2>Add a plug</h2>
+    <form class="row" id="addf"><input id="a-name" placeholder="Name (e.g. Test HS)" required style="flex:1 1 150px">
+      <input id="a-id" placeholder="Device ID (e.g. e4b063a1b2c3)" required style="flex:1 1 170px" autocomplete="off">
+      <select id="a-pool"><option value="">Follow pool…</option>${SALT_POOLS.map(p => `<option>${p}</option>`).join("")}</select>
+      <button class="b sm main">Add</button></form>
+    ${plugs.length ? `<div class="note" style="margin-top:10px">${plugs.map(p => `${esc(p.name)} → ${esc(p.pool || "manual")} <button class="link" data-del="${esc(p.id)}">remove</button>`).join(" · ")}</div>` : ""}
+    <div class="note" style="margin-top:8px">Device ID: Shelly app → the plug → Settings → Device information.</div></div>
+  <div class="card"><h2>Recent switches</h2><div class="log">${S.log.length ? S.log.slice(0, 20).map(l => `<div><span class="t">${new Date(l.at).toLocaleString("en-SG", {day:"numeric", month:"short", hour:"2-digit", minute:"2-digit", hour12:false})}</span><span><b>${esc(l.name)}</b> ${l.on ? "ON" : "OFF"} · ${esc(l.reason)} · ${esc(String(l.by || "").split("@")[0])}</span></div>`).join("") : `<span class="note">Nothing switched yet.</span>`}</div></div>
+  <div class="card"><h2>Settings</h2>
+    <form class="row" id="apif"><input id="api" placeholder="Apps Script web app URL (…/exec)" value="${esc(S.cfg.apiUrl || "")}" style="flex:1 1 300px" autocomplete="off"><button class="b sm main">Save</button></form>
+    <div class="note" style="margin-top:6px">The Shelly key is NOT entered here — it stays in the Apps Script's Script Properties.</div></div>`;
+  $("#out").onclick = () => auth.signOut();
+  $("#refresh").onclick = () => { refreshStatus(); loadFc(plugs.map(p => p.pool)); };
+  document.querySelectorAll("[data-sw]").forEach(b => b.onclick = () => { const p = plugs.find(x => x.id === b.dataset.sw); if(p) switchPlug(p, b.dataset.on === "1", "manual"); });
+  document.querySelectorAll("[data-apply]").forEach(b => b.onclick = () => { const p = plugs.find(x => x.id === b.dataset.apply); const r = p && ruleFor(p.pool); if(p && r && r.on !== null) switchPlug(p, r.on, "rule: " + r.why); });
+  document.querySelectorAll("[data-del]").forEach(b => b.onclick = () => { if(!confirm("Remove this plug from the page? (It stays in your Shelly app.)")) return; saveCfg({plugs: plugs.filter(p => p.id !== b.dataset.del)}); });
+  $("#addf").onsubmit = e => { e.preventDefault();
+    const id = $("#a-id").value.trim().replace(/^shelly[\w-]*-/i, "").toLowerCase(), name = $("#a-name").value.trim(), pool = $("#a-pool").value;
+    if(!/^[0-9a-f]{6,16}$/.test(id)){ S.err = "Device ID should look like e4b063a1b2c3 (letters a–f and numbers)."; render(); return; }
+    if(plugs.some(p => p.id === id)){ S.err = "That plug is already on the list."; render(); return; }
+    saveCfg({plugs: plugs.concat([{id, name, pool}])}); };
+  $("#apif").onsubmit = e => { e.preventDefault(); const u = $("#api").value.trim();
+    if(u && !/^https:\/\/script\.google\.com\/macros\/s\/[\w-]+\/exec$/.test(u)){ S.err = "That doesn't look like an Apps Script web app address (…/exec)."; render(); return; }
+    saveCfg({apiUrl:u}); };
+}
+async function saveCfg(patch){
+  Object.assign(S.cfg, patch); S.err = ""; render();
+  try{ await db.doc("dosing_config/plugs").set(patch, {merge:true}); }catch(e){ S.err = "Couldn't save: " + e.message; render(); }
+  refreshStatus(); loadFc((S.cfg.plugs || []).map(p => p.pool));
+}
+function loginView(msg){
+  $("#app").innerHTML = `<div class="card login"><h1 style="font-size:24px">HF Pools <small>Smart plugs</small></h1>
+    <form id="lf"><label>Email<input id="em" type="email" required autocomplete="username"></label><label>Password<input id="pw" type="password" required autocomplete="current-password"></label>
+    <button class="b main" style="width:100%;margin-top:16px">Sign in</button></form><div class="msg err">${esc(msg || "")}</div></div>`;
+  $("#lf").onsubmit = async e => { e.preventDefault(); try{ await auth.signInWithEmailAndPassword($("#em").value.trim(), $("#pw").value); }catch(err){ loginView("Email or password is not right."); } };
+}
+auth.onAuthStateChanged(async u => {
+  S.user = u; if(!u){ loginView(); return; }
+  render();
+  try{ const d = await db.doc("dosing_config/plugs").get(); if(d.exists) S.cfg = Object.assign({plugs:[], apiUrl:""}, d.data()); }catch(e){}
+  try{ const q = await db.collection("plug_log").orderBy("at", "desc").limit(20).get(); S.log = []; q.forEach(x => S.log.push(x.data())); }catch(e){}
+  render(); refreshStatus(); loadFc((S.cfg.plugs || []).map(p => p.pool));
+  setInterval(() => { if(!document.hidden) render(); }, 60000);   // rule text follows the clock
+});
+</script>
+</body></html>
