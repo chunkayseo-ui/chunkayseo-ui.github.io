@@ -182,12 +182,12 @@ function render(){
   ${S.err ? `<div class="errbox">${esc(S.err)}</div>` : ""}
   <div class="card"><h2>Plugs <small>${S.checkedAt ? "checked " + hhmm(S.checkedAt) : ""} · <button class="link" id="refresh">Refresh</button></small></h2>
     ${plugs.length ? plugs.map(plugHtml).join("") : `<div class="note">No plugs yet — add one below.</div>`}</div>
-  <div class="card"><h2>Add a plug</h2>
-    <form class="row" id="addf"><input id="a-name" placeholder="Name (e.g. Test HS)" required style="flex:1 1 150px">
-      <input id="a-id" placeholder="Device ID (e.g. e4b063a1b2c3)" required style="flex:1 1 170px" autocomplete="off">
-      <select id="a-pool"><option value="">Follow pool…</option>${SALT_POOLS.map(p => `<option>${p}</option>`).join("")}</select>
-      <button class="b sm main">Add</button></form>
-    ${plugs.length ? `<div class="note" style="margin-top:10px">${plugs.map(p => `${esc(p.name)} → ${esc(p.pool || "manual")} <button class="link" data-del="${esc(p.id)}">remove</button>`).join(" · ")}</div>` : ""}
+  ${(() => { const ed = S.editId ? plugs.find(p => p.id === S.editId) : null; return `<div class="card"><h2>${ed ? "Edit " + esc(ed.name) : "Add a plug"}</h2>
+    <form class="row" id="addf"><input id="a-name" placeholder="Name (e.g. Test HS)" required style="flex:1 1 150px" value="${ed ? esc(ed.name) : ""}">
+      <input id="a-id" placeholder="Device ID (e.g. e4b063a1b2c3)" required style="flex:1 1 170px" autocomplete="off" value="${ed ? esc(ed.id) : ""}" ${ed ? "readonly" : ""}>
+      <select id="a-pool"><option value="">Follow pool…</option>${SALT_POOLS.map(p => `<option ${ed && ed.pool === p ? "selected" : ""}>${p}</option>`).join("")}</select>
+      <button class="b sm main">${ed ? "Save" : "Add"}</button>${ed ? ` <button type="button" class="b sm" id="a-cancel">Cancel</button>` : ""}</form>`; })()}
+    ${plugs.length ? `<div class="note" style="margin-top:10px">${plugs.map(p => `${esc(p.name)} → ${esc(p.pool || "manual")} <button class="link" data-edit="${esc(p.id)}">edit</button> <button class="link" data-del="${esc(p.id)}">remove</button>`).join(" · ")}</div>` : ""}
     <div class="note" style="margin-top:8px">Device ID: Shelly app → the plug → Settings → Device information.</div></div>
   <div class="card"><h2>Recent switches</h2><div class="log">${S.log.length ? S.log.slice(0, 20).map(l => `<div><span class="t">${new Date(l.at).toLocaleString("en-SG", {day:"numeric", month:"short", hour:"2-digit", minute:"2-digit", hour12:false})}</span><span><b>${esc(l.name)}</b> ${l.on ? "ON" : "OFF"} · ${esc(l.reason)} · ${esc(String(l.by || "").split("@")[0])}</span></div>`).join("") : `<span class="note">Nothing switched yet.</span>`}</div></div>
   <div class="card"><h2>Settings</h2>
@@ -201,8 +201,11 @@ function render(){
   $("#addf").onsubmit = e => { e.preventDefault();
     const id = $("#a-id").value.trim().replace(/^shelly[\w-]*-/i, "").toLowerCase(), name = $("#a-name").value.trim(), pool = $("#a-pool").value;
     if(!/^[0-9a-f]{6,16}$/.test(id)){ S.err = "Device ID should look like e4b063a1b2c3 (letters a–f and numbers)."; render(); return; }
+    if(S.editId){ const eid = S.editId; S.editId = null; saveCfg({plugs: plugs.map(p => p.id === eid ? Object.assign({}, p, {name, pool}) : p)}); return; }
     if(plugs.some(p => p.id === id)){ S.err = "That plug is already on the list."; render(); return; }
     saveCfg({plugs: plugs.concat([{id, name, pool}])}); };
+  document.querySelectorAll("[data-edit]").forEach(b => b.onclick = () => { S.editId = b.dataset.edit; render(); const n = $("#a-name"); n.focus(); n.select(); });
+  if($("#a-cancel")) $("#a-cancel").onclick = () => { S.editId = null; render(); };
   $("#apif").onsubmit = e => { e.preventDefault(); const u = $("#api").value.trim();
     if(u && !/^https:\/\/script\.google\.com\/macros\/s\/[\w-]+\/exec$/.test(u)){ S.err = "That doesn't look like an Apps Script web app address (…/exec)."; render(); return; }
     saveCfg({apiUrl:u}); };
