@@ -371,6 +371,7 @@ function mcWire(p){
     try{ m.file = await mcFileFrom(f); m.msg = "Photo ready — tap Send my MC."; }catch(e){ m.file = null; m.msg = e.message; m.msgCls = "err"; }
     again(); };
   go.onclick = async () => {
+    if(S.previewing){ m.msg = m.file ? "Preview — here they'd see \"Sent ✓\". Nothing was saved." : "Here they'd be asked to add the photo first."; m.msgCls = m.file ? "ok" : "err"; again(); return; }
     if(!m.file){ m.msg = "Please add the photo of your MC first."; m.msgCls = "err"; again(); return; }
     const days = mcDays(m.from, m.to < m.from ? m.from : m.to);
     if(!days.length){ m.msg = "Check the dates."; m.msgCls = "err"; again(); return; }
@@ -396,6 +397,24 @@ async function loadMyMc(p){
   S.mc.locked = await mcLockOn();
   if(S.person && S.person.role === "staff") staffView(p);
 }
+/* ---- Preview: Kay / William see the staff page exactly as a staff member sees it (hash #staff).
+   Nothing is read from or saved to that person's records. ---- */
+const PREVIEW_NAMES = ["Fik", "Sharul", "Islam"];
+function previewStaff(name){
+  S.previewing = name || "Fik";
+  S.pf = {data:null, loaded:true, locked:true, saving:false, msg:"", photo:null};
+  S.mc = {from:sgToday(), to:sgToday(), note:"", file:null, saving:false, msg:"", list:[], locked:true};
+  staffView({name:S.previewing}); window.scrollTo(0, 0);
+}
+function previewBar(){
+  if(!S.previewing) return "";
+  return `<div class="card" style="max-width:640px;margin:12px auto;background:var(--warn-soft);border-color:var(--warn)">
+    <b>👁 Preview: this is what ${esc(S.previewing)} sees on his phone.</b> Nothing you type here is saved.
+    <div style="margin-top:6px;display:flex;gap:10px;flex-wrap:wrap;align-items:center">See it as: ${PREVIEW_NAMES.map(n => `<button class="btnlink" data-pvname="${n}" ${n === S.previewing ? 'style="font-weight:700;text-decoration:none"' : ""}>${n}</button>`).join("")}
+      <a href="#team" style="margin-left:auto">← Back to my dashboard</a></div>
+    <div class="muted" style="font-size:12.5px;margin-top:6px">Before this page, they sign in at hfpools.com/dash with their email and password. If they never set a password: type the email, tap <b>Forgot password?</b>, open the email and set one.</div></div>`;
+}
+document.addEventListener("click", e => { const b = e.target.closest && e.target.closest("[data-pvname]"); if(b) previewStaff(b.dataset.pvname); });
 function staffView(p){
   S.mc = S.mc || {from:sgToday(), to:sgToday(), note:"", file:null, saving:false, msg:"", list:null, locked:null};
   const f = S.pf = S.pf || {data:null, loaded:false, locked:null, saving:false, msg:"", photo:null};
@@ -410,7 +429,8 @@ function staffView(p){
   const photo = f.photo || d.photo;
   const lockNote = f.locked === false ? `<div class="pf-warn">🔒 Saving is switched off until Kay turns on the privacy lock for this page. You can fill it in, but it won't be saved yet.</div>` : "";
   $("#app").innerHTML = `
-  <header><h1>HF Pools</h1><span class="me">Signed in as ${esc(S.user.email)}<button id="out">Sign out</button></span></header>
+  ${previewBar()}
+  <header><h1>HF Pools</h1><span class="me">Signed in as ${esc(S.previewing ? p.name.toLowerCase() + "@…" : S.user.email)}<button id="out">Sign out</button></span></header>
   <div class="card" style="max-width:640px;margin:16px auto">
     <h2 style="font-size:20px;text-transform:none;letter-spacing:0">Hi ${esc(p.name)} 👋</h2>
     <p class="lead">On MC? Send a photo of your MC below. Please also fill in <b>My details</b>. Your own day, month and leave are coming soon.</p>
@@ -432,7 +452,7 @@ function staffView(p){
     <span class="pf-msg ${f.msgCls || ""}">${esc(f.msg || "")}</span>
     ${d.updatedAt ? `<div class="muted" style="font-size:12px;margin-top:6px">Last saved ${esc(new Date(d.updatedAt).toLocaleString("en-SG"))}</div>` : ""}`}
   </div>`;
-  $("#out").onclick = () => auth.signOut();
+  $("#out").onclick = () => { if(S.previewing){ location.hash = "team"; return; } auth.signOut(); };
   mcWire(p);
   if(!f.loaded) return;
   document.querySelectorAll("[data-pf]").forEach(el => el.oninput = el.onchange = () => { f.data = Object.assign({}, f.data, {[el.dataset.pf]: el.value}); });
@@ -440,6 +460,7 @@ function staffView(p){
     try{ f.photo = await portraitFrom(file); f.data = Object.assign({}, f.data, {photo:f.photo}); f.msg = "Photo ready — tap Save."; f.msgCls = ""; }catch(e){ f.msg = e.message; f.msgCls = "err"; }
     staffView(p); };
   $("#pf-save").onclick = async () => {
+    if(S.previewing){ f.msg = "Preview — nothing was saved."; f.msgCls = "ok"; staffView(p); return; }
     const data = Object.assign({}, f.data);
     if(!data.email) data.email = S.user.email;
     const miss = PROFILE_FIELDS.filter(x => x.req && !String(data[x.k] || "").trim()).map(x => x.l.split(" (")[0].split(" —")[0] + (x.k.startsWith("em") ? " (emergency)" : ""));
@@ -470,8 +491,13 @@ auth.onAuthStateChanged(async u => {
   S.person = await whoIs(u.email);
   if(S.person && S.person.role === "staff"){ loadMyProfile(S.person); return; }
   start();
+  if(location.hash === "#staff") previewStaff("Fik");
 });
-window.addEventListener("hashchange", () => { render(); window.scrollTo(0, 0); });
+window.addEventListener("hashchange", () => {
+  const boss = S.user && !(S.person && S.person.role === "staff");
+  if(boss && location.hash === "#staff"){ previewStaff(S.previewing || "Fik"); return; }
+  if(S.previewing){ S.previewing = null; S.pf = null; S.mc = null; }
+  render(); window.scrollTo(0, 0); });
 
 /* ---------------- data ---------------- */
 function start(){
@@ -835,6 +861,7 @@ function render(){ if(renderQueued) return; renderQueued = true; requestAnimatio
 function draw(){
   if(!S.user) return;
   if(S.person && S.person.role === "staff") return;
+  if(S.previewing) return;
   const tab = tabNow(), now = new Date(), att = attention();
   const badges = {today:att.filter(a => a.lvl === "urg").length};
   const prevCal = $("#calscroll"), calLeft = prevCal ? prevCal.scrollLeft : null;
@@ -1266,8 +1293,8 @@ function drawTeam(){
     <div class="card"><h2>Skill cover <small><a href="/tasklists/dosing-round-tracker.html#team">Team tab</a></small></h2><p class="lead">Skills only one person can do, or with cover gone because someone is off today.</p>${skHtml}</div>
   </div><div class="stack">
     <div class="card"><h2>App version on each phone</h2>${verHtml}</div>
-    <div class="card"><h2>MC sent by staff <small>only you and William · photo opens on View</small></h2>${mcUploadsHtml()}</div>
-    <div class="card"><h2>Staff details <small>from each person's page · only you and William</small></h2>${staffProfilesHtml()}</div>
+    <div class="card"><h2>MC sent by staff <small>only you and William · <a href="#staff">👁 see the staff page</a></small></h2>${mcUploadsHtml()}</div>
+    <div class="card"><h2>Staff details <small>from each person's page · <a href="#staff">👁 see what they see</a></small></h2>${staffProfilesHtml()}</div>
     <div class="card"><h2>Coming later</h2><p class="lead" style="margin:0">Leave applications to approve and the conduct log will sit here once the HR app is built.</p></div>
   </div></div>`;
 }
