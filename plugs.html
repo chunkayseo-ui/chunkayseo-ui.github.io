@@ -19,6 +19,8 @@ h2 small{margin-left:auto;font:400 12px "IBM Plex Sans";text-transform:none;lett
 .card{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:14px;margin-bottom:12px}
 .note{font-size:13px;color:var(--ink-3)}
 .warnbox{background:var(--warn-soft);color:var(--warn);border-radius:8px;padding:9px 11px;font-size:13.5px;margin-bottom:10px}
+.okbox{background:var(--ok-soft);color:var(--ok);border-radius:8px;padding:9px 11px;font-size:13.5px;margin-bottom:10px}
+.okbox .note,.okbox .why{color:var(--ink-2)}
 .errbox{background:var(--urgent-soft);color:var(--urgent);border-radius:8px;padding:9px 11px;font-size:13.5px;margin-bottom:10px}
 .plug{border:1px solid var(--line);border-radius:12px;padding:12px;margin-bottom:10px}
 .plug-top{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
@@ -65,7 +67,8 @@ input,select{font:inherit;padding:8px 10px;border:1px solid var(--line);border-r
 /* HF Pools — smart plug test page (Kay, 1 Oct 2026).
  * Test the Shelly plugs before they go on the salt chlorinators: see each plug's state, switch it
  * ON/OFF, and see what the automatic rule WOULD do right now from the pool's real water tests.
- * Nothing switches by itself on this page — "Apply" is a button you press.
+ * Automatic switching (1 Oct 2026): the plugs Apps Script (plugs.gs autoRun, every 10 min) applies the same
+ * rules when dosing_config/plugs.auto is true and writes autoState; keep ruleFor() here = ruleFor_() there.
  * The Shelly key never touches this page: switching goes through Kay's Apps Script (plugs.gs),
  * which checks the sign-in and keeps the key in its Script Properties.
  * Plug list + relay address: Firestore dosing_config/plugs. Switch log: plug_log. */
@@ -84,6 +87,7 @@ const DEFAULT_RULES = {
   dosingOffHour: 17,     // night-dosing day: OFF by 5 pm
   overnightOnHour: 21,   // overnight pools on non-dosing nights: ON at 9 pm
   noTestHour: 11,        // no morning test by 11 am -> OFF + tell Kay
+  weekendOnHour: 8,      // Sat/Sun: ON from 8 am (not straight after the Fri/Sat night dosing)
   overnightPools: ["Tengah","HS","WWW"],
   // Night dosing schedule (salt branches only). 0 = Sun.
   dosing: {0:SALT_POOLS, 1:["Tengah","BK","Lentor"], 2:["WWW","BK","Lentor"], 3:["TPY","Tengah"], 4:["HS","DR"], 5:SALT_POOLS, 6:SALT_POOLS}
@@ -95,7 +99,8 @@ const RULE_NUMS = [
   {k:"offAtOrAbove", l:"Afternoon FC at or above this → OFF", min:0, max:5, step:0.5, unit:"ppm"},
   {k:"noTestHour", l:"No morning test by → OFF + tell Kay", min:8, max:14, step:1, unit:"h"},
   {k:"dosingOffHour", l:"Night dosing day → OFF from", min:12, max:21, step:1, unit:"h"},
-  {k:"overnightOnHour", l:"Overnight pools → ON at", min:17, max:23, step:1, unit:"h"}];
+  {k:"overnightOnHour", l:"Overnight pools → ON at", min:17, max:23, step:1, unit:"h"},
+  {k:"weekendOnHour", l:"Weekend → ON from", min:5, max:12, step:1, unit:"h"}];
 let RULES = mergeRules(null);
 function mergeRules(saved){
   const r = JSON.parse(JSON.stringify(DEFAULT_RULES));
@@ -123,10 +128,11 @@ function ruleFor(pool){
   if(dosingTonight && h >= RULES.dosingOffHour) return {on:false, why:`night dosing at ${pool} tonight — OFF from ${hr(RULES.dosingOffHour)}`};
   if(!dosingTonight && h >= RULES.overnightOnHour) return RULES.overnightPools.includes(pool)
     ? {on:true, why:`no night dosing at ${pool} tonight — runs overnight from ${hr(RULES.overnightOnHour)}`} : {on:false, why:`${pool} stays off overnight`};
-  if(weekend && h < RULES.dosingOffHour) return {on:true, why:`weekend — on all day until ${hr(RULES.dosingOffHour)}`};
+  if(weekend) return h >= RULES.weekendOnHour ? {on:true, why:`weekend — ON from ${hr(RULES.weekendOnHour)} until ${hr(RULES.dosingOffHour)}`}
+    : {on:null, why:`weekend — ON from ${hr(RULES.weekendOnHour)}`};
   if(a !== null && a !== undefined) return a >= RULES.offAtOrAbove ? {on:false, why:`afternoon FC ${a} is ${RULES.offAtOrAbove} or more`} : {on:true, why:`afternoon FC ${a} is still below ${RULES.offAtOrAbove}`};
   if(m !== null && m !== undefined) return m < RULES.onBelow ? {on:true, why:`morning FC ${m} is below ${RULES.onBelow}`} : {on:false, why:`morning FC ${m} is ${RULES.onBelow} or more`};
-  if(h >= RULES.noTestHour) return {on:false, why:`no morning test by ${hr(RULES.noTestHour)} — OFF, Kay would be told`, alert:true};
+  if(h >= RULES.noTestHour) return {on:false, why:`no morning water test by ${hr(RULES.noTestHour)}`, alert:true};
   return {on:null, why:"waiting for the morning water test"};
 }
 async function loadFc(pools){
@@ -196,6 +202,19 @@ function plugHtml(p){
       ${differs ? `<div style="margin-top:6px"><button class="b sm main" data-apply="${esc(p.id)}">Apply: switch ${rule.on ? "ON" : "OFF"}</button></div>` : ""}</div>` : `<div class="note" style="margin-top:8px">Not linked to a pool — manual only.</div>`}
   </div>`;
 }
+function ago(iso){ if(!iso) return ""; const m = Math.round((Date.now() - new Date(iso)) / 60000); return m < 1 ? "just now" : m < 60 ? m + " min ago" : Math.round(m / 60) + " h ago"; }
+function autoCard(){
+  const on = S.cfg.auto === true, a = S.cfg.autoState || {}, last = a.lastRun, stale = !last || Date.now() - new Date(last) > 25 * 60000;
+  const plugs = (S.cfg.plugs || []).filter(p => p.pool);
+  const rows = plugs.map(p => { const x = (a.plugs || {})[p.id]; if(!x) return "";
+    return `<div><b>${esc(p.name)}</b>: ${x.want === true ? "ON" : x.want === false ? "OFF" : "—"}${x.why ? ` · <span class="why">${esc(x.why)}</span>` : ""}${x.err ? ` · <span style="color:var(--urgent)">${esc(x.err)}</span>` : ""}${x.at ? ` <span class="note">(${hhmm(x.at)})</span>` : ""}</div>`; }).join("");
+  return `<div class="${on ? "okbox" : "warnbox"}" id="autobox">
+    <div class="row"><span>${on ? "🤖 <b>Automatic switching is ON.</b> Every 10 minutes the timer reads the water test sheet and switches the plugs that follow a pool." : "✋ <b>Automatic switching is OFF.</b> Nothing switches by itself — \"Rule says\" shows what it <i>would</i> do; press Apply to do it by hand."}</span>
+    <button class="b sm ${on ? "" : "main"}" id="autotgl" style="margin-left:auto">${on ? "Turn OFF" : "Turn ON"}</button></div>
+    <div class="note" style="margin-top:6px">${last ? `Timer last checked ${ago(last)}${stale ? ` — <b style="color:var(--urgent)">the timer doesn't seem to be running</b>` : ""}.` : "The timer hasn't run yet (run setupTimer in the Apps Script once)."}${a.tg && a.tg !== "ok" ? ` · Telegram: ${esc(a.tg)}` : ""}
+    It only switches when the rule's answer changes, so if you switch a plug by hand it stays until the next new water test or time (5 pm, 9 pm…).</div>
+    ${on && rows ? `<div style="margin-top:6px;font-size:13px">${rows}</div>` : ""}</div>`;
+}
 function rulesCard(){
   const R = RULES, days = ["Sun","Mon","Tue","Wed","Thu","Fri","Sat"], order = [1,2,3,4,5,6,0], today = sgNow().getDay();
   const changed = RULE_NUMS.some(f => R[f.k] !== DEFAULT_RULES[f.k]) || R.overnightPools.join() !== DEFAULT_RULES.overnightPools.join();
@@ -212,7 +231,7 @@ function rulesCard(){
       <li><b>Weekday morning test:</b> FC below ${R.onBelow} → <b>ON</b>. ${R.onBelow} or more → <b>OFF</b>.</li>
       <li><b>Afternoon test:</b> FC ${R.offAtOrAbove} or more → <b>OFF</b>. Still below ${R.offAtOrAbove} → stays <b>ON</b>.</li>
       <li><b>No morning test by ${hr(R.noTestHour)}:</b> <b>OFF</b>, and Kay is told — no guessing.</li>
-      <li><b>Weekend (Sat, Sun):</b> <b>ON</b> all day until ${hr(R.dosingOffHour)}.</li>
+      <li><b>Weekend (Sat, Sun):</b> <b>ON</b> from ${hr(R.weekendOnHour)} until ${hr(R.dosingOffHour)} — the water tests don't change it.</li>
       <li><b>Night dosing day:</b> <b>OFF</b> from ${hr(R.dosingOffHour)}, so the chlorinator is off before dosing.</li>
       <li><b>No dosing tonight:</b> ${R.overnightPools.length ? esc(R.overnightPools.join(", ")) + ` <b>ON</b> at ${hr(R.overnightOnHour)}, overnight` : "no pool runs overnight"}${stay.length ? `; ${esc(stay.join(", "))} stay <b>OFF</b>` : ""}. Next morning the morning test decides again.</li>
     </ol>
@@ -224,7 +243,7 @@ function render(){
   const plugs = S.cfg.plugs || [];
   $("#app").innerHTML = `
   <header><h1>HF Pools <small>Smart plugs</small></h1><span class="me">${esc(S.user.email)} · <button id="out">Sign out</button></span></header>
-  <div class="warnbox">🧪 <b>Test page.</b> Nothing switches by itself — "Rule says" shows what the automatic rule <i>would</i> do from the pool's real water tests; press Apply to try it. Test with a lamp first, not a chlorinator.</div>
+  ${autoCard()}
   ${S.err ? `<div class="errbox">${esc(S.err)}</div>` : ""}
   <div class="card"><h2>Plugs <small>${S.checkedAt ? "checked " + hhmm(S.checkedAt) : ""} · <button class="link" id="refresh">Refresh</button></small></h2>
     ${plugs.length ? plugs.map(plugHtml).join("") : `<div class="note">No plugs yet — add one below.</div>`}</div>
@@ -241,7 +260,7 @@ function render(){
     <form class="row" id="apif"><input id="api" placeholder="Apps Script web app URL (…/exec)" value="${esc(S.cfg.apiUrl || "")}" style="flex:1 1 300px" autocomplete="off"><button class="b sm main">Save</button></form>
     <div class="note" style="margin-top:6px">The Shelly key is NOT entered here — it stays in the Apps Script's Script Properties.</div></div>`;
   $("#out").onclick = () => auth.signOut();
-  $("#refresh").onclick = () => { refreshStatus(); loadFc(plugs.map(p => p.pool)); };
+  $("#refresh").onclick = async () => { try{ const d = await db.doc("dosing_config/plugs").get(); if(d.exists){ S.cfg = Object.assign({plugs:[], apiUrl:""}, d.data()); RULES = mergeRules(S.cfg.rules); } }catch(e){} render(); refreshStatus(); loadFc((S.cfg.plugs || []).map(p => p.pool)); };
   document.querySelectorAll("[data-sw]").forEach(b => b.onclick = () => { const p = plugs.find(x => x.id === b.dataset.sw); if(p) switchPlug(p, b.dataset.on === "1", "manual"); });
   document.querySelectorAll("[data-apply]").forEach(b => b.onclick = () => { const p = plugs.find(x => x.id === b.dataset.apply); const r = p && ruleFor(p.pool); if(p && r && r.on !== null) switchPlug(p, r.on, "rule: " + r.why); });
   document.querySelectorAll("[data-del]").forEach(b => b.onclick = () => { if(!confirm("Remove this plug from the page? (It stays in your Shelly app.)")) return; saveCfg({plugs: plugs.filter(p => p.id !== b.dataset.del)}); });
@@ -253,6 +272,9 @@ function render(){
     saveCfg({plugs: plugs.concat([{id, name, pool}])}); };
   document.querySelectorAll("[data-edit]").forEach(b => b.onclick = () => { S.editId = b.dataset.edit; render(); const n = $("#a-name"); n.focus(); n.select(); });
   if($("#a-cancel")) $("#a-cancel").onclick = () => { S.editId = null; render(); };
+  $("#autotgl").onclick = () => { const on = S.cfg.auto === true;
+    if(!confirm(on ? "Turn OFF automatic switching? The plugs stay as they are now." : "Turn ON automatic switching? The timer will switch the plugs that follow a pool (" + plugs.filter(p => p.pool).map(p => p.name).join(", ") + ") by the rules, starting within 10 minutes.")) return;
+    saveCfg({auto: !on, autoBy: S.user.email, autoAt: new Date().toISOString()}); };
   if($("#r-edit")) $("#r-edit").onclick = () => { S.editRules = true; render(); };
   if($("#r-cancel")) $("#r-cancel").onclick = () => { S.editRules = false; render(); };
   if($("#r-reset")) $("#r-reset").onclick = () => { if(!confirm("Go back to the original rules?")) return; S.editRules = false; RULES = mergeRules(null); saveCfg({rules: firebase.firestore.FieldValue.delete()}); };
