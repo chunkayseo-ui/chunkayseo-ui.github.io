@@ -162,12 +162,12 @@ async function relay(payload){
   }catch(e){ throw new Error(e.name === "AbortError" ? "No answer from the relay in 30 s." : e.message); }
   finally{ clearTimeout(timer); }
 }
-async function refreshStatus(){
+async function refreshStatus(retry){
   const ids = S.cfg.plugs.map(p => p.id).filter(Boolean);
   if(!ids.length || !S.cfg.apiUrl) return;
   S.loading = true; bgRender();
   try{ const j = await relay({action:"status", ids}); S.status = {}; (j.devices || []).forEach(d => S.status[d.id] = d); S.err = ""; S.checkedAt = new Date().toISOString(); }
-  catch(e){ S.err = e.message; }
+  catch(e){ if(!retry){ S.loading = false; setTimeout(() => refreshStatus(true), 3000); return; } S.err = "Couldn't reach the plugs: " + e.message + " — press Refresh."; }   // one quiet retry first
   S.loading = false; bgRender();
 }
 async function switchPlug(p, on, reason){
