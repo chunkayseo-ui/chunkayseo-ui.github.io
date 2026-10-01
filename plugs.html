@@ -124,6 +124,7 @@ const S = {user:null, cfg:{plugs:[], apiUrl:""}, status:{}, fc:{}, log:[], busy:
 function ruleFor(pool){
   if(!pool) return null;
   const now = sgNow(), h = now.getHours() + now.getMinutes() / 60, dow = now.getDay(), weekend = dow === 0 || dow === 6;
+  if(S.fc[pool] && S.fc[pool].err) return {on:null, why:"couldn't read the water tests yet — wait a minute or press Refresh"};
   const t = S.fc[pool] || {}, dosingTonight = (RULES.dosing[dow] || []).includes(pool);
   const m = t.morning, a = t.afternoon;
   if(dosingTonight && h >= RULES.dosingOffHour) return {on:false, why:`night dosing at ${pool} tonight — OFF from ${hr(RULES.dosingOffHour)}`};
@@ -143,7 +144,7 @@ async function loadFc(pools){
       const row = (j[p] || []).find(x => x.date === today) || {};
       const n = v => (v === null || v === undefined || v === "" || isNaN(Number(v))) ? null : Number(v);
       S.fc[p] = {morning:n(row.fc && row.fc.morning), afternoon:n(row.fc && row.fc.afternoon), night:n(row.fc && row.fc.night)};
-    }catch(e){ if(!S.fc[p]) S.fc[p] = {err:true}; }   // keep the last good reading if one read fails
+    }catch(e){ if(!S.fc[p] || S.fc[p].err) S.fc[p] = {err:true}; }   // keep the last good reading if one read fails
   }));
   bgRender();
 }
@@ -190,7 +191,7 @@ function plugHtml(p){
   const rule = ruleFor(p.pool), t = p.pool ? S.fc[p.pool] : null;
   const fcLine = !p.pool ? "" : !t ? `<span class="fc">${esc(p.pool)} · reading tests…</span>`
     : t.err ? `<span class="fc">${esc(p.pool)} · couldn't read the water tests</span>`
-    : `<span class="fc">${esc(p.pool)} today · morning FC ${t.morning ?? "–"} · afternoon ${t.afternoon ?? "–"} · night ${t.night ?? "–"}</span>`;
+    : `<span class="fc">${esc(p.pool)} today · morning FC ${t.morning ?? "–"} · afternoon ${t.afternoon ?? "–"} · night ${t.night ?? "–"}${t.src === "timer" ? ` <span class="note">(sheet read by the timer ${hhmm(t.at)})</span>` : ""}</span>`;
   const differs = rule && rule.on !== null && st && st.online && st.on !== rule.on;
   return `<div class="plug">
     <div class="plug-top"><span class="dot ${cls}"></span>
@@ -262,7 +263,7 @@ function render(){
     <form class="row" id="apif"><input id="api" placeholder="Apps Script web app URL (…/exec)" value="${esc(S.cfg.apiUrl || "")}" style="flex:1 1 300px" autocomplete="off"><button class="b sm main">Save</button></form>
     <div class="note" style="margin-top:6px">The Shelly key is NOT entered here — it stays in the Apps Script's Script Properties.</div></div>`;
   $("#out").onclick = () => auth.signOut();
-  $("#refresh").onclick = async () => { try{ const d = await db.doc("dosing_config/plugs").get(); if(d.exists){ S.cfg = Object.assign({plugs:[], apiUrl:""}, d.data()); RULES = mergeRules(S.cfg.rules); } }catch(e){} render(); refreshStatus(); loadFc((S.cfg.plugs || []).map(p => p.pool)); };
+  $("#refresh").onclick = async () => { try{ const d = await db.doc("dosing_config/plugs").get(); if(d.exists){ S.cfg = Object.assign({plugs:[], apiUrl:""}, d.data()); RULES = mergeRules(S.cfg.rules); } }catch(e){} render(); refreshStatus(); loadFcNeeded(); };
   document.querySelectorAll("[data-sw]").forEach(b => b.onclick = () => { const p = plugs.find(x => x.id === b.dataset.sw); if(p) switchPlug(p, b.dataset.on === "1", "manual"); });
   document.querySelectorAll("[data-apply]").forEach(b => b.onclick = () => { const p = plugs.find(x => x.id === b.dataset.apply); const r = p && ruleFor(p.pool); if(p && r && r.on !== null) switchPlug(p, r.on, "rule: " + r.why); });
   document.querySelectorAll("[data-del]").forEach(b => b.onclick = () => { if(!confirm("Remove this plug from the page? (It stays in your Shelly app.)")) return; saveCfg({plugs: plugs.filter(p => p.id !== b.dataset.del)}); });
@@ -298,6 +299,15 @@ async function loadLog(){ try{ const q = await db.collection("plug_log").orderBy
  *  - every minute the rule text follows the clock; every 3 minutes the water tests are re-read. */
 function editing(){ const a = document.activeElement; return S.editRules || S.editId || (a && /^(INPUT|SELECT|TEXTAREA)$/.test(a.tagName) && $("#app").contains(a)); }
 function bgRender(){ if(!editing()) render(); }
+/* The timer reads the sheet every run and leaves today's numbers in autoState.tests. When those are fresh the page
+ * uses them (same numbers the timer acted on) and only reads the sheet itself for pools the timer isn't covering. */
+function timerTests(){
+  const a = S.cfg.autoState || {}, T = a.tests || {}, today = dayKey(sgNow()), fresh = a.lastRun && Date.now() - new Date(a.lastRun) < 20 * 60000;
+  const covered = new Set();
+  if(S.cfg.auto === true && fresh) Object.keys(T).forEach(pool => { const x = T[pool]; if(x && x.date === today){ S.fc[pool] = {morning:x.morning, afternoon:x.afternoon, night:x.night ?? null, src:"timer", at:x.at}; covered.add(pool); } });
+  return covered;
+}
+function loadFcNeeded(){ const c = timerTests(); const need = (S.cfg.plugs || []).map(p => p.pool).filter(p => p && !c.has(p)); if(need.length) return loadFc(need); bgRender(); }
 let autoSig = null, fcAt = 0;
 function autoSigOf(){ const pl = (S.cfg.autoState || {}).plugs || {}; return JSON.stringify(Object.keys(pl).sort().map(k => [k, pl[k] && pl[k].at, pl[k] && pl[k].done, pl[k] && pl[k].err])); }
 function watchCfg(){
@@ -305,19 +315,20 @@ function watchCfg(){
     if(!d.exists) return;
     S.cfg = Object.assign({plugs:[], apiUrl:""}, d.data()); RULES = mergeRules(S.cfg.rules);
     const sig = autoSigOf(), changed = autoSig !== null && sig !== autoSig; autoSig = sig;
-    if(changed && !document.hidden){ loadLog().then(bgRender); setTimeout(refreshStatus, 1200); loadFc((S.cfg.plugs || []).map(p => p.pool)); fcAt = Date.now(); }
+    timerTests();
+    if(changed && !document.hidden){ loadLog().then(bgRender); setTimeout(refreshStatus, 1200); loadFcNeeded(); fcAt = Date.now(); }
     bgRender();
   }, () => {});
 }
 function liveTick(){
   if(document.hidden || !S.user) return;
-  if(Date.now() - fcAt > 3 * 60000){ fcAt = Date.now(); loadFc((S.cfg.plugs || []).map(p => p.pool)); }
+  if(Date.now() - fcAt > 3 * 60000){ fcAt = Date.now(); loadFcNeeded(); }
   bgRender();
 }
 async function saveCfg(patch){
   Object.keys(patch).forEach(k => { if(k === "rules" && !(patch.rules && patch.rules.onBelow !== undefined)) delete S.cfg.rules; else S.cfg[k] = patch[k]; }); S.err = ""; render();
   try{ await db.doc("dosing_config/plugs").set(patch, {merge:true}); }catch(e){ S.err = "Couldn't save: " + e.message; render(); }
-  refreshStatus(); loadFc((S.cfg.plugs || []).map(p => p.pool));
+  refreshStatus(); loadFcNeeded();
 }
 function loginView(msg){
   $("#app").innerHTML = `<div class="card login"><h1 style="font-size:24px">HF Pools <small>Smart plugs</small></h1>
@@ -330,7 +341,7 @@ auth.onAuthStateChanged(async u => {
   render();
   try{ const d = await db.doc("dosing_config/plugs").get(); if(d.exists) S.cfg = Object.assign({plugs:[], apiUrl:""}, d.data()); RULES = mergeRules(S.cfg.rules); }catch(e){}
   await loadLog();
-  render(); refreshStatus(); loadFc((S.cfg.plugs || []).map(p => p.pool)); fcAt = Date.now();
+  render(); refreshStatus(); loadFcNeeded(); fcAt = Date.now();
   autoSig = autoSigOf(); watchCfg();
   setInterval(liveTick, 60000);
   document.addEventListener("visibilitychange", () => { if(!document.hidden && S.user){ refreshStatus(); loadLog().then(bgRender); fcAt = 0; liveTick(); } });
