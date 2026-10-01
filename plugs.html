@@ -43,6 +43,11 @@ h2 small{margin-left:auto;font:400 12px "IBM Plex Sans";text-transform:none;lett
 .fc{font-family:"IBM Plex Mono",monospace;font-size:12.5px;color:var(--ink-2)}
 form.row,.row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
 input,select{font:inherit;padding:8px 10px;border:1px solid var(--line);border-radius:7px;background:var(--surface);min-width:0}
+.rules{font-size:14px;margin:0;padding-left:18px}.rules li{margin:4px 0}
+.rgrid{display:grid;grid-template-columns:1fr auto;gap:8px 10px;align-items:center;font-size:14px}
+.rgrid input{width:70px;text-align:right}
+.chips{display:flex;gap:6px;flex-wrap:wrap}.chips label{border:1px solid var(--line);border-radius:7px;padding:5px 9px;font-size:13px}
+.dtab{border-collapse:collapse;font-size:13px;margin-top:6px;width:100%}.dtab td{padding:4px 6px;border-top:1px solid var(--line-soft)}.dtab td:first-child{width:46px;color:var(--ink-3);font-family:"IBM Plex Mono",monospace}
 .log{font-size:13px}
 .log div{display:flex;gap:8px;padding:5px 0;border-top:1px solid var(--line-soft)}
 .log div:first-child{border-top:0}
@@ -73,7 +78,7 @@ const auth = firebase.auth(), db = firebase.firestore();
 const HISTORY_API = "https://script.google.com/macros/s/AKfycbwYJLfkw5lwKnjwqmEtuRiREzbahnf2l63YhmX_7jMR9uqM9MpeqoxeVTTVw5rc76eZ6g/exec";
 const SALT_POOLS = ["BK","Lentor","Tengah","TPY","DR","HS","WWW"];
 /* Rules agreed 27 Sep 2026 (claude/salt-chlorinator-alert.md). One place to change them. */
-const RULES = {
+const DEFAULT_RULES = {
   onBelow: 1.5,          // morning FC below this -> ON
   offAtOrAbove: 1.5,     // an afternoon test at/above this -> OFF
   dosingOffHour: 17,     // night-dosing day: OFF by 5 pm
@@ -83,6 +88,24 @@ const RULES = {
   // Night dosing schedule (salt branches only). 0 = Sun.
   dosing: {0:SALT_POOLS, 1:["Tengah","BK","Lentor"], 2:["WWW","BK","Lentor"], 3:["TPY","Tengah"], 4:["HS","DR"], 5:SALT_POOLS, 6:SALT_POOLS}
 };
+/* Kay can change the numbers + overnight pools on the page (saved in dosing_config/plugs.rules).
+ * The night dosing schedule stays the team's fixed schedule. */
+const RULE_NUMS = [
+  {k:"onBelow", l:"Morning FC below this → ON", min:0, max:5, step:0.5, unit:"ppm"},
+  {k:"offAtOrAbove", l:"Afternoon FC at or above this → OFF", min:0, max:5, step:0.5, unit:"ppm"},
+  {k:"noTestHour", l:"No morning test by → OFF + tell Kay", min:8, max:14, step:1, unit:"h"},
+  {k:"dosingOffHour", l:"Night dosing day → OFF from", min:12, max:21, step:1, unit:"h"},
+  {k:"overnightOnHour", l:"Overnight pools → ON at", min:17, max:23, step:1, unit:"h"}];
+let RULES = mergeRules(null);
+function mergeRules(saved){
+  const r = JSON.parse(JSON.stringify(DEFAULT_RULES));
+  if(saved && typeof saved === "object"){
+    RULE_NUMS.forEach(f => { const v = Number(saved[f.k]); if(saved[f.k] !== undefined && isFinite(v) && v >= f.min && v <= f.max) r[f.k] = v; });
+    if(Array.isArray(saved.overnightPools)) r.overnightPools = saved.overnightPools.filter(p => SALT_POOLS.includes(p));
+  }
+  return r;
+}
+const hr = h => { const x = Math.floor(h), m = Math.round((h - x) * 60), ap = x >= 12 ? "pm" : "am", h12 = x % 12 || 12; return h12 + (m ? ":" + String(m).padStart(2, "0") : "") + " " + ap; };
 const $ = s => document.querySelector(s);
 const esc = s => String(s == null ? "" : s).replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 const pad = n => String(n).padStart(2, "0");
@@ -97,13 +120,13 @@ function ruleFor(pool){
   const now = sgNow(), h = now.getHours() + now.getMinutes() / 60, dow = now.getDay(), weekend = dow === 0 || dow === 6;
   const t = S.fc[pool] || {}, dosingTonight = (RULES.dosing[dow] || []).includes(pool);
   const m = t.morning, a = t.afternoon;
-  if(dosingTonight && h >= RULES.dosingOffHour) return {on:false, why:`night dosing at ${pool} tonight — OFF from 5 pm`};
+  if(dosingTonight && h >= RULES.dosingOffHour) return {on:false, why:`night dosing at ${pool} tonight — OFF from ${hr(RULES.dosingOffHour)}`};
   if(!dosingTonight && h >= RULES.overnightOnHour) return RULES.overnightPools.includes(pool)
-    ? {on:true, why:`no night dosing at ${pool} tonight — runs overnight from 9 pm`} : {on:false, why:`${pool} stays off overnight`};
-  if(weekend && h < RULES.dosingOffHour) return {on:true, why:"weekend — on all day until 5 pm"};
+    ? {on:true, why:`no night dosing at ${pool} tonight — runs overnight from ${hr(RULES.overnightOnHour)}`} : {on:false, why:`${pool} stays off overnight`};
+  if(weekend && h < RULES.dosingOffHour) return {on:true, why:`weekend — on all day until ${hr(RULES.dosingOffHour)}`};
   if(a !== null && a !== undefined) return a >= RULES.offAtOrAbove ? {on:false, why:`afternoon FC ${a} is ${RULES.offAtOrAbove} or more`} : {on:true, why:`afternoon FC ${a} is still below ${RULES.offAtOrAbove}`};
   if(m !== null && m !== undefined) return m < RULES.onBelow ? {on:true, why:`morning FC ${m} is below ${RULES.onBelow}`} : {on:false, why:`morning FC ${m} is ${RULES.onBelow} or more`};
-  if(h >= RULES.noTestHour) return {on:false, why:"no morning test by 11 am — OFF, Kay would be told", alert:true};
+  if(h >= RULES.noTestHour) return {on:false, why:`no morning test by ${hr(RULES.noTestHour)} — OFF, Kay would be told`, alert:true};
   return {on:null, why:"waiting for the morning water test"};
 }
 async function loadFc(pools){
@@ -173,6 +196,29 @@ function plugHtml(p){
       ${differs ? `<div style="margin-top:6px"><button class="b sm main" data-apply="${esc(p.id)}">Apply: switch ${rule.on ? "ON" : "OFF"}</button></div>` : ""}</div>` : `<div class="note" style="margin-top:8px">Not linked to a pool — manual only.</div>`}
   </div>`;
 }
+function rulesCard(){
+  const R = RULES, days = ["Sun","Mon","Tue","Wed","Thu","Fri","Sat"], order = [1,2,3,4,5,6,0], today = sgNow().getDay();
+  const changed = RULE_NUMS.some(f => R[f.k] !== DEFAULT_RULES[f.k]) || R.overnightPools.join() !== DEFAULT_RULES.overnightPools.join();
+  const stay = SALT_POOLS.filter(p => !R.overnightPools.includes(p));
+  const sched = `<table class="dtab">${order.map(d => `<tr${d === today ? ' style="font-weight:600"' : ""}><td>${days[d]}</td><td>${(R.dosing[d] || []).length === SALT_POOLS.length ? "All salt pools" : esc((R.dosing[d] || []).join(", "))}</td></tr>`).join("")}</table>`;
+  if(S.editRules) return `<div class="card"><h2>Edit the rules</h2>
+    <form id="rulef"><div class="rgrid">${RULE_NUMS.map(f => `<label for="r-${f.k}">${f.l}</label><span><input id="r-${f.k}" type="number" min="${f.min}" max="${f.max}" step="${f.step}" value="${R[f.k]}" required> <span class="note">${f.unit === "h" ? ":00" : f.unit}</span></span>`).join("")}</div>
+    <div style="margin:12px 0 6px;font-size:14px">Run overnight on nights with no dosing:</div>
+    <div class="chips">${SALT_POOLS.map(p => `<label><input type="checkbox" value="${p}" ${R.overnightPools.includes(p) ? "checked" : ""}> ${p}</label>`).join("")}</div>
+    <div class="note" style="margin-top:8px">Hours use the 24-hour clock (17 = 5 pm). The night dosing days follow the team schedule and aren't changed here.</div>
+    <div class="row" style="margin-top:12px"><button class="b sm main">Save rules</button><button type="button" class="b sm" id="r-cancel">Cancel</button>${changed ? `<button type="button" class="link" id="r-reset" style="margin-left:auto">Back to the original rules</button>` : ""}</div></form></div>`;
+  return `<div class="card"><h2>The rules <small>${changed ? "changed by you · " : ""}<button class="link" id="r-edit">Edit</button></small></h2>
+    <ol class="rules">
+      <li><b>Weekday morning test:</b> FC below ${R.onBelow} → <b>ON</b>. ${R.onBelow} or more → <b>OFF</b>.</li>
+      <li><b>Afternoon test:</b> FC ${R.offAtOrAbove} or more → <b>OFF</b>. Still below ${R.offAtOrAbove} → stays <b>ON</b>.</li>
+      <li><b>No morning test by ${hr(R.noTestHour)}:</b> <b>OFF</b>, and Kay is told — no guessing.</li>
+      <li><b>Weekend (Sat, Sun):</b> <b>ON</b> all day until ${hr(R.dosingOffHour)}.</li>
+      <li><b>Night dosing day:</b> <b>OFF</b> from ${hr(R.dosingOffHour)}, so the chlorinator is off before dosing.</li>
+      <li><b>No dosing tonight:</b> ${R.overnightPools.length ? esc(R.overnightPools.join(", ")) + ` <b>ON</b> at ${hr(R.overnightOnHour)}, overnight` : "no pool runs overnight"}${stay.length ? `; ${esc(stay.join(", "))} stay <b>OFF</b>` : ""}. Next morning the morning test decides again.</li>
+    </ol>
+    <div style="margin-top:10px;font-size:13px;color:var(--ink-2)">Night dosing days (salt pools)</div>${sched}
+    <div class="note" style="margin-top:8px">Checked from the top: night-time rules first, then weekend, then the afternoon test, then the morning test.</div></div>`;
+}
 function render(){
   if(!S.user) return;
   const plugs = S.cfg.plugs || [];
@@ -189,6 +235,7 @@ function render(){
       <button class="b sm main">${ed ? "Save" : "Add"}</button>${ed ? ` <button type="button" class="b sm" id="a-cancel">Cancel</button>` : ""}</form>`; })()}
     ${plugs.length ? `<div class="note" style="margin-top:10px">${plugs.map(p => `${esc(p.name)} → ${esc(p.pool || "manual")} <button class="link" data-edit="${esc(p.id)}">edit</button> <button class="link" data-del="${esc(p.id)}">remove</button>`).join(" · ")}</div>` : ""}
     <div class="note" style="margin-top:8px">Device ID: Shelly app → the plug → Settings → Device information.</div></div>
+  ${rulesCard()}
   <div class="card"><h2>Recent switches</h2><div class="log">${S.log.length ? S.log.slice(0, 20).map(l => `<div><span class="t">${new Date(l.at).toLocaleString("en-SG", {day:"numeric", month:"short", hour:"2-digit", minute:"2-digit", hour12:false})}</span><span><b>${esc(l.name)}</b> ${l.on ? "ON" : "OFF"} · ${esc(l.reason)} · ${esc(String(l.by || "").split("@")[0])}</span></div>`).join("") : `<span class="note">Nothing switched yet.</span>`}</div></div>
   <div class="card"><h2>Settings</h2>
     <form class="row" id="apif"><input id="api" placeholder="Apps Script web app URL (…/exec)" value="${esc(S.cfg.apiUrl || "")}" style="flex:1 1 300px" autocomplete="off"><button class="b sm main">Save</button></form>
@@ -206,12 +253,20 @@ function render(){
     saveCfg({plugs: plugs.concat([{id, name, pool}])}); };
   document.querySelectorAll("[data-edit]").forEach(b => b.onclick = () => { S.editId = b.dataset.edit; render(); const n = $("#a-name"); n.focus(); n.select(); });
   if($("#a-cancel")) $("#a-cancel").onclick = () => { S.editId = null; render(); };
+  if($("#r-edit")) $("#r-edit").onclick = () => { S.editRules = true; render(); };
+  if($("#r-cancel")) $("#r-cancel").onclick = () => { S.editRules = false; render(); };
+  if($("#r-reset")) $("#r-reset").onclick = () => { if(!confirm("Go back to the original rules?")) return; S.editRules = false; RULES = mergeRules(null); saveCfg({rules: firebase.firestore.FieldValue.delete()}); };
+  if($("#rulef")) $("#rulef").onsubmit = e => { e.preventDefault();
+    const out = {}; for(const f of RULE_NUMS){ const v = Number($("#r-" + f.k).value); if(!isFinite(v) || v < f.min || v > f.max){ S.err = f.l + ": use a number from " + f.min + " to " + f.max + "."; render(); return; } out[f.k] = v; }
+    out.overnightPools = [...document.querySelectorAll("#rulef .chips input:checked")].map(x => x.value);
+    out.changedBy = S.user.email; out.changedAt = new Date().toISOString();
+    S.editRules = false; RULES = mergeRules(out); saveCfg({rules: out}); };
   $("#apif").onsubmit = e => { e.preventDefault(); const u = $("#api").value.trim();
     if(u && !/^https:\/\/script\.google\.com\/macros\/s\/[\w-]+\/exec$/.test(u)){ S.err = "That doesn't look like an Apps Script web app address (…/exec)."; render(); return; }
     saveCfg({apiUrl:u}); };
 }
 async function saveCfg(patch){
-  Object.assign(S.cfg, patch); S.err = ""; render();
+  Object.keys(patch).forEach(k => { if(k === "rules" && !(patch.rules && patch.rules.onBelow !== undefined)) delete S.cfg.rules; else S.cfg[k] = patch[k]; }); S.err = ""; render();
   try{ await db.doc("dosing_config/plugs").set(patch, {merge:true}); }catch(e){ S.err = "Couldn't save: " + e.message; render(); }
   refreshStatus(); loadFc((S.cfg.plugs || []).map(p => p.pool));
 }
@@ -224,7 +279,7 @@ function loginView(msg){
 auth.onAuthStateChanged(async u => {
   S.user = u; if(!u){ loginView(); return; }
   render();
-  try{ const d = await db.doc("dosing_config/plugs").get(); if(d.exists) S.cfg = Object.assign({plugs:[], apiUrl:""}, d.data()); }catch(e){}
+  try{ const d = await db.doc("dosing_config/plugs").get(); if(d.exists) S.cfg = Object.assign({plugs:[], apiUrl:""}, d.data()); RULES = mergeRules(S.cfg.rules); }catch(e){}
   try{ const q = await db.collection("plug_log").orderBy("at", "desc").limit(20).get(); S.log = []; q.forEach(x => S.log.push(x.data())); }catch(e){}
   render(); refreshStatus(); loadFc((S.cfg.plugs || []).map(p => p.pool));
   setInterval(() => { if(!document.hidden) render(); }, 60000);   // rule text follows the clock
