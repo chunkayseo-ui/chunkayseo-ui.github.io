@@ -143,9 +143,9 @@ async function loadFc(pools){
       const row = (j[p] || []).find(x => x.date === today) || {};
       const n = v => (v === null || v === undefined || v === "" || isNaN(Number(v))) ? null : Number(v);
       S.fc[p] = {morning:n(row.fc && row.fc.morning), afternoon:n(row.fc && row.fc.afternoon), night:n(row.fc && row.fc.night)};
-    }catch(e){ S.fc[p] = {err:true}; }
+    }catch(e){ if(!S.fc[p]) S.fc[p] = {err:true}; }   // keep the last good reading if one read fails
   }));
-  render();
+  bgRender();
 }
 
 /* ---------- talking to the relay ---------- */
@@ -165,10 +165,10 @@ async function relay(payload){
 async function refreshStatus(){
   const ids = S.cfg.plugs.map(p => p.id).filter(Boolean);
   if(!ids.length || !S.cfg.apiUrl) return;
-  S.loading = true; render();
+  S.loading = true; bgRender();
   try{ const j = await relay({action:"status", ids}); S.status = {}; (j.devices || []).forEach(d => S.status[d.id] = d); S.err = ""; S.checkedAt = new Date().toISOString(); }
   catch(e){ S.err = e.message; }
-  S.loading = false; render();
+  S.loading = false; bgRender();
 }
 async function switchPlug(p, on, reason){
   S.busy[p.id] = true; S.err = ""; render();
@@ -214,7 +214,7 @@ function autoCard(){
     <div class="row"><span>${on ? `🤖 <b>Automatic switching is ON.</b> Every ${a.every === 1 ? "minute" : "5 minutes"} from ${hr(win.start)} to ${hr(win.end)} the timer reads the water test sheet and switches the plugs that follow a pool. It sleeps at night.${a.every === 1 && a.testUntil ? ` <b>Test mode</b> until ${hhmm(a.testUntil)}, then back to every 5 minutes.` : ""}` : "✋ <b>Automatic switching is OFF.</b> Nothing switches by itself — \"Rule says\" shows what it <i>would</i> do; press Apply to do it by hand."}</span>
     <button class="b sm ${on ? "" : "main"}" id="autotgl" style="margin-left:auto">${on ? "Turn OFF" : "Turn ON"}</button></div>
     <div class="note" style="margin-top:6px">${last ? (night ? `Timer is asleep for the night — next check at ${hr(win.start)}.` : `Timer last checked ${ago(last)}${stale ? ` — <b style="color:var(--urgent)">the timer doesn't seem to be running</b>` : ""}.`) : "The timer hasn't run yet (run setupTimer in the Apps Script once)."}${a.tg && a.tg !== "ok" ? ` · Telegram: ${esc(a.tg)}` : ""}
-    It only switches when the rule's answer changes, so if you switch a plug by hand it stays until the next new water test or time (5 pm, 7:30 pm…). This page updates by itself every minute.</div>
+    It only switches when the rule's answer changes, so if you switch a plug by hand it stays until the next new water test or time (5 pm, 7:30 pm…). This page updates by itself.</div>
     ${on && rows ? `<div style="margin-top:6px;font-size:13px">${rows}</div>` : ""}</div>`;
 }
 function rulesCard(){
@@ -292,16 +292,27 @@ function render(){
 async function loadLog(){ try{ const q = await db.collection("plug_log").orderBy("at", "desc").limit(20).get(); S.log = []; q.forEach(x => S.log.push(x.data())); }catch(e){} }
 /* Every minute while the page is open: re-read the config (1 small read). If the timer has switched a plug
  * since the page last asked the plugs, ask them again and reload the switch list. */
-async function liveTick(){
+/* Live updates while the page is open:
+ *  - the config doc is watched (onSnapshot): the timer writes it every run, so a switch it makes shows within seconds;
+ *    when its per-plug record changes, the plugs, the switch list and the water tests are read again;
+ *  - every minute the rule text follows the clock; every 3 minutes the water tests are re-read. */
+function editing(){ const a = document.activeElement; return S.editRules || S.editId || (a && /^(INPUT|SELECT|TEXTAREA)$/.test(a.tagName) && $("#app").contains(a)); }
+function bgRender(){ if(!editing()) render(); }
+let autoSig = null, fcAt = 0;
+function autoSigOf(){ const pl = (S.cfg.autoState || {}).plugs || {}; return JSON.stringify(Object.keys(pl).sort().map(k => [k, pl[k] && pl[k].at, pl[k] && pl[k].done, pl[k] && pl[k].err])); }
+function watchCfg(){
+  db.doc("dosing_config/plugs").onSnapshot(d => {
+    if(!d.exists) return;
+    S.cfg = Object.assign({plugs:[], apiUrl:""}, d.data()); RULES = mergeRules(S.cfg.rules);
+    const sig = autoSigOf(), changed = autoSig !== null && sig !== autoSig; autoSig = sig;
+    if(changed && !document.hidden){ loadLog().then(bgRender); setTimeout(refreshStatus, 1200); loadFc((S.cfg.plugs || []).map(p => p.pool)); fcAt = Date.now(); }
+    bgRender();
+  }, () => {});
+}
+function liveTick(){
   if(document.hidden || !S.user) return;
-  try{
-    const d = await db.doc("dosing_config/plugs").get();
-    if(d.exists){ S.cfg = Object.assign({plugs:[], apiUrl:""}, d.data()); RULES = mergeRules(S.cfg.rules); }
-    const plugs = (S.cfg.autoState || {}).plugs || {};
-    const newest = Object.values(plugs).map(x => x && x.done && !x.already ? x.at : "").filter(Boolean).sort().pop();
-    if(newest && (!S.checkedAt || newest > S.checkedAt)){ await loadLog(); render(); refreshStatus(); return; }
-  }catch(e){}
-  render();
+  if(Date.now() - fcAt > 3 * 60000){ fcAt = Date.now(); loadFc((S.cfg.plugs || []).map(p => p.pool)); }
+  bgRender();
 }
 async function saveCfg(patch){
   Object.keys(patch).forEach(k => { if(k === "rules" && !(patch.rules && patch.rules.onBelow !== undefined)) delete S.cfg.rules; else S.cfg[k] = patch[k]; }); S.err = ""; render();
@@ -319,8 +330,10 @@ auth.onAuthStateChanged(async u => {
   render();
   try{ const d = await db.doc("dosing_config/plugs").get(); if(d.exists) S.cfg = Object.assign({plugs:[], apiUrl:""}, d.data()); RULES = mergeRules(S.cfg.rules); }catch(e){}
   await loadLog();
-  render(); refreshStatus(); loadFc((S.cfg.plugs || []).map(p => p.pool));
-  setInterval(liveTick, 60000);   // rule text follows the clock; picks up the timer's switches
+  render(); refreshStatus(); loadFc((S.cfg.plugs || []).map(p => p.pool)); fcAt = Date.now();
+  autoSig = autoSigOf(); watchCfg();
+  setInterval(liveTick, 60000);
+  document.addEventListener("visibilitychange", () => { if(!document.hidden && S.user){ refreshStatus(); loadLog().then(bgRender); fcAt = 0; liveTick(); } });
 });
 </script>
 </body></html>
