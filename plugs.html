@@ -214,7 +214,7 @@ function autoCard(){
     <div class="row"><span>${on ? `🤖 <b>Automatic switching is ON.</b> Every ${a.every === 1 ? "minute" : "5 minutes"} from ${hr(win.start)} to ${hr(win.end)} the timer reads the water test sheet and switches the plugs that follow a pool. It sleeps at night.${a.every === 1 && a.testUntil ? ` <b>Test mode</b> until ${hhmm(a.testUntil)}, then back to every 5 minutes.` : ""}` : "✋ <b>Automatic switching is OFF.</b> Nothing switches by itself — \"Rule says\" shows what it <i>would</i> do; press Apply to do it by hand."}</span>
     <button class="b sm ${on ? "" : "main"}" id="autotgl" style="margin-left:auto">${on ? "Turn OFF" : "Turn ON"}</button></div>
     <div class="note" style="margin-top:6px">${last ? (night ? `Timer is asleep for the night — next check at ${hr(win.start)}.` : `Timer last checked ${ago(last)}${stale ? ` — <b style="color:var(--urgent)">the timer doesn't seem to be running</b>` : ""}.`) : "The timer hasn't run yet (run setupTimer in the Apps Script once)."}${a.tg && a.tg !== "ok" ? ` · Telegram: ${esc(a.tg)}` : ""}
-    It only switches when the rule's answer changes, so if you switch a plug by hand it stays until the next new water test or time (5 pm, 9 pm…).</div>
+    It only switches when the rule's answer changes, so if you switch a plug by hand it stays until the next new water test or time (5 pm, 7:30 pm…). This page updates by itself every minute.</div>
     ${on && rows ? `<div style="margin-top:6px;font-size:13px">${rows}</div>` : ""}</div>`;
 }
 function rulesCard(){
@@ -289,6 +289,20 @@ function render(){
     if(u && !/^https:\/\/script\.google\.com\/macros\/s\/[\w-]+\/exec$/.test(u)){ S.err = "That doesn't look like an Apps Script web app address (…/exec)."; render(); return; }
     saveCfg({apiUrl:u}); };
 }
+async function loadLog(){ try{ const q = await db.collection("plug_log").orderBy("at", "desc").limit(20).get(); S.log = []; q.forEach(x => S.log.push(x.data())); }catch(e){} }
+/* Every minute while the page is open: re-read the config (1 small read). If the timer has switched a plug
+ * since the page last asked the plugs, ask them again and reload the switch list. */
+async function liveTick(){
+  if(document.hidden || !S.user) return;
+  try{
+    const d = await db.doc("dosing_config/plugs").get();
+    if(d.exists){ S.cfg = Object.assign({plugs:[], apiUrl:""}, d.data()); RULES = mergeRules(S.cfg.rules); }
+    const plugs = (S.cfg.autoState || {}).plugs || {};
+    const newest = Object.values(plugs).map(x => x && x.done && !x.already ? x.at : "").filter(Boolean).sort().pop();
+    if(newest && (!S.checkedAt || newest > S.checkedAt)){ await loadLog(); render(); refreshStatus(); return; }
+  }catch(e){}
+  render();
+}
 async function saveCfg(patch){
   Object.keys(patch).forEach(k => { if(k === "rules" && !(patch.rules && patch.rules.onBelow !== undefined)) delete S.cfg.rules; else S.cfg[k] = patch[k]; }); S.err = ""; render();
   try{ await db.doc("dosing_config/plugs").set(patch, {merge:true}); }catch(e){ S.err = "Couldn't save: " + e.message; render(); }
@@ -304,9 +318,9 @@ auth.onAuthStateChanged(async u => {
   S.user = u; if(!u){ loginView(); return; }
   render();
   try{ const d = await db.doc("dosing_config/plugs").get(); if(d.exists) S.cfg = Object.assign({plugs:[], apiUrl:""}, d.data()); RULES = mergeRules(S.cfg.rules); }catch(e){}
-  try{ const q = await db.collection("plug_log").orderBy("at", "desc").limit(20).get(); S.log = []; q.forEach(x => S.log.push(x.data())); }catch(e){}
+  await loadLog();
   render(); refreshStatus(); loadFc((S.cfg.plugs || []).map(p => p.pool));
-  setInterval(() => { if(!document.hidden) render(); }, 60000);   // rule text follows the clock
+  setInterval(liveTick, 60000);   // rule text follows the clock; picks up the timer's switches
 });
 </script>
 </body></html>
