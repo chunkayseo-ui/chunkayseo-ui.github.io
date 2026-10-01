@@ -204,14 +204,16 @@ function plugHtml(p){
 }
 function ago(iso){ if(!iso) return ""; const m = Math.round((Date.now() - new Date(iso)) / 60000); return m < 1 ? "just now" : m < 60 ? m + " min ago" : Math.round(m / 60) + " h ago"; }
 function autoCard(){
-  const on = S.cfg.auto === true, a = S.cfg.autoState || {}, last = a.lastRun, stale = !last || Date.now() - new Date(last) > 25 * 60000;
+  const on = S.cfg.auto === true, a = S.cfg.autoState || {}, last = a.lastRun, night = a.note === "night";
+  const win = {start: Math.min(6, RULES.weekendOnHour), end: Math.max(RULES.overnightOnHour, RULES.dosingOffHour) + 0.25};   // same as dayWindow_ in plugs.gs
+  const stale = !last || (!night && Date.now() - new Date(last) > 20 * 60000);
   const plugs = (S.cfg.plugs || []).filter(p => p.pool);
   const rows = plugs.map(p => { const x = (a.plugs || {})[p.id]; if(!x) return "";
     return `<div><b>${esc(p.name)}</b>: ${x.want === true ? "ON" : x.want === false ? "OFF" : "—"}${x.why ? ` · <span class="why">${esc(x.why)}</span>` : ""}${x.err ? ` · <span style="color:var(--urgent)">${esc(x.err)}</span>` : ""}${x.at ? ` <span class="note">(${hhmm(x.at)})</span>` : ""}</div>`; }).join("");
   return `<div class="${on ? "okbox" : "warnbox"}" id="autobox">
-    <div class="row"><span>${on ? "🤖 <b>Automatic switching is ON.</b> Every 10 minutes the timer reads the water test sheet and switches the plugs that follow a pool." : "✋ <b>Automatic switching is OFF.</b> Nothing switches by itself — \"Rule says\" shows what it <i>would</i> do; press Apply to do it by hand."}</span>
+    <div class="row"><span>${on ? `🤖 <b>Automatic switching is ON.</b> Every 5 minutes from ${hr(win.start)} to ${hr(win.end)} the timer reads the water test sheet and switches the plugs that follow a pool. It sleeps at night.` : "✋ <b>Automatic switching is OFF.</b> Nothing switches by itself — \"Rule says\" shows what it <i>would</i> do; press Apply to do it by hand."}</span>
     <button class="b sm ${on ? "" : "main"}" id="autotgl" style="margin-left:auto">${on ? "Turn OFF" : "Turn ON"}</button></div>
-    <div class="note" style="margin-top:6px">${last ? `Timer last checked ${ago(last)}${stale ? ` — <b style="color:var(--urgent)">the timer doesn't seem to be running</b>` : ""}.` : "The timer hasn't run yet (run setupTimer in the Apps Script once)."}${a.tg && a.tg !== "ok" ? ` · Telegram: ${esc(a.tg)}` : ""}
+    <div class="note" style="margin-top:6px">${last ? (night ? `Timer is asleep for the night — next check at ${hr(win.start)}.` : `Timer last checked ${ago(last)}${stale ? ` — <b style="color:var(--urgent)">the timer doesn't seem to be running</b>` : ""}.`) : "The timer hasn't run yet (run setupTimer in the Apps Script once)."}${a.tg && a.tg !== "ok" ? ` · Telegram: ${esc(a.tg)}` : ""}
     It only switches when the rule's answer changes, so if you switch a plug by hand it stays until the next new water test or time (5 pm, 9 pm…).</div>
     ${on && rows ? `<div style="margin-top:6px;font-size:13px">${rows}</div>` : ""}</div>`;
 }
@@ -273,7 +275,7 @@ function render(){
   document.querySelectorAll("[data-edit]").forEach(b => b.onclick = () => { S.editId = b.dataset.edit; render(); const n = $("#a-name"); n.focus(); n.select(); });
   if($("#a-cancel")) $("#a-cancel").onclick = () => { S.editId = null; render(); };
   $("#autotgl").onclick = () => { const on = S.cfg.auto === true;
-    if(!confirm(on ? "Turn OFF automatic switching? The plugs stay as they are now." : "Turn ON automatic switching? The timer will switch the plugs that follow a pool (" + plugs.filter(p => p.pool).map(p => p.name).join(", ") + ") by the rules, starting within 10 minutes.")) return;
+    if(!confirm(on ? "Turn OFF automatic switching? The plugs stay as they are now." : "Turn ON automatic switching? The timer will switch the plugs that follow a pool (" + plugs.filter(p => p.pool).map(p => p.name).join(", ") + ") by the rules, starting within 5 minutes (day time).")) return;
     saveCfg({auto: !on, autoBy: S.user.email, autoAt: new Date().toISOString()}); };
   if($("#r-edit")) $("#r-edit").onclick = () => { S.editRules = true; render(); };
   if($("#r-cancel")) $("#r-cancel").onclick = () => { S.editRules = false; render(); };
