@@ -77,6 +77,8 @@ td.txt{font-family:"IBM Plex Sans",system-ui,sans-serif;font-size:13px}
 .trend td:first-child{text-align:left}
 .trend th{text-align:center}
 .trend th:first-child{text-align:left}
+.vactab tr.vrow{cursor:pointer}.vactab tr.vrow:hover td,.vactab tr.vrow.on td{background:var(--surface-2)}.vactab td.vtog{color:var(--accent);width:16px}
+.vactab tr.vdet>td{background:var(--surface-2);padding:8px 6px 12px}.vacsec td,.vacsec th{text-align:center}.vacsec td:first-child,.vacsec th:first-child{text-align:left}
 .legend{font-size:12px;color:var(--ink-3);margin-top:8px;display:flex;gap:12px;flex-wrap:wrap;align-items:center}
 .bars .row{display:grid;grid-template-columns:80px 1fr 40px;gap:8px;align-items:center;font-size:13px;margin:5px 0}
 .bars .bar{height:10px;background:var(--line-soft);border-radius:4px;overflow:hidden}
@@ -746,27 +748,107 @@ function boardWeek(){
             day:BOARD_DAY[k], last, deadline};
   });
 }
-// Manual vacuum times per pool over the last 5 weeks.
-function vacuumTimes(){
-  const by = {};
+// Manual vacuum times per pool over the last 5 weeks, with the time between photo points
+// (Kay, 2 Oct 2026: "the vacuum time spent" -- Fik took 199 min at HB, usual ~105).
+// A run's sections: Prep = first to last S photo; P1, P2 ... = minutes from the photo before it to
+// that photo point; End = last P photo to the last E photo (close-down). Usual = the middle value
+// of the pool's other runs, so a slow run doesn't hide itself.
+const VAC_KEY_ORDER = k => { const m = /^([SPE])(\d+)$/.exec(k); return m ? "SPE".indexOf(m[1]) * 100 + Number(m[2]) : 999; };
+const roundMin = v => v === null ? null : Math.round(v);
+function vacRuns(){
+  const out = [];
   allRounds().forEach(r => (r.stops || []).forEach(s => (s.tasks || []).forEach(t => {
     if(!/vacuum/i.test(t.name || "") || !t.doneAt || !t.vac || num(t.vac.minutes) === null) return;
-    const p = poolOf(t, s).toUpperCase();
-    (by[p] = by[p] || []).push({date:r.date, who:t.claimedBy || r.person, min:num(t.vac.minutes), skipped:Object.keys(t.vac.skipped || {}).length, unfinished:!!t.vac.unfinished, at:t.doneAt});
+    const ph = t.vac.photos || {}, at = k => new Date(ph[k].takenAt).getTime();
+    const keys = Object.keys(ph).filter(k => ph[k] && ph[k].takenAt && !isNaN(at(k))).sort((a, b) => VAC_KEY_ORDER(a) - VAC_KEY_ORDER(b));
+    const Ss = keys.filter(k => k[0] === "S"), Ps = keys.filter(k => k[0] === "P"), Es = keys.filter(k => k[0] === "E");
+    const skipped = Object.keys(t.vac.skipped || {}), sec = {};
+    if(Ss.length > 1) sec.Prep = (at(Ss[Ss.length - 1]) - at(Ss[0])) / 60e3;
+    let prev = Ss.length ? Ss[Ss.length - 1] : null;
+    Ps.forEach(k => { if(prev) sec[k] = (at(k) - at(prev)) / 60e3; prev = k; });
+    if(Es.length && prev && prev[0] === "P") sec.End = (at(Es[Es.length - 1]) - at(prev)) / 60e3;
+    out.push({id:r.id + "|" + (t.id || t.name) + "|" + s.outlet, date:r.date, who:canonName(t.claimedBy || r.person || ""), pool:poolOf(t, s).toUpperCase(),
+      min:num(t.vac.minutes), breakMin:num(t.vac.breakMin) || 0, skipped, unfinished:!!t.vac.unfinished, at:t.doneAt, startedAt:t.startedAt, sec,
+      morning:r.kind === "vacuum" || /__vac$/.test(r.id || "")});
   })));
-  return Object.keys(by).map(p => {
-    const runs = by[p].sort((a, b) => String(b.at).localeCompare(String(a.at)));
-    const full = runs.filter(x => !x.skipped && !x.unfinished).map(x => x.min);
-    const usual = median(full.length ? full : runs.map(x => x.min));
-    const last = runs[0];
-    let flag = "";
-    if(last.unfinished) flag = "left unfinished";
-    else if(last.skipped) flag = last.skipped + " section" + (last.skipped > 1 ? "s" : "") + " skipped";
-    else if(usual && runs.length >= 3 && last.min < usual * 0.6) flag = "much faster than usual";
-    else if(usual && runs.length >= 3 && last.min > usual * 1.5) flag = "much slower than usual";
-    return {p, last, usual, n:runs.length, flag};
-  }).sort((a, b) => (!!b.flag - !!a.flag) || a.p.localeCompare(b.p));
+  return out.sort((a, b) => String(b.at).localeCompare(String(a.at)));
 }
+const vacFull = x => !x.skipped.length && !x.unfinished;
+// Usual for one pool, leaving out one run (the one being judged).
+function vacUsual(runs, skipId){
+  const others = runs.filter(x => x.id !== skipId), full = others.filter(vacFull);
+  const total = median((full.length ? full : others).map(x => x.min));
+  const sec = {};
+  others.forEach(x => Object.keys(x.sec).forEach(k => { const v = x.sec[k];
+    if(v === null || v < 0 || x.skipped.includes(k) || (k === "End" && x.skipped.length)) return; (sec[k] = sec[k] || []).push(v); }));
+  Object.keys(sec).forEach(k => sec[k] = sec[k].length >= 2 ? median(sec[k]) : null);
+  return {total, sec, n:others.length};
+}
+// How a section compares with usual: "slow" (2x and 10+ min over), "bitslow" (1.5x and 5+ over), "quick" (under 40% and 5+ under).
+function vacCmp(v, u){
+  if(v === null || v === undefined || u === null || u === undefined) return "";
+  if(v > u * 2 && v - u >= 10) return "slow";
+  if(v > u * 1.5 && v - u >= 5) return "bitslow";
+  if(v < u * 0.4 && u - v >= 5) return "quick";
+  return "";
+}
+// Sections that took most of the extra time in a run.
+function vacExtra(x, u){
+  return Object.keys(x.sec).map(k => ({k, v:x.sec[k], u:u.sec[k]})).filter(o => o.u !== null && o.u !== undefined && o.v - o.u >= 5 && !x.skipped.includes(o.k))
+    .sort((a, b) => (b.v - b.u) - (a.v - a.u)).slice(0, 3);
+}
+const vacSecName = k => k === "Prep" ? "prep (S photos)" : k === "End" ? "last P → close-down" : "to " + k;
+function vacuumTimes(){
+  const by = {};
+  vacRuns().forEach(x => (by[x.pool] = by[x.pool] || []).push(x));
+  return Object.keys(by).map(p => {
+    const runs = by[p], last = runs[0], u = vacUsual(runs, last.id), usual = u.total;
+    let flag = "", lvl = "warn";
+    if(last.unfinished) flag = "left unfinished";
+    else if(last.skipped.length) flag = last.skipped.length + " section" + (last.skipped.length > 1 ? "s" : "") + " skipped";
+    else if(usual && u.n >= 2 && last.min > usual * 1.5) { flag = "much slower than usual"; lvl = "urg"; }
+    else if(usual && u.n >= 2 && last.min < usual * 0.6) flag = "much faster than usual";
+    return {p, runs, last, usual, n:runs.length, flag, lvl, extra:usual && last.min > usual * 1.3 ? vacExtra(last, u) : []};
+  }).sort((a, b) => (!!b.flag - !!a.flag) || String(b.last.at).localeCompare(String(a.last.at)));
+}
+// Every run for one pool, one row each, with a column per section.
+function vacPoolDetail(v){
+  const cols = [];
+  const add = k => { if(!cols.includes(k)) cols.push(k); };
+  v.runs.forEach(x => { if("Prep" in x.sec) add("Prep"); });
+  v.runs.flatMap(x => Object.keys(x.sec).concat(x.skipped)).filter(k => /^P\d+$/.test(k)).sort((a, b) => VAC_KEY_ORDER(a) - VAC_KEY_ORDER(b)).forEach(add);
+  v.runs.forEach(x => { if("End" in x.sec) add("End"); });
+  const uAll = vacUsual(v.runs, null);
+  const cell = (x, u, k) => {
+    if(x.skipped.includes(k)) return `<td><span class="fc na">skip</span></td>`;
+    const val = x.sec[k];
+    if(val === undefined || val === null) return `<td><span class="fc na">–</span></td>`;
+    if(val < 0) return `<td><span class="fc na" title="photos taken out of order">?</span></td>`;
+    const c = (k === "End" && x.skipped.length) ? "" : vacCmp(val, u.sec[k]);
+    const cls = c === "slow" ? "lo" : c === "bitslow" ? "av" : c === "quick" ? "hi" : "";
+    return `<td><span class="fc ${cls}"${u.sec[k] !== null && u.sec[k] !== undefined ? ` title="usual ${Math.round(u.sec[k])} min"` : ""}>${roundMin(val)}</span></td>`;
+  };
+  const rows = v.runs.map(x => { const u = vacUsual(v.runs, x.id), tc = vacFull(x) ? vacCmp(x.min, u.total) : "";
+    const tcls = tc === "slow" ? "lo" : tc === "bitslow" ? "av" : tc === "quick" ? "hi" : "";
+    const note = [x.unfinished ? "unfinished" : "", x.skipped.length ? x.skipped.length + " skipped" : "", x.breakMin ? "break " + x.breakMin + "m" : "", x.morning ? "☀" : ""].filter(Boolean).join(" · ");
+    return `<tr><td>${esc(shortDate(x.date))}<div class="muted" style="font:400 12px 'IBM Plex Sans'">${esc(x.who)}${x.startedAt ? " · " + esc(clock(x.startedAt)) : ""}</div></td>${cols.map(k => cell(x, u, k)).join("")}<td><span class="fc ${tcls}"><b>${x.min}</b></span>${note ? `<div class="muted" style="font:400 11px 'IBM Plex Sans'">${esc(note)}</div>` : ""}</td></tr>`; }).join("");
+  const usualRow = `<tr><td class="muted">Usual</td>${cols.map(k => `<td class="muted">${uAll.sec[k] !== null && uAll.sec[k] !== undefined ? Math.round(uAll.sec[k]) : "–"}</td>`).join("")}<td class="muted">${uAll.total !== null ? Math.round(uAll.total) : "–"}</td></tr>`;
+  return `<div class="scroll"><table class="trend vacsec"><thead><tr><th>Run</th>${cols.map(k => `<th>${k === "Prep" ? "Prep" : k === "End" ? "End" : "→" + k}</th>`).join("")}<th>Total</th></tr></thead><tbody>${rows}${usualRow}</tbody></table></div>`;
+}
+// Minutes vacuuming per person: this week (from Monday) and the last 5 weeks, with pace vs each pool's usual.
+function vacByPerson(){
+  const runs = vacRuns(), byPool = {};
+  runs.forEach(x => (byPool[x.pool] = byPool[x.pool] || []).push(x));
+  const mon = (() => { const d = parseKey(calDay()); d.setDate(d.getDate() - ((d.getDay() + 6) % 7)); return dateKey(d); })();
+  const ppl = {};
+  runs.forEach(x => { const p = ppl[x.who] = ppl[x.who] || {who:x.who, wk:0, wkN:0, all:0, n:0, ratios:[]};
+    p.all += x.min; p.n++; if(x.date >= mon){ p.wk += x.min; p.wkN++; }
+    if(vacFull(x)){ const u = vacUsual(byPool[x.pool], x.id).total; if(u) p.ratios.push(x.min / u); } });
+  return Object.values(ppl).map(p => Object.assign(p, {pace:p.ratios.length ? median(p.ratios) : null})).sort((a, b) => b.all - a.all);
+}
+const hm = m => m >= 60 ? Math.floor(m / 60) + "h " + String(Math.round(m % 60)).padStart(2, "0") + "m" : Math.round(m) + "m";
+document.addEventListener("click", e => { const b = e.target.closest && e.target.closest("[data-vtpool]"); if(!b) return;
+  S.vtOpen = S.vtOpen === b.dataset.vtpool ? null : b.dataset.vtpool; render(); });
 function teamData(){
   if(S.team && Array.isArray(S.team.skills) && Array.isArray(S.team.staff)) return S.team;
   const skills = DEFAULT_SKILL_NAMES.map((name, i) => ({id:"s" + (i + 1), name}));
@@ -815,6 +897,15 @@ function attention(){
       out.push({lvl:"warn", chip:"? No test", t:`${p} — no morning test yet`, m:`Nothing recorded by ${NO_MORNING_TEST_HOUR}:00.`, href:"#water"});
     }
   });
+  // A vacuum finished today that took much longer than usual for that pool (Fik at HB, 2 Oct: 199 min vs ~105).
+  { const runs = vacRuns(), byPool = {};
+    runs.forEach(x => (byPool[x.pool] = byPool[x.pool] || []).push(x));
+    runs.filter(x => x.date === today || dateKey(new Date(x.at)) === dateKey(new Date())).forEach(x => {
+      const u = vacUsual(byPool[x.pool], x.id);
+      if(!vacFull(x) || !u.total || u.n < 2 || x.min <= u.total * 1.5) return;
+      const ex = vacExtra(x, u);
+      out.push({lvl:"warn", chip:"◷ Slow vacuum", t:`${x.who} · ${x.pool} vacuum took ${hm(x.min)} (usual ${hm(u.total)})`, m:ex.length ? "Extra time: " + ex.map(o => `${vacSecName(o.k)} ${Math.round(o.v)}m (usual ${Math.round(o.u)})`).join(", ") + "." : "Longer than usual.", href:"#work"});
+    }); }
   todaysRounds().forEach(({r, tasks}) => {
     tasks.forEach(t => {
       if(t.startedAt && !t.doneAt && !t.cancelledAt && !t.paused){
@@ -1126,11 +1217,17 @@ function drawWork(){
     : `<div class="empty">✓ No dated jobs waiting.</div>`;
   const cantHtml = cant.length ? cant.map(x => `<div class="att"><span class="chip c-warn">✕</span><div><b>${esc(x.who)} · ${esc(x.t.name)} at ${esc(x.t.outlet)}</b><div class="m">${esc(x.t.cantFinish.reason || "")}${x.t.cantFinish.note ? " — " + esc(x.t.cantFinish.note) : ""}</div></div><a class="go" href="/tasklists/dosing-round-tracker.html#overview">Decide</a></div>`).join("") : `<div class="empty">✓ Nothing today.</div>`;
 
-  const vt = vacuumTimes();
-  const vtHtml = vt.length ? `<div class="scroll"><table><thead><tr><th>Pool</th><th>Last vacuum</th><th>Time</th><th>Usual</th><th></th></tr></thead><tbody>${vt.map(v => `<tr><td>${esc(v.p)}</td><td class="txt">${esc(shortDate(v.last.date))} · ${esc(v.last.who || "")}</td><td>${v.last.min}m</td><td>${v.usual !== null ? Math.round(v.usual) + "m" : "–"}<span class="muted" style="font-size:11px"> ×${v.n}</span></td><td>${v.flag ? `<span class="chip c-warn">${esc(v.flag)}</span>` : ""}</td></tr>`).join("")}</tbody></table></div>
-      <div class="legend">Time = first to last photo, breaks taken off. Usual = the middle of the last 5 weeks' full vacuums (×runs).</div>`
+  const vt = vacuumTimes(), vp = vacByPerson();
+  const vtHtml = vt.length ? `<div class="scroll"><table class="vactab"><thead><tr><th>Pool</th><th>Last vacuum</th><th>Time</th><th>Usual</th><th></th><th></th></tr></thead><tbody>${vt.map(v => {
+      const open = S.vtOpen === v.p;
+      const extra = v.extra.length ? `<div class="muted" style="font:400 12px 'IBM Plex Sans';white-space:normal">Extra time: ${v.extra.map(o => `${esc(vacSecName(o.k))} ${Math.round(o.v)}m (usual ${Math.round(o.u)})`).join(" · ")}</div>` : "";
+      return `<tr class="vrow${open ? " on" : ""}" data-vtpool="${esc(v.p)}"><td>${esc(v.p)}</td><td class="txt">${esc(shortDate(v.last.date))} · ${esc(v.last.who || "")}${v.last.morning ? " ☀" : ""}${extra}</td><td><b>${v.last.min}m</b></td><td>${v.usual !== null ? Math.round(v.usual) + "m" : "–"}<span class="muted" style="font-size:11px"> ×${v.n}</span></td><td>${v.flag ? `<span class="chip ${v.lvl === "urg" ? "c-urg" : "c-warn"}">${esc(v.flag)}</span>` : ""}</td><td class="vtog">${open ? "▾" : "▸"}</td></tr>${open ? `<tr class="vdet"><td colspan="6">${vacPoolDetail(v)}</td></tr>` : ""}`; }).join("")}</tbody></table></div>
+      <div class="legend">Time = first to last photo, breaks taken off. Usual = the middle of that pool's other vacuums in the last 5 weeks. Tap a pool for every run, section by section (minutes from one photo point to the next): <span class="fc lo">slow</span> 2× usual · <span class="fc av">slower</span> 1.5× · <span class="fc hi">quick</span> under 40%.</div>`
     : `<div class="muted">No vacuums with photos in the last 5 weeks.</div>`;
-
+  const vpHtml = vp.length ? `<div class="scroll"><table><thead><tr><th>Who</th><th>This week</th><th>Last 5 weeks</th><th>Pace</th></tr></thead><tbody>${vp.map(p => {
+      const pace = p.pace === null ? "–" : Math.round(p.pace * 100) + "%", pc = p.pace === null ? "na" : p.pace > 1.3 ? "av" : p.pace < 0.7 ? "hi" : "ok";
+      return `<tr><td>${esc(p.who)}</td><td>${p.wkN ? hm(p.wk) + ` <span class="muted" style="font-size:11px">×${p.wkN}</span>` : "–"}</td><td>${hm(p.all)} <span class="muted" style="font-size:11px">×${p.n}</span></td><td><span class="fc ${pc}">${pace}</span></td></tr>`; }).join("")}</tbody></table></div>
+      <div class="legend">Pace = their full vacuums against each pool's usual time (100% = usual, above = slower).</div>` : "";
   const bw = boardWeek();
   let boardHtml;
   if(S.boardErr && !bw) boardHtml = `<div class="muted">Couldn't read the Maintenance Board. <a href="/board">Open it</a></div>`;
@@ -1159,9 +1256,10 @@ function drawWork(){
     <div class="card"><h2>Jobs you added <small>${standing} weekly job${standing === 1 ? "" : "s"} running · <a href="/tasklists/dosing-round-tracker.html#tasks">Task Setting</a></small></h2>${ajHtml}</div>
   </div><div class="stack">
     <div class="card"><h2>Maintenance Board · this week <small><a href="/board">Open the board</a></small></h2>${boardHtml}</div>
-    <div class="card"><h2>Manual vacuum times <small>last 5 weeks</small></h2>${vtHtml}</div>
     <div class="card"><h2>Open issues <small>${iss.length}</small></h2>${issHtml}</div>
-  </div></div>`;
+  </div></div>
+  <div class="card" id="vacuum" style="margin-top:12px"><h2>Manual vacuum time <small>last 5 weeks · tap a pool</small></h2>${vtHtml}
+    ${vpHtml ? `<h2 style="margin-top:16px">Time spent vacuuming <small>per person</small></h2>${vpHtml}` : ""}</div>`;
 }
 
 /* ---- Team & HR ---- */
