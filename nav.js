@@ -24,7 +24,7 @@
     {h:"Pools & water", items:[
       {i:"💧", t:"Dosing Lookup", u:"/dosing-app/index.html", m:["/dosing", "/dosing-app/", "/dosing-app"]},
       {i:"📊", t:"Water Test History", u:"/dosing-app/pool-history.html"},
-      {i:"🗺️", t:"Dosing Route", u:"/dosing-app/dosing-route.html"},
+      {i:"🗺️", t:"Dosing Route", u:"/dosing-app/dosing-route-maps.html", m:["/dosing-app/dosing-route.html"]},
       {i:"🧹", t:"Vacuum Route Maps", u:"/dosing-app/vacuum-route-maps.html"},
       {i:"📅", t:"Class Calendar", u:"/dosing-app/class-calendar.html"},
       {i:"🙋", t:"Expected vs Came", u:"/attendance", m:["/attendance.html"]}
