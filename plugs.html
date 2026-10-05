@@ -186,6 +186,22 @@ function weekDayTxt(d){ if(!d || d.off) return "OFF all day";
   let x = `ON if FC below ${d.below}` + (d.onFrom !== undefined ? `, else ON from ${hr(d.onFrom)}` : "") + `; OFF at ${hr(d.closeAt)}`;
   if(d.nightFrom !== undefined) x += `; night run ${hr(d.nightFrom)}–${hr(d.nightTo)} if FC below ${d.below}`;
   return x; }
+/* Night-dosing lock (Kay, 5 Oct 2026) — the one rule for every outlet. Once the night dose for an outlet is recorded in
+ * the tracker ("Manual Dosing (Chlorine and Acid)"), its salt chlorinator is OFF until 8 am next morning, whatever else
+ * says; switching it ON by hand during the lock is undone at the next check. d = autoState.dosed[POOL] = {at, by},
+ * written by the timer from dosing_rounds. Same code on the page (dosingLock) and in the script (dosingLock_). */
+function lockUntil(at) {
+  var t = Date.parse(at); if (!isFinite(t)) return 0;
+  var x = new Date(t + 8 * 3600000), u = Date.UTC(x.getUTCFullYear(), x.getUTCMonth(), x.getUTCDate(), 8) - 8 * 3600000;
+  return x.getUTCHours() >= 8 ? u + 86400000 : u;
+}
+function dosingLock(pool, d, nowMs) {
+  if (!d || !d.at) return null;
+  var t = Date.parse(d.at);
+  if (!(nowMs >= t && nowMs < lockUntil(d.at))) return null;
+  var x = new Date(t + 8 * 3600000);
+  return { on: false, key: 'dosed', lock: true, why: 'night dosing done at ' + pool + ' at ' + hr(x.getUTCHours() + x.getUTCMinutes() / 60) + (d.by ? ' by ' + d.by : '') + ' — locked OFF until 8 am' };
+}
 function prevTests(pool){ const a = S.cfg.autoState || {}, x = (a.prevTests || {})[pool], y = dayKey(new Date(sgNow().getTime() - 864e5));
   return x && x.date === y ? x : {}; }
 const hr = h => { const x = Math.floor(h), m = Math.round((h - x) * 60), ap = x >= 12 ? "pm" : "am", h12 = x % 12 || 12; return h12 + (m ? ":" + String(m).padStart(2, "0") : "") + " " + ap; };
@@ -199,21 +215,15 @@ const S = {user:null, cfg:{plugs:[], apiUrl:""}, status:{}, fc:{}, log:[], busy:
 
 /* ---------- the rule, worked out from today's tests ---------- */
 function ruleFor(pool){
+  // Kay, 5 Oct 2026: the standard rules are gone. 1) night-dosing lock for every outlet; 2) the outlet's weekly
+  // schedule if it has one; 3) otherwise no rule - the plug is switched by hand only. Same order as ruleFor_ in the script.
   if(!pool) return null;
-  const RULES = poolRules(allRules(), pool);   // this outlet's own rules, else the standard ones
-  const now = sgNow(), h = now.getHours() + now.getMinutes() / 60, dow = now.getDay(), weekend = dow === 0 || dow === 6;
+  const RULES = poolRules(allRules(), pool);
+  const lk = dosingLock(pool, ((S.cfg.autoState || {}).dosed || {})[pool], Date.now()); if(lk) return lk;
+  if(!RULES.week) return {on:null, key:"manual", why:"no schedule — switched by hand only (the night-dosing lock still applies)"};
+  const now = sgNow(), h = now.getHours() + now.getMinutes() / 60, dow = now.getDay();
   if(S.fc[pool] && S.fc[pool].err) return {on:null, why:"couldn't read the water tests yet — wait a minute or press Refresh"};
-  const t = S.fc[pool] || {}, dosingTonight = (RULES.dosing[dow] || []).includes(pool);
-  const m = t.morning, a = t.afternoon;
-  if(RULES.week) return weekRule(pool, RULES.week, RULES.noTestHour, t, prevTests(pool), h, dow);
-  if(dosingTonight && h >= RULES.dosingOffHour) return {on:false, why:`night dosing at ${pool} tonight — OFF from ${hr(RULES.dosingOffHour)}`};
-  if(!dosingTonight && h >= RULES.eveningOffHour && !RULES.overnightPools.includes(pool)) return {on:false, why:`${pool} doesn't run overnight — OFF from ${hr(RULES.eveningOffHour)}`};
-  if(weekend) return h >= RULES.weekendOnHour ? {on:true, why:`weekend — ON from ${hr(RULES.weekendOnHour)} until ${hr(RULES.dosingOffHour)}`}
-    : {on:null, why:`weekend — ON from ${hr(RULES.weekendOnHour)}`};
-  if(a !== null && a !== undefined) return a >= RULES.offAtOrAbove ? {on:false, why:`afternoon FC ${a} is ${RULES.offAtOrAbove} or more`} : {on:true, why:`afternoon FC ${a} is still below ${RULES.offAtOrAbove}`};
-  if(m !== null && m !== undefined) return m < RULES.onBelow ? {on:true, why:`morning FC ${m} is below ${RULES.onBelow}`} : {on:false, why:`morning FC ${m} is ${RULES.onBelow} or more`};
-  if(h >= RULES.noTestHour) return {on:false, why:`no morning water test by ${hr(RULES.noTestHour)}`, alert:true};
-  return {on:null, why:"waiting for the morning water test"};
+  return weekRule(pool, RULES.week, RULES.noTestHour, S.fc[pool] || {}, prevTests(pool), h, dow);
 }
 async function loadFc(pools){
   const today = dayKey(sgNow());
@@ -278,7 +288,7 @@ function plugHtml(p){
       <span class="state ${cls}">${label}</span></div>
     <div class="btns"><button class="b ${st && !st.on ? "main" : ""}" data-sw="${esc(p.id)}" data-on="1" ${S.busy[p.id] ? "disabled" : ""}>Switch ON</button>
       <button class="b ${st && st.on ? "main" : ""}" data-sw="${esc(p.id)}" data-on="0" ${S.busy[p.id] ? "disabled" : ""}>Switch OFF</button></div>
-    ${p.pool ? `<div class="rule">${fcLine}${(RULES.pools || {})[p.pool] ? ` <span class="note">· ${esc(p.pool)} has its own rules</span>` : ""}<br>Rule says now: ${rule.on === null ? "<b>wait</b>" : `<b class="${rule.on ? "on" : "off"}">${rule.on ? "ON" : "OFF"}</b>`} <span class="why">— ${esc(rule.why)}</span>
+    ${p.pool ? `<div class="rule">${fcLine}${((RULES.pools || {})[p.pool] || {}).week ? ` <span class="note">· weekly schedule</span>` : ` <span class="note">· no schedule (hand only)</span>`}<br>Rule says now: ${rule.on === null ? "<b>wait</b>" : `<b class="${rule.on ? "on" : "off"}">${rule.on ? "ON" : "OFF"}</b>`} <span class="why">— ${esc(rule.why)}</span>
       ${(() => { const mo = ((S.cfg.autoState || {}).manual || {})[p.id]; return mo && mo.until ? `<div class="note" style="margin-top:4px">✋ Switched ${mo.on ? "ON" : "OFF"} by hand — the timer puts the rule back at ${hhmm(mo.until)}, unless the rule changes first.</div>` : ""; })()}
       ${differs ? `<div style="margin-top:6px"><button class="b sm main" data-apply="${esc(p.id)}">Apply: switch ${rule.on ? "ON" : "OFF"}</button></div>` : ""}</div>` : `<div class="note" style="margin-top:8px">Not linked to a pool — manual only.</div>`}
   </div>`;
@@ -299,59 +309,29 @@ function autoCard(){
     ${on && rows ? `<div style="margin-top:6px;font-size:13px">${rows}</div>` : ""}</div>`;
 }
 function rulesCard(){
-  const R = RULES, days = ["Sun","Mon","Tue","Wed","Thu","Fri","Sat"], order = [1,2,3,4,5,6,0], today = sgNow().getDay();
-  const changed = RULE_NUMS.some(f => R[f.k] !== DEFAULT_RULES[f.k]) || R.overnightPools.join() !== DEFAULT_RULES.overnightPools.join();
-  const stay = SALT_POOLS.filter(p => !R.overnightPools.includes(p));
-  const sched = `<table class="dtab">${order.map(d => `<tr${d === today ? ' style="font-weight:600"' : ""}><td>${days[d]}</td><td>${(R.dosing[d] || []).length === SALT_POOLS.length ? "All salt pools" : esc((R.dosing[d] || []).join(", "))}</td></tr>`).join("")}</table>`;
-  const own = R.pools || {};
-  const fieldTxt = (k, v) => k === "onBelow" ? `ON below ${v}` : k === "offAtOrAbove" ? `OFF at ${v}+` : k === "noTestHour" ? `no-test cut-off ${hr(v)}` : k === "dosingOffHour" ? `dosing night OFF ${hr(v)}` : k === "eveningOffHour" ? `evening OFF ${hr(v)}` : k === "weekendOnHour" ? `weekend ON ${hr(v)}` : "";
-  const ownTxt = p => { const o = own[p]; if(!o) return `<span class="note">default rules</span>`;
-    const bits = RULE_NUMS.filter(f => o[f.k] !== undefined).map(f => fieldTxt(f.k, o[f.k]));
-    if(typeof o.overnight === "boolean") bits.push(o.overnight ? "can run overnight" : "OFF overnight");
-    if(o.week) return `<b>weekly schedule:</b><div style="margin-top:4px;line-height:1.5">${WEEK_ORDER.map(i => `<div><span style="display:inline-block;width:36px;font-weight:600">${DAY_NAMES[i].slice(0,3)}</span>${esc(weekDayTxt(o.week[i]))}</div>`).join("")}</div>`;
-    return `<b>own rules:</b> ${esc(bits.join(" · "))}`; };
+  const R = RULES, own = R.pools || {}, dosed = (S.cfg.autoState || {}).dosed || {};
   const plugPools = new Set((S.cfg.plugs || []).map(x => x.pool).filter(Boolean));
-  const poolRows = SALT_POOLS.map(p => `<tr><td>${p}${plugPools.has(p) ? ' <span title="has a plug">🔌</span>' : ""}</td><td>${ownTxt(p)}</td><td style="text-align:right"><button class="link" data-pedit="${p}">${own[p] ? "Change" : "Set own"}</button></td></tr>`).join("");
+  const ownTxt = p => { const o = own[p];
+    if(!o || !o.week) return `<span class="note">no schedule — switched by hand only</span>`;
+    return `<b>weekly schedule:</b><div style="margin-top:4px;line-height:1.5">${WEEK_ORDER.map(i => `<div><span style="display:inline-block;width:36px;font-weight:600">${DAY_NAMES[i].slice(0,3)}</span>${esc(weekDayTxt(o.week[i]))}</div>`).join("")}</div>`
+      + (o.noTestHour !== undefined && o.noTestHour !== DEFAULT_RULES.noTestHour ? `<div class="note">No morning test by ${hr(o.noTestHour)} → OFF + alert</div>` : ""); };
+  const lockTxt = p => { const lk = dosingLock(p, dosed[p], Date.now()); return lk ? `<div class="note" style="margin-top:3px">🔒 ${esc(lk.why)}</div>` : ""; };
+  const poolRows = SALT_POOLS.map(p => `<tr><td>${p}${plugPools.has(p) ? ' <span title="has a plug">🔌</span>' : ""}</td><td>${ownTxt(p)}${lockTxt(p)}</td><td style="text-align:right"><button class="link" data-pedit="${p}">${own[p] && own[p].week ? "Change" : "Set schedule"}</button></td></tr>`).join("");
   let poolEdit = "";
   if(S.editPool){ const pool = S.editPool, E = poolRules(R, pool);
+    const W = E.week || WEEK_ORDER.map(() => ({below:2, closeAt:18})), WW = []; W.forEach((d, i) => WW[i] = d);
+    const num = (id, v, lo, hi) => `<input id="${id}" type="number" min="${lo}" max="${hi}" step="0.5" value="${v === undefined || v === null ? "" : v}" style="width:68px">`;
     poolEdit = `<form id="poolf" style="margin-top:12px;border-top:1px solid var(--line);padding-top:12px">
-      <div style="font-weight:600;margin-bottom:8px">${esc(pool)} — its own rules <span class="note">(start from what ${esc(pool)} uses now; only numbers you change are kept for ${esc(pool)})</span></div>
-      <div class="rgrid">${RULE_NUMS.map(f => `<label for="p-${f.k}">${f.l.replace("other pools", esc(pool))}</label><span><input id="p-${f.k}" type="number" min="${f.min}" max="${f.max}" step="${f.step}" value="${E[f.k]}" required> <span class="note">${f.unit === "h" ? "h" : f.unit}</span></span>`).join("")}</div>
-      <label style="display:block;margin-top:10px;font-size:14px"><input type="checkbox" id="p-overnight" ${E.overnightPools.includes(pool) ? "checked" : ""}> ${esc(pool)} can run overnight on nights with no dosing (if the afternoon test is still low)</label>
-      <div class="note" style="margin-top:6px">24-hour clock (17 = 5 pm, 19.5 = 7:30 pm). Night dosing days stay the team schedule.</div>
-      ${(() => { const W = E.week || WEEK_ORDER.map(() => ({below:E.onBelow, closeAt:E.dosingOffHour})), WW = []; W.forEach((d, i) => WW[i] = d);
-        const num = (id, v, lo, hi) => `<input id="${id}" type="number" min="${lo}" max="${hi}" step="0.5" value="${v === undefined || v === null ? "" : v}" style="width:68px">`;
-        return `<div style="margin-top:14px;padding-top:10px;border-top:1px dashed var(--line)">
-        <label style="font-size:14px;font-weight:600"><input type="checkbox" id="w-on" ${E.week ? "checked" : ""}> Use a weekly schedule for ${esc(pool)} <span class="note">(replaces the rules above for ${esc(pool)}; only "No morning test by" still counts)</span></label>
-        <div style="overflow-x:auto;margin-top:8px"><table class="dtab" id="wtab" style="font-size:13px"><tr><td></td><td>OFF all day</td><td>ON if FC below</td><td>OFF at</td><td>ON anyway from</td><td>Night run from</td><td>to</td></tr>
-        ${WEEK_ORDER.map(i => { const d = WW[i] || {}; return `<tr><td><b>${DAY_NAMES[i].slice(0,3)}</b></td><td><input type="checkbox" id="w${i}-off" ${d.off ? "checked" : ""}></td><td>${num(`w${i}-below`, d.below, 0, 5)}</td><td>${num(`w${i}-close`, d.closeAt, 8, 24)}</td><td>${num(`w${i}-from`, d.onFrom, 0, 23.5)}</td><td>${num(`w${i}-nf`, d.nightFrom, 0, 24)}</td><td>${num(`w${i}-nt`, d.nightTo, 0, 24)}</td></tr>`; }).join("")}</table></div>
-        <div class="note" style="margin-top:6px">Leave "ON anyway from" and the night run empty if not used. A night run can pass midnight (23 to 6 = 11 pm to 6 am next morning) and only happens if that day's latest FC is below the level.</div></div>`; })()}
-      <div class="row" style="margin-top:10px"><button class="b sm main">Save ${esc(pool)}</button><button type="button" class="b sm" id="p-cancel">Cancel</button>${own[pool] ? `<button type="button" class="link" id="p-std" style="margin-left:auto">Use the default rules again</button>` : ""}</div></form>`; }
-  const perPool = `<div class="card"><h2>Each outlet's rules</h2><div class="note">An outlet with its own rules or weekly schedule uses them. The others follow the default rules below.</div>
+      <div style="font-weight:600;margin-bottom:8px">${esc(pool)} — weekly schedule</div>
+      <div style="overflow-x:auto"><table class="dtab" id="wtab" style="font-size:13px"><tr><td></td><td>OFF all day</td><td>ON if FC below</td><td>OFF at</td><td>ON anyway from</td><td>Night run from</td><td>to</td></tr>
+      ${WEEK_ORDER.map(i => { const d = WW[i] || {}; return `<tr><td><b>${DAY_NAMES[i].slice(0,3)}</b></td><td><input type="checkbox" id="w${i}-off" ${d.off ? "checked" : ""}></td><td>${num(`w${i}-below`, d.below, 0, 5)}</td><td>${num(`w${i}-close`, d.closeAt, 8, 24)}</td><td>${num(`w${i}-from`, d.onFrom, 0, 23.5)}</td><td>${num(`w${i}-nf`, d.nightFrom, 0, 24)}</td><td>${num(`w${i}-nt`, d.nightTo, 0, 24)}</td></tr>`; }).join("")}</table></div>
+      <div class="rgrid" style="margin-top:10px"><label for="p-noTestHour">No morning test by → OFF + tell Kay (weekdays without "ON anyway from")</label><span><input id="p-noTestHour" type="number" min="9" max="14" step="1" value="${E.noTestHour}" required> <span class="note">h</span></span></div>
+      <div class="note" style="margin-top:6px">24-hour clock (18 = 6 pm, 21.5 = 9:30 pm). The latest water test of the day decides. Leave "ON anyway from" and the night run empty if not used. A night run can pass midnight (23 to 6 = 11 pm to 6 am) and only happens if that day's latest FC is below the level. The night-dosing lock always wins.</div>
+      <div class="row" style="margin-top:10px"><button class="b sm main">Save ${esc(pool)}</button><button type="button" class="b sm" id="p-cancel">Cancel</button>${own[pool] ? `<button type="button" class="link" id="p-std" style="margin-left:auto">Remove the schedule (hand only)</button>` : ""}</div></form>`; }
+  return `<div class="card"><h2>Rules</h2>
+    <div style="font-size:14px;line-height:1.5;padding:8px 10px;border:1px solid var(--line);border-radius:10px;margin-bottom:10px">🔒 <b>Night-dosing lock — every outlet:</b> once the night dose is recorded in the tracker (Manual Dosing), that outlet's salt chlorinator is switched <b>OFF</b> and kept OFF until <b>8 am</b> next morning. Switched ON by hand during the lock → OFF again within 5 minutes.</div>
+    <div class="note">Each outlet below follows its own weekly schedule. An outlet without one is only switched by hand (plus the lock). Switched by hand against the schedule → back to the schedule after 1 hour.</div>
     <table class="dtab">${poolRows}</table>${poolEdit}</div>`;
-  // Default rules: only for outlets without their own rules (Kay, 5 Oct 2026: folded away once outlets have their own)
-  const usedBy = SALT_POOLS.filter(p => !own[p]), anyOwn = usedBy.length < SALT_POOLS.length;
-  const ovUsed = R.overnightPools.filter(p => usedBy.includes(p)), stayUsed = stay.filter(p => usedBy.includes(p));
-  const usedTxt = usedBy.length ? usedBy.map(p => p + (plugPools.has(p) ? " 🔌" : "")).join(", ") : "no outlet";
-  if(S.editRules) return perPool + `<div class="card"><h2>Edit the default rules</h2>
-    <form id="rulef"><div class="rgrid">${RULE_NUMS.map(f => `<label for="r-${f.k}">${f.l}</label><span><input id="r-${f.k}" type="number" min="${f.min}" max="${f.max}" step="${f.step}" value="${R[f.k]}" required> <span class="note">${f.unit === "h" ? "h" : f.unit}</span></span>`).join("")}</div>
-    <div style="margin:12px 0 6px;font-size:14px">Can run overnight on nights with no dosing (if the afternoon test is still low):</div>
-    <div class="chips">${SALT_POOLS.map(p => `<label><input type="checkbox" value="${p}" ${R.overnightPools.includes(p) ? "checked" : ""}> ${p}</label>`).join("")}</div>
-    <div class="note" style="margin-top:8px">Hours use the 24-hour clock (17 = 5 pm, 19.5 = 7:30 pm). The timer works 8 am – 8 pm, so times must be inside that. The night dosing days follow the team schedule and aren't changed here.</div>
-    <div class="row" style="margin-top:12px"><button class="b sm main">Save rules</button><button type="button" class="b sm" id="r-cancel">Cancel</button>${changed ? `<button type="button" class="link" id="r-reset" style="margin-left:auto">Back to the original rules</button>` : ""}</div></form></div>`;
-  const open = !anyOwn || S.showStd;
-  return perPool + `<div class="card"><h2>Default rules <small>${changed ? "changed by you · " : ""}${anyOwn ? `<button class="link" id="r-show">${open ? "Hide" : "Show"}</button> · ` : ""}<button class="link" id="r-edit">Edit</button></small></h2>
-    <div class="note">Used by: ${esc(usedTxt)}</div>
-    ${open ? `<ol class="rules" style="margin-top:8px">
-      <li><b>Weekday morning test:</b> FC below ${R.onBelow} → <b>ON</b>. ${R.onBelow} or more → <b>OFF</b>.</li>
-      <li><b>Afternoon test:</b> FC ${R.offAtOrAbove} or more → <b>OFF</b>. Still below ${R.offAtOrAbove} → stays <b>ON</b>.</li>
-      <li><b>No morning test by ${hr(R.noTestHour)}:</b> <b>OFF</b>, and Kay is told — no guessing.</li>
-      <li><b>Weekend (Sat, Sun):</b> <b>ON</b> from ${hr(R.weekendOnHour)} until ${hr(R.dosingOffHour)} — the water tests don't change it.</li>
-      <li><b>Night dosing day:</b> <b>OFF</b> from ${hr(R.dosingOffHour)}, so the chlorinator is off before dosing.</li>
-      <li><b>No dosing tonight:</b> ${ovUsed.length ? esc(ovUsed.join(", ")) + ` keep what the afternoon test decided, all night (FC still below ${R.offAtOrAbove} → stays <b>ON</b> overnight)` : "no pool runs overnight"}${stayUsed.length ? `; ${esc(stayUsed.join(", "))} go <b>OFF</b> from ${hr(R.eveningOffHour)}` : ""}. Next morning the morning test decides again.</li>
-    </ol>
-    <div style="margin-top:10px;font-size:13px;color:var(--ink-2)">Night dosing days (salt pools)</div>${sched}
-    <div class="note" style="margin-top:8px">Checked from the top: evening rules first, then weekend, then the afternoon test, then the morning test. The night water test is not used.</div>` : ""}</div>`;
 }
 function render(){
   if(!S.user) return;
@@ -397,17 +377,17 @@ function render(){
     S.editRules = false; const keep = RULES.pools || {}; RULES = mergeRules({pools: keep}); savePools(keep, true); };
   document.querySelectorAll("[data-pedit]").forEach(b => b.onclick = () => { S.editPool = b.dataset.pedit; render(); const f = $("#poolf"); if(f) f.scrollIntoView({block:"center"}); });
   if($("#p-cancel")) $("#p-cancel").onclick = () => { S.editPool = null; render(); };
-  if($("#p-std")) $("#p-std").onclick = () => { const pool = S.editPool; if(!confirm(pool + " goes back to the default rules. OK?")) return;
+  if($("#p-std")) $("#p-std").onclick = () => { const pool = S.editPool; if(!confirm("Remove " + pool + "'s schedule? It will only be switched by hand (the night-dosing lock still applies).")) return;
     const pools = Object.assign({}, RULES.pools || {}); delete pools[pool]; S.editPool = null; RULES = mergeRules(Object.assign({}, S.cfg.rules || {}, {pools})); savePools(pools); };
-  if($("#poolf")) $("#poolf").onsubmit = e => { e.preventDefault(); const pool = S.editPool, std = mergeRules(Object.assign({}, S.cfg.rules || {}, {pools:{}})), c = {};
-    for(const f of RULE_NUMS){ const v = Number($("#p-" + f.k).value); if(!isFinite(v) || v < f.min || v > f.max){ S.err = pool + " — " + f.l + ": use a number from " + f.min + " to " + f.max + "."; render(); return; } if(v !== std[f.k]) c[f.k] = v; }
-    const ov = $("#p-overnight").checked; if(ov !== std.overnightPools.includes(pool)) c.overnight = ov;
-    if($("#w-on").checked){ const v = id => $(id).value.trim(), w = [];
-      for(const i of [0,1,2,3,4,5,6]) w[i] = $(`#w${i}-off`).checked ? {off:true} : Object.fromEntries([["below", v(`#w${i}-below`)], ["closeAt", v(`#w${i}-close`)], ["onFrom", v(`#w${i}-from`)], ["nightFrom", v(`#w${i}-nf`)], ["nightTo", v(`#w${i}-nt`)]].filter(x => x[1] !== "").map(x => [x[0], Number(x[1])]));
-      const wk = cleanWeek(w);
-      if(!wk){ S.err = pool + " weekly schedule: each day needs 'ON if FC below' (0–5) and 'OFF at' (8–24), unless it is OFF all day."; render(); return; }
-      c.week = wk; }
-    const pools = Object.assign({}, RULES.pools || {}); if(Object.keys(c).length){ c.changedBy = S.user.email; c.changedAt = new Date().toISOString(); pools[pool] = c; } else delete pools[pool];
+  if($("#poolf")) $("#poolf").onsubmit = e => { e.preventDefault(); const pool = S.editPool, c = {};
+    const nt = Number($("#p-noTestHour").value); if(!isFinite(nt) || nt < 9 || nt > 14){ S.err = pool + " — no morning test by: use 9 to 14."; render(); return; }
+    if(nt !== DEFAULT_RULES.noTestHour) c.noTestHour = nt;
+    const v = id => $(id).value.trim(), w = [];
+    for(const i of [0,1,2,3,4,5,6]) w[i] = $(`#w${i}-off`).checked ? {off:true} : Object.fromEntries([["below", v(`#w${i}-below`)], ["closeAt", v(`#w${i}-close`)], ["onFrom", v(`#w${i}-from`)], ["nightFrom", v(`#w${i}-nf`)], ["nightTo", v(`#w${i}-nt`)]].filter(x => x[1] !== "").map(x => [x[0], Number(x[1])]));
+    const wk = cleanWeek(w);
+    if(!wk){ S.err = pool + " weekly schedule: each day needs 'ON if FC below' (0–5) and 'OFF at' (8–24), unless it is OFF all day."; render(); return; }
+    c.week = wk; c.changedBy = S.user.email; c.changedAt = new Date().toISOString();
+    const pools = Object.assign({}, RULES.pools || {}); pools[pool] = c;
     S.editPool = null; RULES = mergeRules(Object.assign({}, S.cfg.rules || {}, {pools})); savePools(pools); };
   if($("#rulef")) $("#rulef").onsubmit = e => { e.preventDefault();
     const out = {}; for(const f of RULE_NUMS){ const v = Number($("#r-" + f.k).value); if(!isFinite(v) || v < f.min || v > f.max){ S.err = f.l + ": use a number from " + f.min + " to " + f.max + "."; render(); return; } out[f.k] = v; }
