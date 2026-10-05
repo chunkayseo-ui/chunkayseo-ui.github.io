@@ -279,6 +279,7 @@ function plugHtml(p){
     <div class="btns"><button class="b ${st && !st.on ? "main" : ""}" data-sw="${esc(p.id)}" data-on="1" ${S.busy[p.id] ? "disabled" : ""}>Switch ON</button>
       <button class="b ${st && st.on ? "main" : ""}" data-sw="${esc(p.id)}" data-on="0" ${S.busy[p.id] ? "disabled" : ""}>Switch OFF</button></div>
     ${p.pool ? `<div class="rule">${fcLine}${(RULES.pools || {})[p.pool] ? ` <span class="note">· ${esc(p.pool)} has its own rules</span>` : ""}<br>Rule says now: ${rule.on === null ? "<b>wait</b>" : `<b class="${rule.on ? "on" : "off"}">${rule.on ? "ON" : "OFF"}</b>`} <span class="why">— ${esc(rule.why)}</span>
+      ${(() => { const mo = ((S.cfg.autoState || {}).manual || {})[p.id]; return mo && mo.until ? `<div class="note" style="margin-top:4px">✋ Switched ${mo.on ? "ON" : "OFF"} by hand — the timer puts the rule back at ${hhmm(mo.until)}, unless the rule changes first.</div>` : ""; })()}
       ${differs ? `<div style="margin-top:6px"><button class="b sm main" data-apply="${esc(p.id)}">Apply: switch ${rule.on ? "ON" : "OFF"}</button></div>` : ""}</div>` : `<div class="note" style="margin-top:8px">Not linked to a pool — manual only.</div>`}
   </div>`;
 }
