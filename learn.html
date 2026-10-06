@@ -774,7 +774,11 @@ const PEOPLE = {
   "6df36b3943ca1eea63bdcb152d79273de09030ced956146f0180cc98066f3133": {name:"Sharul", role:"staff"},
   "6ba3ddae7dbb119b31d474b6551b38f271c6df9613b44889fd8cfff6e8c47edf": {name:"William", role:"supervisor"},
   "a5745313e6b3efdd8a6388ca5f0a6e9fa95a9cab20e45ceb28290fcffa5ce05d": {name:"Islam", role:"staff"},
+  "927bbc623eb0fa97fcdf0ce5c4833a28854a9be53cecafcf7b8942bb1e057d4f": {name:"Islam", role:"staff"},
+  "b899275ff2a9bc141e3d0939ba2e0b8f6970cbaf564fe619ab954495c9013eb7": {name:"Guru", role:"staff"},
+  "d05dba20d3700faa4e379cb3efaf38d69ea2e16a6eb31ddbf8166facafde882d": {name:"Kay", role:"boss"},
 };
+const isBoss = () => !!(S.me && (S.me.role === "boss" || S.me.role === "supervisor"));
 async function whoIs(email){
   const e = String(email || "").trim().toLowerCase();
   try{
@@ -782,7 +786,8 @@ async function whoIs(email){
     const hex = Array.from(new Uint8Array(h)).map(b => b.toString(16).padStart(2, "0")).join("");
     if(PEOPLE[hex]) return PEOPLE[hex];
   }catch(err){}
-  return {name: e.split("@")[0] === "chunkayseo" ? "Kay" : (e.split("@")[0] || "Me"), role:"manager"};
+  // Not on the list: can still do the lessons, but never sees the team table (6 Oct 2026).
+  return {name: e.split("@")[0] || "Me", role:"staff"};
 }
 
 const LANGS = [{id:"en", label:"English", voice:"en"}, {id:"ms", label:"Melayu", voice:"ms"}, {id:"ta", label:"தமிழ்", voice:"ta"}];
@@ -976,7 +981,7 @@ function homeView(){
     return `<button class="lesson" data-open="${l.id}"><span class="ic">${esc(l.icon)}</span>
       <span><span class="num">${i + 1}</span><div class="tt">${esc(tx(l.title))}</div><div class="sub">⏱ ${l.mins} ${esc(tx(UI.mins))}${r ? ` · ${r.best}/${r.total}` : ""}</div></span>
       <span class="st ${st}">${esc(tx(UI["st_" + st]))}</span></button>`; }).join("")}</div>
-  ${S.me.role !== "staff" ? `<div class="card team"><h2>${esc(tx(UI.team))}</h2><div id="teamtbl" class="scroll"><span class="muted">…</span></div></div>` : ""}`;
+  ${isBoss() ? `<div class="card team"><h2>${esc(tx(UI.team))}</h2><div id="teamtbl" class="scroll"><span class="muted">…</span></div></div>` : ""}`;
 }
 function lessonView(){
   const l = S.lesson, c = l.cards[S.card], last = S.card === l.cards.length - 1;
@@ -1027,7 +1032,7 @@ function render(){
   const home = $("#home") || $("#home2"); if(home) home.onclick = goHome;
   if(v === "home"){
     document.querySelectorAll("[data-open]").forEach(b => b.onclick = () => { S.lesson = LESSONS.find(l => l.id === b.dataset.open); S.card = 0; S.view = "lesson"; stopSpeak(); render(); });
-    if(S.me.role !== "staff") loadTeam();
+    if(isBoss()) loadTeam();
   }
   if(v === "lesson"){
     $("#prev").onclick = () => { stopSpeak(); S.card = Math.max(0, S.card - 1); render(); };

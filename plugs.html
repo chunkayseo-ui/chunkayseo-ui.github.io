@@ -307,7 +307,7 @@ function plugHtml(p){
   const rule = ruleFor(p.pool), t = p.pool ? S.fc[p.pool] : null;
   const fcLine = !p.pool ? "" : !t ? `<span class="fc">${esc(p.pool)} · reading tests…</span>`
     : t.err ? `<span class="fc">${esc(p.pool)} · couldn't read the water tests</span>`
-    : `<span class="fc">${esc(p.pool)} today · morning FC ${t.morning ?? "–"} · afternoon ${t.afternoon ?? "–"} · night ${t.night ?? "–"}${t.src === "timer" ? ` <span class="note">(sheet read by the timer ${hhmm(t.at)})</span>` : ""}</span>`;
+    : `<span class="fc">${esc(p.pool)} today · morning FC ${t.morning ?? "–"} · afternoon ${t.afternoon ?? "–"} · night ${t.night ?? "–"}${t.src === "timer" ? ` <span class="note">(timer last checked the sheet at ${hhmm(t.at)})</span>` : ""}</span>`;
   const differs = rule && rule.on !== null && st && st.online && st.on !== rule.on;
   return `<div class="plug">
     <div class="plug-top"><span class="dot ${cls}"></span>
@@ -316,6 +316,9 @@ function plugHtml(p){
     <div class="btns"><button class="b ${st && !st.on ? "main" : ""}" data-sw="${esc(p.id)}" data-on="1" ${S.busy[p.id] ? "disabled" : ""}>Switch ON</button>
       <button class="b ${st && st.on ? "main" : ""}" data-sw="${esc(p.id)}" data-on="0" ${S.busy[p.id] ? "disabled" : ""}>Switch OFF</button></div>
     ${p.pool ? `<div class="rule">${fcLine}${((RULES.pools || {})[p.pool] || {}).week ? ` <span class="note">· weekly schedule</span>` : ` <span class="note">· no schedule (hand only)</span>`}<br>Rule says now: ${rule.on === null ? "<b>wait</b>" : `<b class="${rule.on ? "on" : "off"}">${rule.on ? "ON" : "OFF"}</b>`} <span class="why">— ${esc(rule.why)}</span>
+      ${(() => { const x = ((S.cfg.autoState || {}).plugs || {})[p.id];   // when the timer last switched this plug (Kay, 6 Oct 2026)
+        if(!x || !x.at || x.want == null || new Date(x.at).toDateString() !== new Date().toDateString()) return "";
+        return `<div class="note" style="margin-top:4px">⏱ The timer switched it <b>${x.want ? "ON" : "OFF"}</b> at <b>${hhmm(x.at)}</b> today${x.done === false ? " (not done yet — plug didn't answer)" : ""}.</div>`; })()}
       ${(() => { const mo = ((S.cfg.autoState || {}).manual || {})[p.id]; return mo && mo.until ? `<div class="note" style="margin-top:4px">✋ Switched ${mo.on ? "ON" : "OFF"} by hand — the timer puts the rule back at ${hhmm(mo.until)}, unless the rule changes first.</div>` : ""; })()}
       ${differs ? `<div style="margin-top:6px"><button class="b sm main" data-apply="${esc(p.id)}">Apply: switch ${rule.on ? "ON" : "OFF"}</button></div>` : ""}</div>` : `<div class="note" style="margin-top:8px">Not linked to a pool — manual only.</div>`}
   </div>`;

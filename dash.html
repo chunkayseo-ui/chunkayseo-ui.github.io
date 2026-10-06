@@ -217,6 +217,12 @@ const S = {user:null, rounds:{}, month:{}, issues:{}, roster:[], leave:{}, versi
            hist:{}, histAt:null, histLoading:false, board:null, boardErr:false, boardAct:[], unsubs:[]};
 
 /* ---------------- sign-in ---------------- */
+function notListedView(){
+  $("#app").innerHTML = `<div class="card login"><h1 style="font-size:22px">HF Pools</h1>
+    <p style="margin:10px 0">You're signed in as <b>${esc(S.user.email)}</b>, but this login isn't set up on this page yet.</p>
+    <p class="muted" style="margin:0 0 12px">Please ask Kay to add you.</p><button class="btn" id="out">Sign out</button></div>`;
+  $("#out").onclick = () => auth.signOut();
+}
 function loginView(msg, cls){
   $("#app").innerHTML = `<div class="card login">
     <h1 style="font-size:24px">HF Pools</h1>
@@ -244,11 +250,12 @@ function loginView(msg, cls){
 }
 /* Who is signed in. Staff get their own page, not this manager dashboard (Kay, 30 Sep 2026).
    Emails are kept out of this public page: only a SHA-256 fingerprint of each is listed.
-   Anyone not listed here (Kay) gets the full dashboard; "supervisor" (William) does too. */
+   "boss" (Kay) and "supervisor" (William) get the full dashboard; "staff" get their own page; a login not listed here gets nothing (6 Oct 2026). */
 const PEOPLE = {
   "dc56ea9e3e3156675058121ac14f4b161da89f2f0fe90231583a2fce2797af32": {name:"Fik", role:"staff"},
   "6df36b3943ca1eea63bdcb152d79273de09030ced956146f0180cc98066f3133": {name:"Sharul", role:"staff"},
   "6ba3ddae7dbb119b31d474b6551b38f271c6df9613b44889fd8cfff6e8c47edf": {name:"William", role:"supervisor"},
+  "d05dba20d3700faa4e379cb3efaf38d69ea2e16a6eb31ddbf8166facafde882d": {name:"Kay", role:"boss"},
   "a5745313e6b3efdd8a6388ca5f0a6e9fa95a9cab20e45ceb28290fcffa5ce05d": {name:"Islam", role:"staff"},
   "927bbc623eb0fa97fcdf0ce5c4833a28854a9be53cecafcf7b8942bb1e057d4f": {name:"Islam", role:"staff"},   // Islam's new email (Kay, 6 Oct 2026)
   "b899275ff2a9bc141e3d0939ba2e0b8f6970cbaf564fe619ab954495c9013eb7": {name:"Guru", role:"staff"},
@@ -282,8 +289,9 @@ const PROFILE_FIELDS = [
   {k:"shirt", l:"Uniform / T-shirt size", opts:["", "S", "M", "L", "XL", "XXL"]},
 ];
 async function profileLockOn(){
-  try{ await db.doc("staff_profiles/lock-check").get(); return false; }   // readable -> not locked yet
-  catch(e){ return /permission|insufficient/i.test(String(e && (e.code || e.message))); }
+  // Checked without signing in (like the MC check), so it also works for Kay / William on their own #me page:
+  // they are allowed to read staff_profiles, so a signed-in read would wrongly say "not locked".
+  try{ const r = await fetch(FS_REST + "staff_profiles/lock-check?key=AIzaSyANFCZbvRGO9aMRtG9MF_qONO3FL85CzSo"); return r.status === 403; }catch(e){ return false; }
 }
 // Portrait: centre-crop to 3:4, 360x480 JPEG, about 30–60 KB, kept inside the record.
 function portraitFrom(file){
@@ -498,12 +506,15 @@ auth.onAuthStateChanged(async u => {
   if(!u){ loginView(); return; }
   S.person = await whoIs(u.email);
   if(S.person && S.person.role === "staff"){ loadMyProfile(S.person); return; }
+  // Only Kay and William get the dashboard (Kay, 6 Oct 2026). A login that isn't on the list above sees nothing
+  // until Kay adds it -- before this, an unlisted login got the full dashboard.
+  if(!S.person){ notListedView(); return; }
   start();
   if(location.hash === "#staff") previewStaff("Fik");
   else if(location.hash === "#me" && S.person){ S.mine = true; loadMyProfile(S.person); }
 });
 window.addEventListener("hashchange", () => {
-  const boss = S.user && !(S.person && S.person.role === "staff");
+  const boss = S.user && S.person && (S.person.role === "boss" || S.person.role === "supervisor");
   if(boss && location.hash === "#staff"){ S.mine = false; previewStaff(S.previewing || "Fik"); return; }
   if(boss && location.hash === "#me" && S.person){ S.previewing = null; S.mine = true; loadMyProfile(S.person); window.scrollTo(0, 0); return; }
   if(S.mine){ S.mine = false; S.pf = null; S.mc = null; }
@@ -967,7 +978,7 @@ let renderQueued = false;
 function render(){ if(renderQueued) return; renderQueued = true; requestAnimationFrame(() => { renderQueued = false; draw(); }); }
 function draw(){
   if(!S.user) return;
-  if(S.person && S.person.role === "staff") return;
+  if(!S.person || S.person.role === "staff") return;
   if(S.previewing || S.mine) return;
   const tab = tabNow(), now = new Date(), att = attention();
   const badges = {today:att.filter(a => a.lvl === "urg").length};
