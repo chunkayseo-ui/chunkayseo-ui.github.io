@@ -58,6 +58,27 @@ input,select{font:inherit;padding:8px 10px;border:1px solid var(--line);border-r
 .login input{width:100%;margin-top:4px}
 .login label{display:block;font-size:13px;color:var(--ink-3);margin-top:12px}
 .msg{font-size:13px;margin-top:10px;min-height:18px}.msg.err{color:var(--urgent)}.msg.ok{color:var(--ok)}
+/* Safeguards card (Kay, 6 Oct 2026) */
+details.guard>summary{list-style:none;cursor:pointer}
+details.guard>summary::-webkit-details-marker{display:none}
+details.guard>summary h2{margin:0}
+details.guard>summary .chev{margin-left:auto;font:400 12px "IBM Plex Sans";text-transform:none;letter-spacing:0;color:var(--accent);text-decoration:underline}
+.lane{border:1px solid var(--line-soft);border-left:5px solid var(--accent);border-radius:10px;padding:10px 12px;margin-top:10px;background:var(--surface-2)}
+.lane.day{border-left-color:#C08A1E}.lane.hand{border-left-color:var(--warn)}.lane.night{border-left-color:#3B4C8C}.lane.tech{border-left-color:var(--ok)}
+.lane-h{font:700 14px "Barlow Condensed",sans-serif;letter-spacing:.05em;text-transform:uppercase;color:var(--ink-2);margin-bottom:8px}
+.flow{display:flex;align-items:stretch;gap:6px}
+.step{flex:1 1 0;background:var(--surface);border:1px solid var(--line);border-radius:9px;padding:8px 9px;font-size:13.5px;line-height:1.35}
+.step .ic{display:block;font-size:20px;line-height:1;margin-bottom:4px}
+.step.stop{background:var(--urgent-soft);border-color:#E7B5AE}
+.step.go{background:var(--ok-soft);border-color:#B8D8C7}
+.arr{flex:none;align-self:center;color:var(--ink-3);font-size:18px}
+.lane .note{margin-top:6px}
+.prio{display:flex;align-items:center;gap:6px;flex-wrap:wrap;font-size:13px;margin-top:10px}
+.prio span.p{background:var(--surface);border:1px solid var(--line);border-radius:999px;padding:3px 9px}
+.prio span.p.top{background:#E3E6F3;border-color:#B9C0E0;font-weight:600}
+.tl{width:100%;max-width:520px;height:auto;display:block;margin:8px auto 0;color:var(--ink-2)}
+.gaps li{margin:3px 0}
+@media (max-width:560px){.flow{flex-direction:column}.arr{transform:rotate(90deg);margin:-2px 0}}
 </style></head><body>
 <div class="wrap" id="app"><p class="note">Loading…</p></div>
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
@@ -212,6 +233,7 @@ const sgNow = () => new Date(new Date().toLocaleString("en-US", {timeZone:"Asia/
 const dayKey = d => d.getFullYear() + "-" + pad(d.getMonth() + 1) + "-" + pad(d.getDate());
 const hhmm = iso => { const d = new Date(iso); return pad(d.getHours()) + ":" + pad(d.getMinutes()); };
 const S = {user:null, cfg:{plugs:[], apiUrl:""}, status:{}, fc:{}, log:[], busy:{}, err:"", note:""};
+S.guardOpen = (() => { try{ return localStorage.getItem("hf-guard-open") !== "0"; }catch(e){ return true; } })();
 
 /* ---------- the rule, worked out from today's tests ---------- */
 function ruleFor(pool){
@@ -302,10 +324,10 @@ function autoCard(){
   const rows = plugs.map(p => { const x = (a.plugs || {})[p.id]; if(!x) return "";
     return `<div><b>${esc(p.name)}</b>: ${x.want === true ? "ON" : x.want === false ? "OFF" : "—"}${x.why ? ` · <span class="why">${esc(x.why)}</span>` : ""}${x.err ? ` · <span style="color:var(--urgent)">${esc(x.err)}</span>` : ""}${x.at ? ` <span class="note">(${hhmm(x.at)})</span>` : ""}</div>`; }).join("");
   return `<div class="${on ? "okbox" : "warnbox"}" id="autobox">
-    <div class="row"><span>${on ? `🤖 <b>Automatic switching is ON.</b> Every ${a.every === 1 ? "minute" : "5 minutes"} from ${hr(win.start)} to ${hr(win.end)} the timer reads the water test sheet and switches the plugs that follow a pool. It sleeps at night.${a.every === 1 && a.testUntil ? ` <b>Test mode</b> until ${hhmm(a.testUntil)}, then back to every 5 minutes.` : ""}` : "✋ <b>Automatic switching is OFF.</b> Nothing switches by itself — \"Rule says\" shows what it <i>would</i> do; press Apply to do it by hand."}</span>
+    <div class="row"><span>${on ? `🤖 <b>Automatic switching is ON.</b> Every ${a.every === 1 ? "minute" : "5 minutes"} from ${hr(win.start)} to ${hr(win.end)} the timer reads the water test sheet and switches the plugs that follow a pool. At night it keeps checking every 5 minutes for the night-dosing lock, night runs and hand switches.${a.every === 1 && a.testUntil ? ` <b>Test mode</b> until ${hhmm(a.testUntil)}, then back to every 5 minutes.` : ""}` : "✋ <b>Automatic switching is OFF.</b> Nothing switches by itself — \"Rule says\" shows what it <i>would</i> do; press Apply to do it by hand."}</span>
     <button class="b sm ${on ? "" : "main"}" id="autotgl" style="margin-left:auto">${on ? "Turn OFF" : "Turn ON"}</button></div>
     <div class="note" style="margin-top:6px">${last ? (night ? `Timer is asleep for the night — next check at ${hr(win.start)}.` : `Timer last checked ${ago(last)}${stale ? ` — <b style="color:var(--urgent)">the timer doesn't seem to be running</b>` : ""}.`) : "The timer hasn't run yet (run setupTimer in the Apps Script once)."}${a.tg && a.tg !== "ok" ? ` · Telegram: ${esc(a.tg)}` : ""}
-    It only switches when the rule's answer changes, so if you switch a plug by hand it stays until the next new water test or time (5 pm, 7:30 pm…). This page updates by itself.</div>
+    A plug switched by hand sends a Telegram alert and goes back to its schedule after 1 hour; during the night-dosing lock it goes OFF again within 5 minutes. This page updates by itself.</div>
     ${on && rows ? `<div style="margin-top:6px;font-size:13px">${rows}</div>` : ""}</div>`;
 }
 function rulesCard(){
@@ -333,12 +355,55 @@ function rulesCard(){
     <div class="note">Each outlet below follows its own weekly schedule. An outlet without one is only switched by hand (plus the lock). Switched by hand against the schedule → back to the schedule after 1 hour.</div>
     <table class="dtab">${poolRows}</table>${poolEdit}</div>`;
 }
+/* Safeguards (Kay, 6 Oct 2026): one picture of everything that stops a salt chlorinator running when it
+ * shouldn't -- so whoever is in charge sees what the timer, the tracker and Telegram already do. */
+function guardCard(){
+  const plugs = (S.cfg.plugs || []).filter(p => p.pool);
+  const covered = plugs.map(p => esc(p.name)).join(", ") || "none yet";
+  const withPlug = new Set(plugs.map(p => p.pool));
+  const notCovered = SALT_POOLS.filter(p => !withPlug.has(p));
+  const own = (RULES.pools || {}), sched = SALT_POOLS.filter(p => own[p] && own[p].week);
+  const st = (ic, t, cls) => `<div class="step${cls ? " " + cls : ""}"><span class="ic">${ic}</span>${t}</div>`, ar = `<span class="arr" aria-hidden="true">➜</span>`;
+  // 24-hour strip, 6 am to 6 am: schedule by day, the lock from the night dose until 8 am.
+  const x = h => 20 + ((h - 6 + 24) % 24) * (320 / 24);
+  const tl = `<svg class="tl" viewBox="0 0 360 96" role="img" aria-label="One day at a plug: by day the weekly schedule and the water test decide; once the night dose is recorded the plug is locked OFF until 8 am.">
+    <rect x="${x(8) + 2}" y="30" width="${x(21) - x(8) - 4}" height="22" rx="4" fill="#F3E3BE"/>
+    <text x="${(x(8) + x(21)) / 2}" y="45" text-anchor="middle" font-size="13" fill="currentColor">Weekly schedule + FC</text>
+    <rect x="${x(21)}" y="30" width="${340 - x(21)}" height="22" rx="4" fill="#3B4C8C"/>
+    <rect x="20" y="30" width="${x(8) - 20}" height="22" rx="4" fill="#3B4C8C"/>
+    <text x="${(x(21) + 340) / 2}" y="45" text-anchor="middle" font-size="12.5" fill="#fff">🔒 OFF until 8 am</text>
+    <line x1="${x(21)}" y1="22" x2="${x(21)}" y2="60" stroke="#B23A2E" stroke-width="2"/>
+    <text x="${x(21)}" y="16" text-anchor="middle" font-size="12" fill="#B23A2E" font-weight="600">Night dose recorded</text>
+    <line x1="20" y1="62" x2="340" y2="62" stroke="currentColor" stroke-width="1" opacity=".5"/>
+    ${[8, 12, 18, 21, 0, 6].map((h, i) => { const xx = i === 5 ? 340 : x(h); return `<line x1="${xx}" y1="62" x2="${xx}" y2="66" stroke="currentColor" opacity=".6"/><text x="${xx}" y="79" text-anchor="${i === 5 ? "end" : "middle"}" font-size="11.5" fill="currentColor">${h === 0 ? "12 am" : h < 12 ? h + " am" : h === 12 ? "12 pm" : (h - 12) + " pm"}</text>`; }).join("")}
+    <text x="180" y="94" text-anchor="middle" font-size="10.5" fill="currentColor" opacity=".8">Dose time varies — the lock starts when the dosing job is done</text></svg>`;
+  return `<details class="card guard" id="guard" ${S.guardOpen ? "open" : ""}><summary><h2>🛡️ Salt chlorinator safeguards <span class="chev">${S.guardOpen ? "hide" : "show"}</span></h2>
+    <div class="note" style="margin-top:6px">What stops a salt chlorinator running after night dosing, or when someone switches it on by mistake. Plugs covered now: <b>${covered}</b>.</div></summary>
+    <div class="lane day"><div class="lane-h">☀️ 1 · Day time — weekly schedule</div>
+      <div class="flow">${st("🧪", "Water test comes in (latest FC of the day)")}${ar}${st("📅", "Today's rule for that outlet, e.g. <i>ON if FC below 2, OFF at 6 pm</i>")}${ar}${st("🔌", "Timer switches the plug — checked every 5 minutes", "go")}</div>
+      <div class="note">Outlets with a schedule: ${sched.length ? sched.map(esc).join(", ") : "none"}. Monday is OFF all day at both. An outlet without a schedule is switched by hand only.</div></div>
+    <div class="lane hand"><div class="lane-h">✋ 2 · Someone switches it by hand</div>
+      <div class="flow">${st("👆", "Switched in the Shelly app, on the plug's button or on this page")}${ar}${st("📣", "Telegram alert → <b>HF Pools Alerts › Smartplug Check</b>")}${ar}${st("⏱️", "1 hour later the timer puts it back to the schedule", "go")}</div>
+      <div class="note">No schedule at that outlet → it stays as switched (the alert still goes out).</div></div>
+    <div class="lane night"><div class="lane-h">🌙 3 · After night dosing — the lock</div>
+      <div class="flow">${st("🧴", "Night dose recorded in the tracker (Manual Dosing done)")}${ar}${st("🔒", "Plug switched <b>OFF</b> and kept OFF until <b>8 am</b>", "stop")}${ar}${st("🚫", "Switched ON during the lock? <b>OFF again within 5 minutes</b> + alert", "stop")}</div>
+      ${tl}</div>
+    <div class="lane tech"><div class="lane-h">🧑‍🔧 4 · Technician check — every outlet</div>
+      <div class="flow">${st("1️⃣", "“Check Salt Chlorinator and Pump panel” is the first job — water test and dosing stay locked until it's done")}${ar}${st("👀", "The job shows the plug's live state next to the salt chlorinator question")}${ar}${st("⚠️", "Warning if what they see doesn't match the plug; the plug's state is saved with the job")}</div></div>
+    <div class="prio"><b>Who wins:</b><span class="p top">🔒 Night-dosing lock</span>➜<span class="p">✋ Hand switch (1 hour)</span>➜<span class="p">📅 Weekly schedule</span></div>
+    <div style="margin-top:12px;font-size:13.5px"><b>Not covered yet</b><ul class="gaps" style="margin:4px 0 0;padding-left:20px">
+      <li>Chlorinators without a plug${notCovered.length ? ` (${notCovered.map(esc).join(", ")})` : ""}, and Tengah Pump Room 2 — only the technician's check (4).</li>
+      <li>A night dose that isn't recorded in the tracker — no lock that night.</li>
+      <li>A plug that is offline (no Wi-Fi) — the timer can't switch it; the tracker shows it as “offline”.</li></ul></div>
+  </details>`;
+}
 function render(){
   if(!S.user) return;
   const plugs = S.cfg.plugs || [];
   $("#app").innerHTML = `
   <header><h1>HF Pools <small>Smart plugs</small></h1><span class="me">${esc(S.user.email)} · <button id="out">Sign out</button></span></header>
   ${autoCard()}
+  ${guardCard()}
   ${S.err ? `<div class="errbox">${esc(S.err)}</div>` : ""}
   <div class="card"><h2>Plugs <small>${S.checkedAt ? "checked " + hhmm(S.checkedAt) : ""} · <button class="link" id="refresh">Refresh</button></small></h2>
     ${plugs.length ? plugs.map(plugHtml).join("") : `<div class="note">No plugs yet — add one below.</div>`}</div>
@@ -355,6 +420,7 @@ function render(){
     <form class="row" id="apif"><input id="api" placeholder="Apps Script web app URL (…/exec)" value="${esc(S.cfg.apiUrl || "")}" style="flex:1 1 300px" autocomplete="off"><button class="b sm main">Save</button></form>
     <div class="note" style="margin-top:6px">The Shelly key is NOT entered here — it stays in the Apps Script's Script Properties.</div></div>`;
   $("#out").onclick = () => auth.signOut();
+  { const g = $("#guard"); if(g) g.addEventListener("toggle", () => { S.guardOpen = g.open; try{ localStorage.setItem("hf-guard-open", g.open ? "1" : "0"); }catch(e){} const c = g.querySelector(".chev"); if(c) c.textContent = g.open ? "hide" : "show"; }); }
   $("#refresh").onclick = async () => { try{ const d = await db.doc("dosing_config/plugs").get(); if(d.exists){ S.cfg = Object.assign({plugs:[], apiUrl:""}, d.data()); RULES = mergeRules(S.cfg.rules); } }catch(e){} render(); refreshStatus(); loadFcNeeded(); };
   document.querySelectorAll("[data-sw]").forEach(b => b.onclick = () => { const p = plugs.find(x => x.id === b.dataset.sw); if(p) switchPlug(p, b.dataset.on === "1", "manual"); });
   document.querySelectorAll("[data-apply]").forEach(b => b.onclick = () => { const p = plugs.find(x => x.id === b.dataset.apply); const r = p && ruleFor(p.pool); if(p && r && r.on !== null) switchPlug(p, r.on, "rule: " + r.why); });
