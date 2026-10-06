@@ -208,20 +208,25 @@ function weekDayTxt(d){ if(!d || d.off) return "OFF all day";
   if(d.nightFrom !== undefined) x += `; night run ${hr(d.nightFrom)}–${hr(d.nightTo)} if FC below ${d.below}`;
   return x; }
 /* Night-dosing lock (Kay, 5 Oct 2026) — the one rule for every outlet. Once the night dose for an outlet is recorded in
- * the tracker ("Manual Dosing (Chlorine and Acid)"), its salt chlorinator is OFF until 8 am next morning, whatever else
+ * the tracker ("Manual Dosing (Chlorine and Acid)"), its salt chlorinator is OFF until the next water test comes in (Kay,
+ * 6 Oct 2026 -- was a fixed 8 am; it always ends by midnight at the end of the next day), whatever else
  * says; switching it ON by hand during the lock is undone at the next check. d = autoState.dosed[POOL] = {at, by},
  * written by the timer from dosing_rounds. Same code on the page (dosingLock) and in the script (dosingLock_). */
-function lockUntil(at) {
+function sgDayOf(ms) { return new Date(ms + 8 * 3600000).toISOString().slice(0, 10); }
+function dayStartMs(day) { return Date.parse(day + 'T00:00:00+08:00'); }
+function lockUntil(at) {                                        // the latest a lock can last
   var t = Date.parse(at); if (!isFinite(t)) return 0;
-  var x = new Date(t + 8 * 3600000), u = Date.UTC(x.getUTCFullYear(), x.getUTCMonth(), x.getUTCDate(), 8) - 8 * 3600000;
-  return x.getUTCHours() >= 8 ? u + 86400000 : u;
+  return dayStartMs(sgDayOf(t - 4 * 3600000)) + 2 * 864e5;
 }
-function dosingLock(pool, d, nowMs) {
+function hasTest(t) { return !!t && ['morning', 'afternoon', 'night'].some(function (k) { return t[k] !== null && t[k] !== undefined && t[k] !== ''; }); }
+function dosingLock(pool, d, nowMs, t) {                        // t = today's water tests for the pool
   if (!d || !d.at) return null;
-  var t = Date.parse(d.at);
-  if (!(nowMs >= t && nowMs < lockUntil(d.at))) return null;
-  var x = new Date(t + 8 * 3600000);
-  return { on: false, key: 'dosed', lock: true, why: 'night dosing done at ' + pool + ' at ' + hr(x.getUTCHours() + x.getUTCMinutes() / 60) + (d.by ? ' by ' + d.by : '') + ' — locked OFF until 8 am' };
+  var at = Date.parse(d.at);
+  if (!(nowMs >= at && nowMs < lockUntil(d.at))) return null;
+  var nextDayStart = dayStartMs(sgDayOf(at - 4 * 3600000)) + 864e5;
+  if (nowMs >= nextDayStart && hasTest(t)) return null;         // the next day's first water test ends it
+  var x = new Date(at + 8 * 3600000);
+  return { on: false, key: 'dosed', lock: true, why: 'night dosing done at ' + pool + ' at ' + hr(x.getUTCHours() + x.getUTCMinutes() / 60) + (d.by ? ' by ' + d.by : '') + ' — locked OFF until the next water test comes in' };
 }
 function prevTests(pool){ const a = S.cfg.autoState || {}, x = (a.prevTests || {})[pool], y = dayKey(new Date(sgNow().getTime() - 864e5));
   return x && x.date === y ? x : {}; }
@@ -241,7 +246,7 @@ function ruleFor(pool){
   // schedule if it has one; 3) otherwise no rule - the plug is switched by hand only. Same order as ruleFor_ in the script.
   if(!pool) return null;
   const RULES = poolRules(allRules(), pool);
-  const lk = dosingLock(pool, ((S.cfg.autoState || {}).dosed || {})[pool], Date.now()); if(lk) return lk;
+  const lk = dosingLock(pool, ((S.cfg.autoState || {}).dosed || {})[pool], Date.now(), S.fc[pool]); if(lk) return lk;
   if(!RULES.week) return {on:null, key:"manual", why:"no schedule — switched by hand only (the night-dosing lock still applies)"};
   const now = sgNow(), h = now.getHours() + now.getMinutes() / 60, dow = now.getDay();
   if(S.fc[pool] && S.fc[pool].err) return {on:null, why:"couldn't read the water tests yet — wait a minute or press Refresh"};
@@ -337,7 +342,7 @@ function rulesCard(){
     if(!o || !o.week) return `<span class="note">no schedule — switched by hand only</span>`;
     return `<b>weekly schedule:</b><div style="margin-top:4px;line-height:1.5">${WEEK_ORDER.map(i => `<div><span style="display:inline-block;width:36px;font-weight:600">${DAY_NAMES[i].slice(0,3)}</span>${esc(weekDayTxt(o.week[i]))}</div>`).join("")}</div>`
       + (o.noTestHour !== undefined && o.noTestHour !== DEFAULT_RULES.noTestHour ? `<div class="note">No morning test by ${hr(o.noTestHour)} → OFF + alert</div>` : ""); };
-  const lockTxt = p => { const lk = dosingLock(p, dosed[p], Date.now()); return lk ? `<div class="note" style="margin-top:3px">🔒 ${esc(lk.why)}</div>` : ""; };
+  const lockTxt = p => { const lk = dosingLock(p, dosed[p], Date.now(), S.fc[p]); return lk ? `<div class="note" style="margin-top:3px">🔒 ${esc(lk.why)}</div>` : ""; };
   const poolRows = SALT_POOLS.map(p => `<tr><td>${p}${plugPools.has(p) ? ' <span title="has a plug">🔌</span>' : ""}</td><td>${ownTxt(p)}${lockTxt(p)}</td><td style="text-align:right"><button class="link" data-pedit="${p}">${own[p] && own[p].week ? "Change" : "Set schedule"}</button></td></tr>`).join("");
   let poolEdit = "";
   if(S.editPool){ const pool = S.editPool, E = poolRules(R, pool);
@@ -351,7 +356,7 @@ function rulesCard(){
       <div class="note" style="margin-top:6px">24-hour clock (18 = 6 pm, 21.5 = 9:30 pm). The latest water test of the day decides. Leave "ON anyway from" and the night run empty if not used. A night run can pass midnight (23 to 6 = 11 pm to 6 am) and only happens if that day's latest FC is below the level. The night-dosing lock always wins.</div>
       <div class="row" style="margin-top:10px"><button class="b sm main">Save ${esc(pool)}</button><button type="button" class="b sm" id="p-cancel">Cancel</button>${own[pool] ? `<button type="button" class="link" id="p-std" style="margin-left:auto">Remove the schedule (hand only)</button>` : ""}</div></form>`; }
   return `<div class="card"><h2>Rules</h2>
-    <div style="font-size:14px;line-height:1.5;padding:8px 10px;border:1px solid var(--line);border-radius:10px;margin-bottom:10px">🔒 <b>Night-dosing lock — every outlet:</b> once the night dose is recorded in the tracker (Manual Dosing), that outlet's salt chlorinator is switched <b>OFF</b> and kept OFF until <b>8 am</b> next morning. Switched ON by hand during the lock → OFF again within 5 minutes.</div>
+    <div style="font-size:14px;line-height:1.5;padding:8px 10px;border:1px solid var(--line);border-radius:10px;margin-bottom:10px">🔒 <b>Night-dosing lock — every outlet:</b> once the night dose is recorded in the tracker (Manual Dosing), that outlet's salt chlorinator is switched <b>OFF</b> and kept OFF until <b>the next water test comes in</b> (normally the next morning's report; at the latest midnight at the end of the next day). Switched ON by hand during the lock → OFF again within 5 minutes.</div>
     <div class="note">Each outlet below follows its own weekly schedule. An outlet without one is only switched by hand (plus the lock). Switched by hand against the schedule → back to the schedule after 1 hour.</div>
     <table class="dtab">${poolRows}</table>${poolEdit}</div>`;
 }
@@ -364,19 +369,19 @@ function guardCard(){
   const notCovered = SALT_POOLS.filter(p => !withPlug.has(p));
   const own = (RULES.pools || {}), sched = SALT_POOLS.filter(p => own[p] && own[p].week);
   const st = (ic, t, cls) => `<div class="step${cls ? " " + cls : ""}"><span class="ic">${ic}</span>${t}</div>`, ar = `<span class="arr" aria-hidden="true">➜</span>`;
-  // 24-hour strip, 6 am to 6 am: schedule by day, the lock from the night dose until 8 am.
+  // 24-hour strip, 6 am to 6 am: schedule by day, the lock from the night dose until the next morning's water test.
   const x = h => 20 + ((h - 6 + 24) % 24) * (320 / 24);
-  const tl = `<svg class="tl" viewBox="0 0 360 96" role="img" aria-label="One day at a plug: by day the weekly schedule and the water test decide; once the night dose is recorded the plug is locked OFF until 8 am.">
-    <rect x="${x(8) + 2}" y="30" width="${x(21) - x(8) - 4}" height="22" rx="4" fill="#F3E3BE"/>
-    <text x="${(x(8) + x(21)) / 2}" y="45" text-anchor="middle" font-size="13" fill="currentColor">Weekly schedule + FC</text>
+  const tl = `<svg class="tl" viewBox="0 0 360 96" role="img" aria-label="One day at a plug: by day the weekly schedule and the water test decide; once the night dose is recorded the plug is locked OFF until the next morning's water test comes in.">
+    <rect x="${x(9) + 2}" y="30" width="${x(21) - x(9) - 4}" height="22" rx="4" fill="#F3E3BE"/>
+    <text x="${(x(9) + x(21)) / 2}" y="45" text-anchor="middle" font-size="13" fill="currentColor">Weekly schedule + FC</text>
     <rect x="${x(21)}" y="30" width="${340 - x(21)}" height="22" rx="4" fill="#3B4C8C"/>
-    <rect x="20" y="30" width="${x(8) - 20}" height="22" rx="4" fill="#3B4C8C"/>
-    <text x="${(x(21) + 340) / 2}" y="45" text-anchor="middle" font-size="12.5" fill="#fff">🔒 OFF until 8 am</text>
+    <rect x="20" y="30" width="${x(9) - 20}" height="22" rx="4" fill="#3B4C8C"/>
+    <text x="${(x(21) + 340) / 2}" y="45" text-anchor="middle" font-size="12.5" fill="#fff">🔒 OFF till next test</text>
     <line x1="${x(21)}" y1="22" x2="${x(21)}" y2="60" stroke="#B23A2E" stroke-width="2"/>
     <text x="${x(21)}" y="16" text-anchor="middle" font-size="12" fill="#B23A2E" font-weight="600">Night dose recorded</text>
     <line x1="20" y1="62" x2="340" y2="62" stroke="currentColor" stroke-width="1" opacity=".5"/>
-    ${[8, 12, 18, 21, 0, 6].map((h, i) => { const xx = i === 5 ? 340 : x(h); return `<line x1="${xx}" y1="62" x2="${xx}" y2="66" stroke="currentColor" opacity=".6"/><text x="${xx}" y="79" text-anchor="${i === 5 ? "end" : "middle"}" font-size="11.5" fill="currentColor">${h === 0 ? "12 am" : h < 12 ? h + " am" : h === 12 ? "12 pm" : (h - 12) + " pm"}</text>`; }).join("")}
-    <text x="180" y="94" text-anchor="middle" font-size="10.5" fill="currentColor" opacity=".8">Dose time varies — the lock starts when the dosing job is done</text></svg>`;
+    ${[9, 12, 18, 21, 0, 6].map((h, i) => { const xx = i === 5 ? 340 : x(h); return `<line x1="${xx}" y1="62" x2="${xx}" y2="66" stroke="currentColor" opacity=".6"/><text x="${xx}" y="79" text-anchor="${i === 5 ? "end" : "middle"}" font-size="11.5" fill="currentColor">${h === 0 ? "12 am" : h < 12 ? h + " am" : h === 12 ? "12 pm" : (h - 12) + " pm"}</text>`; }).join("")}
+    <text x="180" y="94" text-anchor="middle" font-size="10.5" fill="currentColor" opacity=".8">The lock starts when dosing is done and ends at the morning test</text></svg>`;
   return `<details class="card guard" id="guard" ${S.guardOpen ? "open" : ""}><summary><h2>🛡️ Salt chlorinator safeguards <span class="chev">${S.guardOpen ? "hide" : "show"}</span></h2>
     <div class="note" style="margin-top:6px">What stops a salt chlorinator running after night dosing, or when someone switches it on by mistake. Plugs covered now: <b>${covered}</b>.</div></summary>
     <div class="lane day"><div class="lane-h">☀️ 1 · Day time — weekly schedule</div>
@@ -386,7 +391,7 @@ function guardCard(){
       <div class="flow">${st("👆", "Switched in the Shelly app, on the plug's button or on this page")}${ar}${st("📣", "Telegram alert → <b>HF Pools Alerts › Smartplug Check</b>")}${ar}${st("⏱️", "1 hour later the timer puts it back to the schedule", "go")}</div>
       <div class="note">No schedule at that outlet → it stays as switched (the alert still goes out).</div></div>
     <div class="lane night"><div class="lane-h">🌙 3 · After night dosing — the lock</div>
-      <div class="flow">${st("🧴", "Night dose recorded in the tracker (Manual Dosing done)")}${ar}${st("🔒", "Plug switched <b>OFF</b> and kept OFF until <b>8 am</b>", "stop")}${ar}${st("🚫", "Switched ON during the lock? <b>OFF again within 5 minutes</b> + alert", "stop")}</div>
+      <div class="flow">${st("🧴", "Night dose recorded in the tracker (Manual Dosing done)")}${ar}${st("🔒", "Plug switched <b>OFF</b> and kept OFF until <b>the next water test</b> (normally the morning report)", "stop")}${ar}${st("🚫", "Switched ON during the lock? <b>OFF again within 5 minutes</b> + alert", "stop")}</div>
       ${tl}</div>
     <div class="lane tech"><div class="lane-h">🧑‍🔧 4 · Technician check — every outlet</div>
       <div class="flow">${st("1️⃣", "“Check Salt Chlorinator and Pump panel” is the first job — water test and dosing stay locked until it's done")}${ar}${st("👀", "The job shows the plug's live state next to the salt chlorinator question")}${ar}${st("⚠️", "Warning if what they see doesn't match the plug; the plug's state is saved with the job")}</div></div>
