@@ -398,7 +398,7 @@ async function loadMyMc(p){
   try{ const q = await db.collection("staff_mc").where("uid", "==", S.user.uid).get(); const l = []; q.forEach(d => l.push(Object.assign({id:d.id}, d.data())));
     S.mc.list = l.sort((a, b) => String(b.at).localeCompare(String(a.at))); }catch(e){ S.mc.list = []; }
   S.mc.locked = await mcLockOn();
-  if(S.person && S.person.role === "staff") staffView(p);
+  if(S.person && (S.person.role === "staff" || S.mine)) staffView(p);
 }
 /* ---- Preview: Kay / William see the staff page exactly as a staff member sees it (hash #staff).
    Nothing is read from or saved to that person's records. ---- */
@@ -410,6 +410,9 @@ function previewStaff(name){
   staffView({name:S.previewing}); window.scrollTo(0, 0);
 }
 function previewBar(){
+  // William (supervisor) filling in his own details (Kay, 6 Oct 2026): same page as the staff, saved to his own record.
+  if(S.mine) return `<div class="card" style="max-width:640px;margin:12px auto"><b>👤 Your own page</b> — your MC and your details, saved to your record (only you and Kay see them).
+    <div style="margin-top:6px"><a href="#today">← Back to the dashboard</a></div></div>`;
   if(!S.previewing) return "";
   return `<div class="card" style="max-width:640px;margin:12px auto;background:var(--warn-soft);border-color:var(--warn)">
     <b>👁 Preview: this is what ${esc(S.previewing)} sees on his phone.</b> Nothing you type here is saved.
@@ -495,10 +498,13 @@ auth.onAuthStateChanged(async u => {
   if(S.person && S.person.role === "staff"){ loadMyProfile(S.person); return; }
   start();
   if(location.hash === "#staff") previewStaff("Fik");
+  else if(location.hash === "#me" && S.person){ S.mine = true; loadMyProfile(S.person); }
 });
 window.addEventListener("hashchange", () => {
   const boss = S.user && !(S.person && S.person.role === "staff");
-  if(boss && location.hash === "#staff"){ previewStaff(S.previewing || "Fik"); return; }
+  if(boss && location.hash === "#staff"){ S.mine = false; previewStaff(S.previewing || "Fik"); return; }
+  if(boss && location.hash === "#me" && S.person){ S.previewing = null; S.mine = true; loadMyProfile(S.person); window.scrollTo(0, 0); return; }
+  if(S.mine){ S.mine = false; S.pf = null; S.mc = null; }
   if(S.previewing){ S.previewing = null; S.pf = null; S.mc = null; }
   render(); window.scrollTo(0, 0); });
 
@@ -960,7 +966,7 @@ function render(){ if(renderQueued) return; renderQueued = true; requestAnimatio
 function draw(){
   if(!S.user) return;
   if(S.person && S.person.role === "staff") return;
-  if(S.previewing) return;
+  if(S.previewing || S.mine) return;
   const tab = tabNow(), now = new Date(), att = attention();
   const badges = {today:att.filter(a => a.lvl === "urg").length};
   const prevCal = $("#calscroll"), calLeft = prevCal ? prevCal.scrollLeft : null;
@@ -1026,7 +1032,7 @@ function drawToday(att){
   </div><div class="stack">
     <div class="card"><h2>Who's working today <small>live</small></h2>${peopleHtml(false)}${peopleLegend}</div>
     <div class="card"><h2>Open a page</h2><div class="links">
-      <a href="/tracker">Night Round</a><a href="/morning">Morning Round</a><a href="/tasklists/dosing-round-tracker.html#overview">Overview</a><a href="/board">Maintenance Board</a><a href="/dosing-app/pool-history.html">Pool history</a><a href="/dosing">Dosing Lookup</a><a href="/learn">Learn</a><a href="/">All pages</a>
+      <a href="/tracker">Night Round</a><a href="/morning">Morning Round</a><a href="/tasklists/dosing-round-tracker.html#overview">Overview</a><a href="/board">Maintenance Board</a><a href="/dosing-app/pool-history.html">Pool history</a><a href="/dosing">Dosing Lookup</a><a href="/learn">Learn</a><a href="/">All pages</a>${S.person ? `<a href="#me">👤 My details & MC</a>` : ""}
     </div></div>
   </div></div>`;
 }
@@ -1400,7 +1406,7 @@ function drawTeam(){
   </div><div class="stack">
     <div class="card"><h2>App version on each phone</h2>${verHtml}</div>
     <div class="card"><h2>MC sent by staff <small>only you and William · <a href="#staff">👁 see the staff page</a></small></h2>${mcUploadsHtml()}</div>
-    <div class="card"><h2>Staff details <small>from each person's page · <a href="#staff">👁 see what they see</a></small></h2>${staffProfilesHtml()}</div>
+    <div class="card"><h2>Staff details <small>from each person's page · <a href="#staff">👁 see what they see</a>${S.person ? ` · <a href="#me">✏️ fill in mine</a>` : ""}</small></h2>${staffProfilesHtml()}</div>
     <div class="card"><h2>Coming later</h2><p class="lead" style="margin:0">Leave applications to approve and the conduct log will sit here once the HR app is built.</p></div>
   </div></div>`;
 }
