@@ -250,6 +250,8 @@ const PEOPLE = {
   "6df36b3943ca1eea63bdcb152d79273de09030ced956146f0180cc98066f3133": {name:"Sharul", role:"staff"},
   "6ba3ddae7dbb119b31d474b6551b38f271c6df9613b44889fd8cfff6e8c47edf": {name:"William", role:"supervisor"},
   "a5745313e6b3efdd8a6388ca5f0a6e9fa95a9cab20e45ceb28290fcffa5ce05d": {name:"Islam", role:"staff"},
+  "927bbc623eb0fa97fcdf0ce5c4833a28854a9be53cecafcf7b8942bb1e057d4f": {name:"Islam", role:"staff"},   // Islam's new email (Kay, 6 Oct 2026)
+  "b899275ff2a9bc141e3d0939ba2e0b8f6970cbaf564fe619ab954495c9013eb7": {name:"Guru", role:"staff"},
 };
 async function whoIs(email){
   try{
@@ -402,7 +404,7 @@ async function loadMyMc(p){
 }
 /* ---- Preview: Kay / William see the staff page exactly as a staff member sees it (hash #staff).
    Nothing is read from or saved to that person's records. ---- */
-const PREVIEW_NAMES = ["Fik", "Sharul", "Islam"];
+const PREVIEW_NAMES = ["Fik", "Sharul", "Islam", "Guru"];
 function previewStaff(name){
   S.previewing = name || "Fik";
   S.pf = {data:null, loaded:true, locked:true, saving:false, msg:"", photo:null};
