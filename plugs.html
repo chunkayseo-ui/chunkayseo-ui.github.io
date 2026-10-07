@@ -198,9 +198,11 @@ function weekRule(pool, W, noTestHour, t, tp, h, dow) {
   if (L !== null) return L < D.below
     ? { on: true, tests: true, key: 'low:' + L, why: 'FC ' + L + ' is below ' + D.below + ' — ON until ' + hr(D.closeAt) }
     : { on: false, tests: true, key: 'ok:' + L, why: 'FC ' + L + ' is ' + D.below + ' or more' + (D.onFrom !== undefined ? ' — ON from ' + hr(D.onFrom) : '') };
-  if (D.onFrom === undefined && h >= noTestHour) return { on: false, tests: true, alert: true, key: 'no-test', why: 'no morning water test by ' + hr(noTestHour) };
-  if (wraps(P)) return { on: false, key: 'night-over', why: 'night run ended at ' + hr(P.nightTo) + ' — waiting for the morning water test' };
-  return { on: null, tests: true, key: 'wait', why: 'waiting for the morning water test' + (D.onFrom !== undefined ? ' (ON from ' + hr(D.onFrom) + ' anyway)' : '') };
+  // Kay, 7 Oct 2026: before today's first water test the plug is LOCKED OFF (Switch ON greyed out on the page; an ON from the
+  // Shelly app or the plug's button is switched OFF again within 5 minutes). The test (or an ON-from time) unlocks it.
+  if (D.onFrom === undefined && h >= noTestHour) return { on: false, tests: true, alert: true, lock: true, key: 'no-test', why: 'no morning water test by ' + hr(noTestHour) + ' — locked OFF until a water test comes in' };
+  if (wraps(P)) return { on: false, lock: true, key: 'night-over', why: 'night run ended at ' + hr(P.nightTo) + ' — locked OFF until the morning water test comes in' };
+  return { on: false, tests: true, lock: true, key: 'wait', why: 'locked OFF until the morning water test comes in' + (D.onFrom !== undefined ? ' (ON from ' + hr(D.onFrom) + ' anyway)' : '') };
 }
 const WEEK_ORDER = [1,2,3,4,5,6,0];
 function weekDayTxt(d){ if(!d || d.off) return "OFF all day";
@@ -316,8 +318,9 @@ function plugHtml(p){
     <div class="plug-top"><span class="dot ${cls}"></span>
       <div><div class="pname">${esc(p.name)}</div><div class="pmeta">${esc(p.id)}${st && st.watts !== null && st.watts !== undefined ? ` · ${st.watts} W` : ""}${st && st.volts ? ` · ${st.volts} V` : ""}</div></div>
       <span class="state ${cls}">${label}</span></div>
-    <div class="btns"><button class="b ${st && !st.on ? "main" : ""}" data-sw="${esc(p.id)}" data-on="1" ${S.busy[p.id] ? "disabled" : ""}>Switch ON</button>
+    <div class="btns"><button class="b ${st && !st.on ? "main" : ""}" data-sw="${esc(p.id)}" data-on="1" ${S.busy[p.id] || (rule && rule.lock) ? "disabled" : ""} ${rule && rule.lock ? `title="${esc(rule.why)}"` : ""}>${rule && rule.lock ? "🔒 Switch ON" : "Switch ON"}</button>
       <button class="b ${st && st.on ? "main" : ""}" data-sw="${esc(p.id)}" data-on="0" ${S.busy[p.id] ? "disabled" : ""}>Switch OFF</button></div>
+    ${rule && rule.lock ? `<div class="note" style="margin-top:4px">🔒 Switch ON is locked — ${esc(rule.why)}.</div>` : ""}
     ${p.pool ? `<div class="rule">${fcLine}${ownWk ? ` <span class="note">· <b>own schedule for this plug</b></span><div class="note" style="margin:3px 0 2px;line-height:1.5">${WEEK_ORDER.map(i => `<span style="display:inline-block;width:34px;font-weight:600">${DAY_NAMES[i].slice(0,3)}</span>${esc(weekDayTxt(ownWk[i]))}`).join("<br>")}</div>` : ((RULES.pools || {})[p.pool] || {}).week ? ` <span class="note">· weekly schedule</span>` : ` <span class="note">· no schedule (hand only)</span>`}<br>Rule says now: ${rule.on === null ? "<b>wait</b>" : `<b class="${rule.on ? "on" : "off"}">${rule.on ? "ON" : "OFF"}</b>`} <span class="why">— ${esc(rule.why)}</span>
       ${(() => { const x = ((S.cfg.autoState || {}).plugs || {})[p.id];   // when the timer last switched this plug (Kay, 6 Oct 2026)
         if(!x || !x.at || x.want == null || new Date(x.at).toDateString() !== new Date().toDateString()) return "";
@@ -338,7 +341,7 @@ function autoCard(){
     <div class="row"><span>${on ? `🤖 <b>Automatic switching is ON.</b> Every ${a.every === 1 ? "minute" : "5 minutes"} from ${hr(win.start)} to ${hr(win.end)} the timer reads the water test sheet and switches the plugs that follow a pool. At night it keeps checking every 5 minutes for the night-dosing lock, night runs and hand switches.${a.every === 1 && a.testUntil ? ` <b>Test mode</b> until ${hhmm(a.testUntil)}, then back to every 5 minutes.` : ""}` : "✋ <b>Automatic switching is OFF.</b> Nothing switches by itself — \"Rule says\" shows what it <i>would</i> do; press Apply to do it by hand."}</span>
     <button class="b sm ${on ? "" : "main"}" id="autotgl" style="margin-left:auto">${on ? "Turn OFF" : "Turn ON"}</button></div>
     <div class="note" style="margin-top:6px">${last ? (night ? `Timer is asleep for the night — next check at ${hr(win.start)}.` : `Timer last checked ${ago(last)}${stale ? ` — <b style="color:var(--urgent)">the timer doesn't seem to be running</b>` : ""}.`) : "The timer hasn't run yet (run setupTimer in the Apps Script once)."}${a.tg && a.tg !== "ok" ? ` · Telegram: ${esc(a.tg)}` : ""}
-    A plug switched by hand sends a Telegram alert and goes back to its schedule after 1 hour; during the night-dosing lock it goes OFF again within 5 minutes. This page updates by itself.</div>
+    A plug switched by hand sends a Telegram alert and goes back to its schedule after 1 hour; while a plug is locked (🔒 night-dosing lock, or before the day's first water test) it goes OFF again within 5 minutes. This page updates by itself.</div>
     ${on && rows ? `<div style="margin-top:6px;font-size:13px">${rows}</div>` : ""}</div>`;
 }
 function rulesCard(){
@@ -434,7 +437,7 @@ function render(){
   $("#out").onclick = () => auth.signOut();
   { const g = $("#guard"); if(g) g.addEventListener("toggle", () => { S.guardOpen = g.open; try{ localStorage.setItem("hf-guard-open", g.open ? "1" : "0"); }catch(e){} const c = g.querySelector(".chev"); if(c) c.textContent = g.open ? "hide" : "show"; }); }
   $("#refresh").onclick = async () => { try{ const d = await db.doc("dosing_config/plugs").get(); if(d.exists){ S.cfg = Object.assign({plugs:[], apiUrl:""}, d.data()); RULES = mergeRules(S.cfg.rules); } }catch(e){} render(); refreshStatus(); loadFcNeeded(); };
-  document.querySelectorAll("[data-sw]").forEach(b => b.onclick = () => { const p = plugs.find(x => x.id === b.dataset.sw); if(p) switchPlug(p, b.dataset.on === "1", "manual"); });
+  document.querySelectorAll("[data-sw]").forEach(b => b.onclick = () => { const p = plugs.find(x => x.id === b.dataset.sw); if(!p) return; if(b.dataset.on === "1"){ const r = ruleFor(p.pool, p.week); if(r && r.lock){ S.err = p.name + ": " + r.why + "."; render(); return; } } switchPlug(p, b.dataset.on === "1", "manual"); });
   document.querySelectorAll("[data-apply]").forEach(b => b.onclick = () => { const p = plugs.find(x => x.id === b.dataset.apply); const r = p && ruleFor(p.pool, p.week); if(p && r && r.on !== null) switchPlug(p, r.on, "rule: " + r.why); });
   document.querySelectorAll("[data-del]").forEach(b => b.onclick = () => { if(!confirm("Remove this plug from the page? (It stays in your Shelly app.)")) return; saveCfg({plugs: plugs.filter(p => p.id !== b.dataset.del)}); });
   $("#addf").onsubmit = e => { e.preventDefault();
