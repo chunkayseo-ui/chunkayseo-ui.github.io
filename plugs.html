@@ -241,16 +241,19 @@ const S = {user:null, cfg:{plugs:[], apiUrl:""}, status:{}, fc:{}, log:[], busy:
 S.guardOpen = (() => { try{ return localStorage.getItem("hf-guard-open") !== "0"; }catch(e){ return true; } })();
 
 /* ---------- the rule, worked out from today's tests ---------- */
-function ruleFor(pool){
+function ruleFor(pool, pw){
+  // Kay, 7 Oct 2026: a plug can carry its own weekly schedule (plugs[].week, e.g. Tengah Room 2 — its pump stops at 7 pm);
+  // it replaces the outlet schedule for that plug only. Same in ruleFor_ (script).
   // Kay, 5 Oct 2026: the standard rules are gone. 1) night-dosing lock for every outlet; 2) the outlet's weekly
   // schedule if it has one; 3) otherwise no rule - the plug is switched by hand only. Same order as ruleFor_ in the script.
   if(!pool) return null;
   const RULES = poolRules(allRules(), pool);
   const lk = dosingLock(pool, ((S.cfg.autoState || {}).dosed || {})[pool], Date.now(), S.fc[pool]); if(lk) return lk;
-  if(!RULES.week) return {on:null, key:"manual", why:"no schedule — switched by hand only (the night-dosing lock still applies)"};
+  const W = cleanWeek(pw) || RULES.week;
+  if(!W) return {on:null, key:"manual", why:"no schedule — switched by hand only (the night-dosing lock still applies)"};
   const now = sgNow(), h = now.getHours() + now.getMinutes() / 60, dow = now.getDay();
   if(S.fc[pool] && S.fc[pool].err) return {on:null, why:"couldn't read the water tests yet — wait a minute or press Refresh"};
-  return weekRule(pool, RULES.week, RULES.noTestHour, S.fc[pool] || {}, prevTests(pool), h, dow);
+  return weekRule(pool, W, RULES.noTestHour, S.fc[pool] || {}, prevTests(pool), h, dow);
 }
 async function loadFc(pools){
   const today = dayKey(sgNow());
@@ -304,7 +307,7 @@ async function switchPlug(p, on, reason){
 function plugHtml(p){
   const st = S.status[p.id], cls = !st ? "" : !st.online ? "offline" : st.on ? "on" : "off";
   const label = !st ? (S.loading ? "checking…" : "—") : !st.online ? "Offline" : st.on ? "ON" : "OFF";
-  const rule = ruleFor(p.pool), t = p.pool ? S.fc[p.pool] : null;
+  const rule = ruleFor(p.pool, p.week), t = p.pool ? S.fc[p.pool] : null, ownWk = cleanWeek(p.week);
   const fcLine = !p.pool ? "" : !t ? `<span class="fc">${esc(p.pool)} · reading tests…</span>`
     : t.err ? `<span class="fc">${esc(p.pool)} · couldn't read the water tests</span>`
     : `<span class="fc">${esc(p.pool)} today · morning FC ${t.morning ?? "–"} · afternoon ${t.afternoon ?? "–"} · night ${t.night ?? "–"}${t.src === "timer" ? ` <span class="note">(timer last checked the sheet at ${hhmm(t.at)})</span>` : ""}</span>`;
@@ -315,7 +318,7 @@ function plugHtml(p){
       <span class="state ${cls}">${label}</span></div>
     <div class="btns"><button class="b ${st && !st.on ? "main" : ""}" data-sw="${esc(p.id)}" data-on="1" ${S.busy[p.id] ? "disabled" : ""}>Switch ON</button>
       <button class="b ${st && st.on ? "main" : ""}" data-sw="${esc(p.id)}" data-on="0" ${S.busy[p.id] ? "disabled" : ""}>Switch OFF</button></div>
-    ${p.pool ? `<div class="rule">${fcLine}${((RULES.pools || {})[p.pool] || {}).week ? ` <span class="note">· weekly schedule</span>` : ` <span class="note">· no schedule (hand only)</span>`}<br>Rule says now: ${rule.on === null ? "<b>wait</b>" : `<b class="${rule.on ? "on" : "off"}">${rule.on ? "ON" : "OFF"}</b>`} <span class="why">— ${esc(rule.why)}</span>
+    ${p.pool ? `<div class="rule">${fcLine}${ownWk ? ` <span class="note">· <b>own schedule for this plug</b></span><div class="note" style="margin:3px 0 2px;line-height:1.5">${WEEK_ORDER.map(i => `<span style="display:inline-block;width:34px;font-weight:600">${DAY_NAMES[i].slice(0,3)}</span>${esc(weekDayTxt(ownWk[i]))}`).join("<br>")}</div>` : ((RULES.pools || {})[p.pool] || {}).week ? ` <span class="note">· weekly schedule</span>` : ` <span class="note">· no schedule (hand only)</span>`}<br>Rule says now: ${rule.on === null ? "<b>wait</b>" : `<b class="${rule.on ? "on" : "off"}">${rule.on ? "ON" : "OFF"}</b>`} <span class="why">— ${esc(rule.why)}</span>
       ${(() => { const x = ((S.cfg.autoState || {}).plugs || {})[p.id];   // when the timer last switched this plug (Kay, 6 Oct 2026)
         if(!x || !x.at || x.want == null || new Date(x.at).toDateString() !== new Date().toDateString()) return "";
         return `<div class="note" style="margin-top:4px">⏱ The timer switched it <b>${x.want ? "ON" : "OFF"}</b> at <b>${hhmm(x.at)}</b> today${x.done === false ? " (not done yet — plug didn't answer)" : ""}.</div>`; })()}
@@ -346,7 +349,8 @@ function rulesCard(){
     return `<b>weekly schedule:</b><div style="margin-top:4px;line-height:1.5">${WEEK_ORDER.map(i => `<div><span style="display:inline-block;width:36px;font-weight:600">${DAY_NAMES[i].slice(0,3)}</span>${esc(weekDayTxt(o.week[i]))}</div>`).join("")}</div>`
       + (o.noTestHour !== undefined && o.noTestHour !== DEFAULT_RULES.noTestHour ? `<div class="note">No morning test by ${hr(o.noTestHour)} → OFF + alert</div>` : ""); };
   const lockTxt = p => { const lk = dosingLock(p, dosed[p], Date.now(), S.fc[p]); return lk ? `<div class="note" style="margin-top:3px">🔒 ${esc(lk.why)}</div>` : ""; };
-  const poolRows = SALT_POOLS.map(p => `<tr><td>${p}${plugPools.has(p) ? ' <span title="has a plug">🔌</span>' : ""}</td><td>${ownTxt(p)}${lockTxt(p)}</td><td style="text-align:right"><button class="link" data-pedit="${p}">${own[p] && own[p].week ? "Change" : "Set schedule"}</button></td></tr>`).join("");
+  const plugOwn = p => (S.cfg.plugs || []).filter(x => x.pool === p && cleanWeek(x.week)).map(x => `<div class="note" style="margin-top:4px">🔌 <b>${esc(x.name)}</b> has its own schedule (shown on its card) — the one above does not apply to it.</div>`).join("");
+  const poolRows = SALT_POOLS.map(p => `<tr><td>${p}${plugPools.has(p) ? ' <span title="has a plug">🔌</span>' : ""}</td><td>${ownTxt(p)}${plugOwn(p)}${lockTxt(p)}</td><td style="text-align:right"><button class="link" data-pedit="${p}">${own[p] && own[p].week ? "Change" : "Set schedule"}</button></td></tr>`).join("");
   let poolEdit = "";
   if(S.editPool){ const pool = S.editPool, E = poolRules(R, pool);
     const W = E.week || WEEK_ORDER.map(() => ({below:2, closeAt:18})), WW = []; W.forEach((d, i) => WW[i] = d);
@@ -431,7 +435,7 @@ function render(){
   { const g = $("#guard"); if(g) g.addEventListener("toggle", () => { S.guardOpen = g.open; try{ localStorage.setItem("hf-guard-open", g.open ? "1" : "0"); }catch(e){} const c = g.querySelector(".chev"); if(c) c.textContent = g.open ? "hide" : "show"; }); }
   $("#refresh").onclick = async () => { try{ const d = await db.doc("dosing_config/plugs").get(); if(d.exists){ S.cfg = Object.assign({plugs:[], apiUrl:""}, d.data()); RULES = mergeRules(S.cfg.rules); } }catch(e){} render(); refreshStatus(); loadFcNeeded(); };
   document.querySelectorAll("[data-sw]").forEach(b => b.onclick = () => { const p = plugs.find(x => x.id === b.dataset.sw); if(p) switchPlug(p, b.dataset.on === "1", "manual"); });
-  document.querySelectorAll("[data-apply]").forEach(b => b.onclick = () => { const p = plugs.find(x => x.id === b.dataset.apply); const r = p && ruleFor(p.pool); if(p && r && r.on !== null) switchPlug(p, r.on, "rule: " + r.why); });
+  document.querySelectorAll("[data-apply]").forEach(b => b.onclick = () => { const p = plugs.find(x => x.id === b.dataset.apply); const r = p && ruleFor(p.pool, p.week); if(p && r && r.on !== null) switchPlug(p, r.on, "rule: " + r.why); });
   document.querySelectorAll("[data-del]").forEach(b => b.onclick = () => { if(!confirm("Remove this plug from the page? (It stays in your Shelly app.)")) return; saveCfg({plugs: plugs.filter(p => p.id !== b.dataset.del)}); });
   $("#addf").onsubmit = e => { e.preventDefault();
     const id = $("#a-id").value.trim().replace(/^shelly[\w-]*-/i, "").toLowerCase(), name = $("#a-name").value.trim(), pool = $("#a-pool").value;
