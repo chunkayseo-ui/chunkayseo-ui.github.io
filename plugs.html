@@ -99,6 +99,9 @@ details.guard>summary .chev{margin-left:auto;font:400 12px "IBM Plex Sans";text-
 .tile .tsub .dot.on{box-shadow:none}
 .tile .lock{position:absolute;top:8px;right:10px;font-size:14px}
 .open-card{border-color:var(--accent)}
+.today{margin-top:8px;padding:8px 10px;border-radius:8px;background:#FFF6DC;border:1px solid #EBD9A6;font-size:13.5px;display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+.today.on{background:#E3E6F3;border-color:#B9C0E0}
+.today select{padding:5px 7px}
 .open-card h2 .link{margin-left:auto;font:400 12px "IBM Plex Sans";text-transform:none;letter-spacing:0}
 details.fold>summary{list-style:none;cursor:pointer}
 details.fold>summary::-webkit-details-marker{display:none}
@@ -284,7 +287,14 @@ S.folds = (() => { try{ return JSON.parse(localStorage.getItem("hf-folds") || "{
 S.openPool = null;   // outlet tile tapped open
 
 /* ---------- the rule, worked out from today's tests ---------- */
-function ruleFor(pool, pw){
+/* Today-only override (Kay, 8 Oct 2026): dosing_config/plugs.overrides[plugId] = {date:"YYYY-MM-DD", on, until (hour), by, at}.
+ * Keeps a plug ON (or OFF) until a time TODAY whatever its schedule says - e.g. DR ON till 9 pm on a short-staffed day.
+ * The night-dosing lock still wins. Same code in the script (todayOverride_). */
+function todayOverride(o, h, dateKey){
+  if(!o || o.date !== dateKey || !(h < Number(o.until))) return null;
+  return {on: o.on === true, key: "today-" + (o.on ? "on" : "off") + "-" + o.until, today: true, why: "today only — keep " + (o.on ? "ON" : "OFF") + " until " + hr(Number(o.until)) + (o.by ? " (set by " + String(o.by).split("@")[0] + ")" : "")};
+}
+function ruleFor(pool, pw, id){
   // Kay, 7 Oct 2026: a plug can carry its own weekly schedule (plugs[].week, e.g. Tengah Room 2 — its pump stops at 7 pm);
   // it replaces the outlet schedule for that plug only. Same in ruleFor_ (script).
   // Kay, 5 Oct 2026: the standard rules are gone. 1) night-dosing lock for every outlet; 2) the outlet's weekly
@@ -292,6 +302,7 @@ function ruleFor(pool, pw){
   if(!pool) return null;
   const RULES = poolRules(allRules(), pool);
   const lk = dosingLock(pool, ((S.cfg.autoState || {}).dosed || {})[pool], Date.now(), S.fc[pool]); if(lk) return lk;
+  { const n0 = sgNow(), ov = id ? todayOverride((S.cfg.overrides || {})[id], n0.getHours() + n0.getMinutes() / 60, dayKey(n0)) : null; if(ov) return ov; }
   const W = cleanWeek(pw) || RULES.week;
   if(!W) return {on:null, key:"manual", why:"no schedule — switched by hand only (the night-dosing lock still applies)"};
   const now = sgNow(), h = now.getHours() + now.getMinutes() / 60, dow = now.getDay();
@@ -350,7 +361,7 @@ async function switchPlug(p, on, reason){
 function plugHtml(p){
   const st = S.status[p.id], cls = !st ? "" : !st.online ? "offline" : st.on ? "on" : "off";
   const label = !st ? (S.loading ? "checking…" : "—") : !st.online ? "Offline" : st.on ? "ON" : "OFF";
-  const rule = ruleFor(p.pool, p.week), t = p.pool ? S.fc[p.pool] : null, ownWk = cleanWeek(p.week);
+  const rule = ruleFor(p.pool, p.week, p.id), t = p.pool ? S.fc[p.pool] : null, ownWk = cleanWeek(p.week);
   const fcLine = !p.pool ? "" : !t ? `<span class="fc">${esc(p.pool)} · reading tests…</span>`
     : t.err ? `<span class="fc">${esc(p.pool)} · couldn't read the water tests</span>`
     : `<span class="fc">${esc(p.pool)} today · morning FC ${t.morning ?? "–"} · afternoon ${t.afternoon ?? "–"} · night ${t.night ?? "–"}${t.src === "timer" ? ` <span class="note">(timer last checked the sheet at ${hhmm(t.at)})</span>` : ""}</span>`;
@@ -362,6 +373,10 @@ function plugHtml(p){
     <div class="btns"><button class="b ${st && !st.on ? "main" : ""}" data-sw="${esc(p.id)}" data-on="1" ${S.busy[p.id] || (rule && rule.lock) ? "disabled" : ""} ${rule && rule.lock ? `title="${esc(rule.why)}"` : ""}>${rule && rule.lock ? "🔒 Switch ON" : "Switch ON"}</button>
       <button class="b ${st && st.on ? "main" : ""}" data-sw="${esc(p.id)}" data-on="0" ${S.busy[p.id] ? "disabled" : ""}>Switch OFF</button></div>
     ${rule && rule.lock ? `<div class="note" style="margin-top:4px">🔒 Switch ON is locked — ${esc(rule.why)}.</div>` : ""}
+    ${p.pool ? (() => { const o = (S.cfg.overrides || {})[p.id], n0 = sgNow(), act = o && todayOverride(o, n0.getHours() + n0.getMinutes() / 60, dayKey(n0));
+      if(act) return `<div class="today on">📌 <b>Today only:</b> keep <b>${o.on ? "ON" : "OFF"}</b> until <b>${hr(Number(o.until))}</b>${o.by ? ` · set by ${esc(String(o.by).split("@")[0])}` : ""}. Back to the normal schedule after that. <button class="link" data-ovclear="${esc(p.id)}">Cancel</button></div>`;
+      const hNow = n0.getHours(), opts = []; for(let h = 8; h <= 23.5; h += 0.5) if(h > hNow) opts.push(`<option value="${h}" ${h === 21 ? "selected" : ""}>${hr(h)}</option>`);
+      return `<div class="today">📌 <span>Today only:</span> keep <select data-ovon="${esc(p.id)}"><option value="1">ON</option><option value="0">OFF</option></select> until <select data-ovuntil="${esc(p.id)}">${opts.join("")}</select> <button class="b sm" data-ovset="${esc(p.id)}">Set</button> <span class="note">— whatever the schedule says (the night-dosing lock still wins)</span></div>`; })() : ""}
     ${p.pool ? `<div class="rule">${fcLine}${ownWk ? ` <span class="note">· <b>own schedule for this plug</b></span><div class="note" style="margin:3px 0 2px;line-height:1.5">${WEEK_ORDER.map(i => `<span style="display:inline-block;width:34px;font-weight:600">${DAY_NAMES[i].slice(0,3)}</span>${esc(weekDayTxt(ownWk[i]))}`).join("<br>")}</div>` : ((RULES.pools || {})[p.pool] || {}).week ? ` <span class="note">· weekly schedule</span>` : ` <span class="note">· no schedule (hand only)</span>`}<br>Rule says now: ${rule.on === null ? "<b>wait</b>" : `<b class="${rule.on ? "on" : "off"}">${rule.on ? "ON" : "OFF"}</b>`} <span class="why">— ${esc(rule.why)}</span>
       ${(() => { const x = ((S.cfg.autoState || {}).plugs || {})[p.id];   // when the timer last switched this plug (Kay, 6 Oct 2026)
         if(!x || !x.at || x.want == null || new Date(x.at).toDateString() !== new Date().toDateString()) return "";
@@ -382,10 +397,11 @@ function tileHtml(pool){
   const cls = states.includes("on") ? "on" : states.every(x => x === "offline") ? "offline" : states.includes("off") ? "off" : "";
   const t = S.fc[pool], noT = t && !t.err && [t.morning, t.afternoon, t.night].every(v => v === null || v === undefined);
   const fc = !t ? "FC: reading…" : t.err ? "FC: can't read the sheet" : noT ? "FC: no water test yet" : `FC ${t.morning ?? "–"} / ${t.afternoon ?? "–"} / ${t.night ?? "–"}`;
-  const rules = plugs.map(p => ruleFor(pool, p.week)), lock = rules.some(r => r && r.lock);
+  const rules = plugs.map(p => ruleFor(pool, p.week, p.id)), lock = rules.some(r => r && r.lock);
   const r0 = rules.find(r => r && r.why) || {};
   const man = (S.cfg.autoState || {}).manual || {}, mo = plugs.map(p => man[p.id]).find(m => m && m.until && new Date(m.until) > Date.now());
-  const why = mo ? `✋ Switched ${mo.on ? "ON" : "OFF"} by hand — rule back at ${hhmm(mo.until)}` : (r0.why || "");
+  const ovr = rules.find(r => r && r.today);
+  const why = ovr ? "📌 " + ovr.why : mo ? `✋ Switched ${mo.on ? "ON" : "OFF"} by hand — rule back at ${hhmm(mo.until)}` : (r0.why || "");
   const sub = plugs.length > 1 ? `<div class="tsub">${plugs.map((p, i) => `<span><span class="dot ${states[i]}"></span>${esc(shortPlugName(p))} · <b>${stateWord(states[i])}</b>${rules[i] && rules[i].lock ? " 🔒" : ""}</span>`).join("")}</div>` : "";
   const open = S.openPool === pool;
   return `<button class="tile ${cls}${open ? " open" : ""}" data-tile="${esc(pool)}" title="Tap for the switches and details">
@@ -523,12 +539,18 @@ function render(){
     <div class="note" style="margin-top:6px">The Shelly key is NOT entered here — it stays in the Apps Script's Script Properties.</div>`, false)}`;
   document.querySelectorAll("[data-tile]").forEach(b => b.onclick = () => { S.openPool = S.openPool === b.dataset.tile ? null : b.dataset.tile; render(); const c = $("#opencard"); if(c && S.openPool) c.scrollIntoView({block:"nearest", behavior:"smooth"}); });
   if($("#closepool")) $("#closepool").onclick = () => { S.openPool = null; render(); };
+  document.querySelectorAll("[data-ovset]").forEach(b => b.onclick = () => { const id = b.dataset.ovset, on = $(`[data-ovon="${id}"]`).value === "1", until = Number($(`[data-ovuntil="${id}"]`).value);
+    const p = plugs.find(x => x.id === id); if(!p || !isFinite(until)) return;
+    if(!confirm(`${p.name}: keep ${on ? "ON" : "OFF"} until ${hr(until)} today, whatever the schedule says?`)) return;
+    const overrides = Object.assign({}, S.cfg.overrides || {}); overrides[id] = {date: dayKey(sgNow()), on, until, by: S.user.email, at: new Date().toISOString()};
+    saveCfg({overrides}); });
+  document.querySelectorAll("[data-ovclear]").forEach(b => b.onclick = () => { const overrides = Object.assign({}, S.cfg.overrides || {}); delete overrides[b.dataset.ovclear]; saveCfg({overrides}); });
   document.querySelectorAll("details.fold").forEach(d => d.addEventListener("toggle", () => { S.folds[d.dataset.fold] = d.open; try{ localStorage.setItem("hf-folds", JSON.stringify(S.folds)); }catch(e){} const c = d.querySelector(".chev"); if(c) c.textContent = d.open ? "hide" : "show"; }));
   $("#out").onclick = () => auth.signOut();
   { const g = $("#guard"); if(g) g.addEventListener("toggle", () => { S.guardOpen = g.open; try{ localStorage.setItem("hf-guard-open2", g.open ? "1" : "0"); }catch(e){} const c = g.querySelector(".chev"); if(c) c.textContent = g.open ? "hide" : "show"; }); }
   $("#refresh").onclick = async () => { try{ const d = await db.doc("dosing_config/plugs").get(); if(d.exists){ S.cfg = Object.assign({plugs:[], apiUrl:""}, d.data()); RULES = mergeRules(S.cfg.rules); } }catch(e){} render(); refreshStatus(); loadFcNeeded(); };
-  document.querySelectorAll("[data-sw]").forEach(b => b.onclick = () => { const p = plugs.find(x => x.id === b.dataset.sw); if(!p) return; if(b.dataset.on === "1"){ const r = ruleFor(p.pool, p.week); if(r && r.lock){ S.err = p.name + ": " + r.why + "."; render(); return; } } switchPlug(p, b.dataset.on === "1", "manual"); });
-  document.querySelectorAll("[data-apply]").forEach(b => b.onclick = () => { const p = plugs.find(x => x.id === b.dataset.apply); const r = p && ruleFor(p.pool, p.week); if(p && r && r.on !== null) switchPlug(p, r.on, "rule: " + r.why); });
+  document.querySelectorAll("[data-sw]").forEach(b => b.onclick = () => { const p = plugs.find(x => x.id === b.dataset.sw); if(!p) return; if(b.dataset.on === "1"){ const r = ruleFor(p.pool, p.week, p.id); if(r && r.lock){ S.err = p.name + ": " + r.why + "."; render(); return; } } switchPlug(p, b.dataset.on === "1", "manual"); });
+  document.querySelectorAll("[data-apply]").forEach(b => b.onclick = () => { const p = plugs.find(x => x.id === b.dataset.apply); const r = p && ruleFor(p.pool, p.week, p.id); if(p && r && r.on !== null) switchPlug(p, r.on, "rule: " + r.why); });
   document.querySelectorAll("[data-del]").forEach(b => b.onclick = () => { if(!confirm("Remove this plug from the page? (It stays in your Shelly app.)")) return; saveCfg({plugs: plugs.filter(p => p.id !== b.dataset.del)}); });
   $("#addf").onsubmit = e => { e.preventDefault();
     const id = $("#a-id").value.trim().replace(/^shelly[\w-]*-/i, "").toLowerCase(), name = $("#a-name").value.trim(), pool = $("#a-pool").value;
