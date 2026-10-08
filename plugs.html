@@ -79,6 +79,34 @@ details.guard>summary .chev{margin-left:auto;font:400 12px "IBM Plex Sans";text-
 .tl{width:100%;max-width:520px;height:auto;display:block;margin:8px auto 0;color:var(--ink-2)}
 .gaps li{margin:3px 0}
 @media (max-width:560px){.flow{flex-direction:column}.arr{transform:rotate(90deg);margin:-2px 0}}
+/* At-a-glance board (Kay, 8 Oct 2026): one tile per salt outlet, details folded below */
+.strip{display:flex;align-items:center;gap:10px;flex-wrap:wrap;font-size:13.5px;padding:9px 12px;border-radius:10px;margin-bottom:12px}
+.strip.ok{background:var(--ok-soft);color:var(--ok)}.strip.warn{background:var(--warn-soft);color:var(--warn)}
+.strip .b{margin-left:auto}
+.board{display:grid;grid-template-columns:repeat(auto-fill,minmax(168px,1fr));gap:10px;margin-bottom:14px}
+.tile{position:relative;background:var(--surface);border:1px solid var(--line);border-left:6px solid var(--line);border-radius:12px;padding:11px 12px 10px;cursor:pointer;text-align:left;font:inherit;color:inherit;min-height:112px;display:flex;flex-direction:column;gap:4px}
+.tile:hover{border-color:var(--accent);border-left-color:inherit}
+.tile.on{border-left-color:#2FA35A}.tile.off{border-left-color:#9AA9AC}.tile.offline{border-left-color:var(--urgent)}.tile.none{border-left-color:var(--line-soft);background:var(--surface-2);cursor:default;color:var(--ink-3)}
+.tile.open{outline:2px solid var(--accent);outline-offset:1px}
+.tile .tp{font:700 20px/1 "Barlow Condensed",sans-serif;letter-spacing:.03em;text-transform:uppercase;display:flex;align-items:center;gap:8px}
+.tile .tp .dot{width:12px;height:12px;margin-left:auto}
+.tile .ts{font:700 22px/1 "Barlow Condensed",sans-serif;letter-spacing:.05em;margin-top:2px}
+.tile.on .ts{color:var(--ok)}.tile.off .ts{color:var(--ink-2)}.tile.offline .ts{color:var(--urgent)}.tile.none .ts{color:var(--ink-3);font-size:17px}
+.tile .tfc{font-family:"IBM Plex Mono",monospace;font-size:12px;color:var(--ink-2)}
+.tile .tw{font-size:12px;color:var(--ink-3);line-height:1.3;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.tile .tsub{font-size:12px;color:var(--ink-2);display:flex;flex-direction:column;gap:2px;margin-top:2px}
+.tile .tsub span{display:flex;align-items:center;gap:6px}.tile .tsub .dot{width:9px;height:9px}
+.tile .tsub .dot.on{box-shadow:none}
+.tile .lock{position:absolute;top:8px;right:10px;font-size:14px}
+.open-card{border-color:var(--accent)}
+.open-card h2 .link{margin-left:auto;font:400 12px "IBM Plex Sans";text-transform:none;letter-spacing:0}
+details.fold>summary{list-style:none;cursor:pointer}
+details.fold>summary::-webkit-details-marker{display:none}
+details.fold>summary h2{margin:0}
+details.fold>summary .chev{margin-left:auto;font:400 12px "IBM Plex Sans";text-transform:none;letter-spacing:0;color:var(--accent);text-decoration:underline}
+details.fold[open]>summary{margin-bottom:10px}
+.folds-h{font:700 13px "Barlow Condensed",sans-serif;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-3);margin:18px 0 8px}
+@media (max-width:560px){.board{grid-template-columns:1fr 1fr;gap:8px}.tile{padding:10px 10px 9px;min-height:104px}.tile .tp{font-size:18px}.tile .ts{font-size:20px}}
 </style></head><body>
 <div class="wrap" id="app"><p class="note">Loading…</p></div>
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
@@ -251,7 +279,9 @@ const sgNow = () => new Date(new Date().toLocaleString("en-US", {timeZone:"Asia/
 const dayKey = d => d.getFullYear() + "-" + pad(d.getMonth() + 1) + "-" + pad(d.getDate());
 const hhmm = iso => { const d = new Date(iso); return pad(d.getHours()) + ":" + pad(d.getMinutes()); };
 const S = {user:null, cfg:{plugs:[], apiUrl:""}, status:{}, fc:{}, log:[], busy:{}, err:"", note:""};
-S.guardOpen = (() => { try{ return localStorage.getItem("hf-guard-open") !== "0"; }catch(e){ return true; } })();
+S.guardOpen = (() => { try{ return localStorage.getItem("hf-guard-open2") === "1"; }catch(e){ return false; } })();   // closed unless opened (8 Oct 2026)
+S.folds = (() => { try{ return JSON.parse(localStorage.getItem("hf-folds") || "{}") || {}; }catch(e){ return {}; } })();   // which detail sections are open
+S.openPool = null;   // outlet tile tapped open
 
 /* ---------- the rule, worked out from today's tests ---------- */
 function ruleFor(pool, pw){
@@ -341,6 +371,46 @@ function plugHtml(p){
   </div>`;
 }
 function ago(iso){ if(!iso) return ""; const m = Math.round((Date.now() - new Date(iso)) / 60000); return m < 1 ? "just now" : m < 60 ? m + " min ago" : Math.round(m / 60) + " h ago"; }
+/* ---------- at-a-glance board (Kay, 8 Oct 2026) ---------- */
+function shortPlugName(p){ const rm = /room\s*\d+/i.exec(p.name || ""); if(rm) return rm[0].replace(/\s+/, " "); const m = /\(([^)]+)\)/.exec(p.name || ""); if(m) return m[1]; return (p.name || "").replace(/salt\s*chlorinator/i, "").replace(p.pool || "", "").replace(/\s+/g, " ").trim() || "Plug"; }
+function plugState(p){ const st = S.status[p.id]; return !st ? (S.loading ? "checking" : "unknown") : !st.online ? "offline" : st.on ? "on" : "off"; }
+function stateWord(c){ return c === "on" ? "ON" : c === "off" ? "OFF" : c === "offline" ? "OFFLINE" : c === "checking" ? "checking…" : "—"; }
+function tileHtml(pool){
+  const plugs = (S.cfg.plugs || []).filter(p => p.pool === pool);
+  if(!plugs.length) return `<div class="tile none"><div class="tp">${esc(pool)}</div><div class="ts">No plug yet</div><div class="tw">Switched in the pump room or the Shelly app.</div></div>`;
+  const states = plugs.map(plugState);
+  const cls = states.includes("on") ? "on" : states.every(x => x === "offline") ? "offline" : states.includes("off") ? "off" : "";
+  const t = S.fc[pool], noT = t && !t.err && [t.morning, t.afternoon, t.night].every(v => v === null || v === undefined);
+  const fc = !t ? "FC: reading…" : t.err ? "FC: can't read the sheet" : noT ? "FC: no water test yet" : `FC ${t.morning ?? "–"} / ${t.afternoon ?? "–"} / ${t.night ?? "–"}`;
+  const rules = plugs.map(p => ruleFor(pool, p.week)), lock = rules.some(r => r && r.lock);
+  const r0 = rules.find(r => r && r.why) || {};
+  const man = (S.cfg.autoState || {}).manual || {}, mo = plugs.map(p => man[p.id]).find(m => m && m.until && new Date(m.until) > Date.now());
+  const why = mo ? `✋ Switched ${mo.on ? "ON" : "OFF"} by hand — rule back at ${hhmm(mo.until)}` : (r0.why || "");
+  const sub = plugs.length > 1 ? `<div class="tsub">${plugs.map((p, i) => `<span><span class="dot ${states[i]}"></span>${esc(shortPlugName(p))} · <b>${stateWord(states[i])}</b>${rules[i] && rules[i].lock ? " 🔒" : ""}</span>`).join("")}</div>` : "";
+  const open = S.openPool === pool;
+  return `<button class="tile ${cls}${open ? " open" : ""}" data-tile="${esc(pool)}" title="Tap for the switches and details">
+    ${lock ? `<span class="lock" title="Switch ON is locked">🔒</span>` : ""}
+    <div class="tp">${esc(pool)}${plugs.length === 1 ? `<span class="dot ${cls}"></span>` : ""}</div>
+    ${plugs.length === 1 ? `<div class="ts">${stateWord(states[0])}</div>` : sub}
+    <div class="tfc">${fc}</div>
+    <div class="tw">${esc(why)}</div></button>`;
+}
+function boardHtml(){
+  const has = new Set((S.cfg.plugs || []).map(p => p.pool));
+  const withPlug = SALT_POOLS.filter(p => has.has(p)), without = SALT_POOLS.filter(p => !has.has(p));
+  return `<div class="board">${withPlug.map(tileHtml).join("")}</div>${without.length ? `<div class="note" style="margin:-6px 0 12px">No smart plug yet: <b>${without.join(" · ")}</b> — switched in the pump room or the Shelly app.</div>` : ""}`;
+}
+function stripHtml(){
+  const on = S.cfg.auto === true, a = S.cfg.autoState || {}, last = a.lastRun, night = a.note === "night";
+  const stale = !last || (!night && Date.now() - new Date(last) > 20 * 60000);
+  const when = !last ? "timer hasn't run yet" : night ? `timer asleep until ${hr(8)}` : `timer checked ${ago(last)}`;
+  return `<div class="strip ${on && !stale ? "ok" : "warn"}"><span>${on ? "🤖 <b>Automatic switching ON</b>" : "✋ <b>Automatic switching OFF</b>"} · ${when}${stale && on ? ` — <b>the timer doesn't seem to be running</b>` : ""}${S.checkedAt ? ` · plugs checked ${hhmm(S.checkedAt)}` : ""} <button class="link" id="refresh">Refresh</button></span>
+    <button class="b sm ${on ? "" : "main"}" id="autotgl">${on ? "Turn OFF" : "Turn ON"}</button></div>`;
+}
+function fold(id, title, body, force){
+  const open = force || S.folds[id] === true;
+  return `<details class="card fold" id="fold-${id}" data-fold="${id}" ${open ? "open" : ""}><summary><h2>${title} <span class="chev">${open ? "hide" : "show"}</span></h2></summary>${body}</details>`;
+}
 function autoCard(){
   const on = S.cfg.auto === true, a = S.cfg.autoState || {}, last = a.lastRun, night = a.note === "night";
   const win = {start: 8, end: 20};   // same as DAY_START / DAY_END in plugs.gs
@@ -349,8 +419,8 @@ function autoCard(){
   const rows = plugs.map(p => { const x = (a.plugs || {})[p.id]; if(!x) return "";
     return `<div><b>${esc(p.name)}</b>: ${x.want === true ? "ON" : x.want === false ? "OFF" : "—"}${x.why ? ` · <span class="why">${esc(x.why)}</span>` : ""}${x.err ? ` · <span style="color:var(--urgent)">${esc(x.err)}</span>` : ""}${x.at ? ` <span class="note">(${hhmm(x.at)})</span>` : ""}</div>`; }).join("");
   return `<div class="${on ? "okbox" : "warnbox"}" id="autobox">
-    <div class="row"><span>${on ? `🤖 <b>Automatic switching is ON.</b> Every ${a.every === 1 ? "minute" : "5 minutes"} from ${hr(win.start)} to ${hr(win.end)} the timer reads the water test sheet and switches the plugs that follow a pool. At night it keeps checking every 5 minutes for the night-dosing lock, night runs and hand switches.${a.every === 1 && a.testUntil ? ` <b>Test mode</b> until ${hhmm(a.testUntil)}, then back to every 5 minutes.` : ""}` : "✋ <b>Automatic switching is OFF.</b> Nothing switches by itself — \"Rule says\" shows what it <i>would</i> do; press Apply to do it by hand."}</span>
-    <button class="b sm ${on ? "" : "main"}" id="autotgl" style="margin-left:auto">${on ? "Turn OFF" : "Turn ON"}</button></div>
+    <div class="row"><span>${on ? "" : ""}${on ? `🤖 <b>Automatic switching is ON.</b> Every ${a.every === 1 ? "minute" : "5 minutes"} from ${hr(win.start)} to ${hr(win.end)} the timer reads the water test sheet and switches the plugs that follow a pool. At night it keeps checking every 5 minutes for the night-dosing lock, night runs and hand switches.${a.every === 1 && a.testUntil ? ` <b>Test mode</b> until ${hhmm(a.testUntil)}, then back to every 5 minutes.` : ""}` : "✋ <b>Automatic switching is OFF.</b> Nothing switches by itself — \"Rule says\" shows what it <i>would</i> do; press Apply to do it by hand."}</span>
+</div>
     <div class="note" style="margin-top:6px">${last ? (night ? `Timer is asleep for the night — next check at ${hr(win.start)}.` : `Timer last checked ${ago(last)}${stale ? ` — <b style="color:var(--urgent)">the timer doesn't seem to be running</b>` : ""}.`) : "The timer hasn't run yet (run setupTimer in the Apps Script once)."}${a.tg && a.tg !== "ok" ? ` · Telegram: ${esc(a.tg)}` : ""}
     A plug switched by hand sends a Telegram alert and goes back to its schedule after 1 hour; while a plug is locked (🔒 night-dosing lock, or before the day's first water test) it goes OFF again within 5 minutes. This page updates by itself.</div>
     ${on && rows ? `<div style="margin-top:6px;font-size:13px">${rows}</div>` : ""}</div>`;
@@ -426,27 +496,36 @@ function guardCard(){
 function render(){
   if(!S.user) return;
   const plugs = S.cfg.plugs || [];
-  $("#app").innerHTML = `
-  <header><h1>HF Pools <small>Smart plugs</small></h1><span class="me">${esc(S.user.email)} · <button id="out">Sign out</button></span></header>
-  ${autoCard()}
-  ${guardCard()}
-  ${S.err ? `<div class="errbox">${esc(S.err)}</div>` : ""}
-  <div class="card"><h2>Plugs <small>${S.checkedAt ? "checked " + hhmm(S.checkedAt) : ""} · <button class="link" id="refresh">Refresh</button></small></h2>
-    ${plugs.length ? plugs.map(plugHtml).join("") : `<div class="note">No plugs yet — add one below.</div>`}</div>
-  ${(() => { const ed = S.editId ? plugs.find(p => p.id === S.editId) : null; return `<div class="card"><h2>${ed ? "Edit " + esc(ed.name) : "Add a plug"}</h2>
+  const openPlugs = S.openPool ? plugs.filter(p => p.pool === S.openPool) : [];
+  const unlinked = plugs.filter(p => !p.pool);
+  const plugsAdmin = (() => { const ed = S.editId ? plugs.find(p => p.id === S.editId) : null; return `<h2 style="margin-top:4px">${ed ? "Edit " + esc(ed.name) : "Add a plug"}</h2>
     <form class="row" id="addf"><input id="a-name" placeholder="Name (e.g. Test HS)" required style="flex:1 1 150px" value="${ed ? esc(ed.name) : ""}">
       <input id="a-id" placeholder="Device ID (e.g. e4b063a1b2c3)" required style="flex:1 1 170px" autocomplete="off" value="${ed ? esc(ed.id) : ""}" ${ed ? "readonly" : ""}>
       <select id="a-pool"><option value="">Follow pool…</option>${SALT_POOLS.map(p => `<option ${ed && ed.pool === p ? "selected" : ""}>${p}</option>`).join("")}</select>
-      <button class="b sm main">${ed ? "Save" : "Add"}</button>${ed ? ` <button type="button" class="b sm" id="a-cancel">Cancel</button>` : ""}</form>`; })()}
+      <button class="b sm main">${ed ? "Save" : "Add"}</button>${ed ? ` <button type="button" class="b sm" id="a-cancel">Cancel</button>` : ""}</form>
     ${plugs.length ? `<div class="note" style="margin-top:10px">${plugs.map(p => `${esc(p.name)} → ${esc(p.pool || "manual")} <button class="link" data-edit="${esc(p.id)}">edit</button> <button class="link" data-del="${esc(p.id)}">remove</button>`).join(" · ")}</div>` : ""}
-    <div class="note" style="margin-top:8px">Device ID: Shelly app → the plug → Settings → Device information.</div></div>
-  ${rulesCard()}
-  <div class="card"><h2>Recent switches</h2><div class="log">${S.log.length ? S.log.slice(0, 20).map(l => `<div><span class="t">${new Date(l.at).toLocaleString("en-SG", {day:"numeric", month:"short", hour:"2-digit", minute:"2-digit", hour12:false})}</span><span><b>${esc(l.name)}</b> ${l.on ? "ON" : "OFF"} · ${esc(l.reason)} · ${esc(String(l.by || "").split("@")[0])}</span></div>`).join("") : `<span class="note">Nothing switched yet.</span>`}</div></div>
-  <div class="card"><h2>Settings</h2>
-    <form class="row" id="apif"><input id="api" placeholder="Apps Script web app URL (…/exec)" value="${esc(S.cfg.apiUrl || "")}" style="flex:1 1 300px" autocomplete="off"><button class="b sm main">Save</button></form>
-    <div class="note" style="margin-top:6px">The Shelly key is NOT entered here — it stays in the Apps Script's Script Properties.</div></div>`;
+    <div class="note" style="margin-top:8px">Device ID: Shelly app → the plug → Settings → Device information.</div>`; })();
+  $("#app").innerHTML = `
+  <header><h1>HF Pools <small>Smart plugs</small></h1><span class="me">${esc(S.user.email)} · <button id="out">Sign out</button></span></header>
+  ${stripHtml()}
+  ${S.err ? `<div class="errbox">${esc(S.err)}</div>` : ""}
+  ${boardHtml()}
+  ${S.openPool ? `<div class="card open-card" id="opencard"><h2>${esc(S.openPool)} · switches &amp; details <button class="link" id="closepool">close</button></h2>
+    ${openPlugs.length ? openPlugs.map(plugHtml).join("") : `<div class="note">No plug at ${esc(S.openPool)} yet.</div>`}</div>` : `<div class="note" style="margin:-4px 0 14px">Tap an outlet to switch its plug by hand or see today's rule. FC = morning / afternoon / night test. 🔒 = Switch ON is locked (night dosing done, or no water test yet).</div>`}
+  ${unlinked.length ? `<div class="card"><h2>Plugs not linked to a pool</h2>${unlinked.map(plugHtml).join("")}</div>` : ""}
+  <div class="folds-h">More — tap to open</div>
+  ${fold("timer", "🤖 Timer &amp; what it did today", autoCard(), false)}
+  ${guardCard()}
+  ${fold("rules", "📅 Rules &amp; weekly schedules", rulesCard().replace(/^<div class="card"><h2>Rules<\/h2>/, "<div>"), !!(S.editPool || S.editRules))}
+  ${fold("plugs", "🔌 Add or edit plugs", plugsAdmin, !!S.editId)}
+  ${fold("log", "🕘 Recent switches", `<div class="log">${S.log.length ? S.log.slice(0, 20).map(l => `<div><span class="t">${new Date(l.at).toLocaleString("en-SG", {day:"numeric", month:"short", hour:"2-digit", minute:"2-digit", hour12:false})}</span><span><b>${esc(l.name)}</b> ${l.on ? "ON" : "OFF"} · ${esc(l.reason)} · ${esc(String(l.by || "").split("@")[0])}</span></div>`).join("") : `<span class="note">Nothing switched yet.</span>`}</div>`, false)}
+  ${fold("settings", "⚙️ Settings", `<form class="row" id="apif"><input id="api" placeholder="Apps Script web app URL (…/exec)" value="${esc(S.cfg.apiUrl || "")}" style="flex:1 1 300px" autocomplete="off"><button class="b sm main">Save</button></form>
+    <div class="note" style="margin-top:6px">The Shelly key is NOT entered here — it stays in the Apps Script's Script Properties.</div>`, false)}`;
+  document.querySelectorAll("[data-tile]").forEach(b => b.onclick = () => { S.openPool = S.openPool === b.dataset.tile ? null : b.dataset.tile; render(); const c = $("#opencard"); if(c && S.openPool) c.scrollIntoView({block:"nearest", behavior:"smooth"}); });
+  if($("#closepool")) $("#closepool").onclick = () => { S.openPool = null; render(); };
+  document.querySelectorAll("details.fold").forEach(d => d.addEventListener("toggle", () => { S.folds[d.dataset.fold] = d.open; try{ localStorage.setItem("hf-folds", JSON.stringify(S.folds)); }catch(e){} const c = d.querySelector(".chev"); if(c) c.textContent = d.open ? "hide" : "show"; }));
   $("#out").onclick = () => auth.signOut();
-  { const g = $("#guard"); if(g) g.addEventListener("toggle", () => { S.guardOpen = g.open; try{ localStorage.setItem("hf-guard-open", g.open ? "1" : "0"); }catch(e){} const c = g.querySelector(".chev"); if(c) c.textContent = g.open ? "hide" : "show"; }); }
+  { const g = $("#guard"); if(g) g.addEventListener("toggle", () => { S.guardOpen = g.open; try{ localStorage.setItem("hf-guard-open2", g.open ? "1" : "0"); }catch(e){} const c = g.querySelector(".chev"); if(c) c.textContent = g.open ? "hide" : "show"; }); }
   $("#refresh").onclick = async () => { try{ const d = await db.doc("dosing_config/plugs").get(); if(d.exists){ S.cfg = Object.assign({plugs:[], apiUrl:""}, d.data()); RULES = mergeRules(S.cfg.rules); } }catch(e){} render(); refreshStatus(); loadFcNeeded(); };
   document.querySelectorAll("[data-sw]").forEach(b => b.onclick = () => { const p = plugs.find(x => x.id === b.dataset.sw); if(!p) return; if(b.dataset.on === "1"){ const r = ruleFor(p.pool, p.week); if(r && r.lock){ S.err = p.name + ": " + r.why + "."; render(); return; } } switchPlug(p, b.dataset.on === "1", "manual"); });
   document.querySelectorAll("[data-apply]").forEach(b => b.onclick = () => { const p = plugs.find(x => x.id === b.dataset.apply); const r = p && ruleFor(p.pool, p.week); if(p && r && r.on !== null) switchPlug(p, r.on, "rule: " + r.why); });
