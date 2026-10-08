@@ -423,6 +423,14 @@ function stripHtml(){
   return `<div class="strip ${on && !stale ? "ok" : "warn"}"><span>${on ? "🤖 <b>Automatic switching ON</b>" : "✋ <b>Automatic switching OFF</b>"} · ${when}${stale && on ? ` — <b>the timer doesn't seem to be running</b>` : ""}${S.checkedAt ? ` · plugs checked ${hhmm(S.checkedAt)}` : ""} <button class="link" id="refresh">Refresh</button></span>
     <button class="b sm ${on ? "" : "main"}" id="autotgl">${on ? "Turn OFF" : "Turn ON"}</button></div>`;
 }
+/* After a Today-only Set/Cancel, switch the plug straight away if the rule now disagrees with it (Kay, 8 Oct 2026):
+ * no need to wait up to 5 minutes for the timer. The timer sees the same key next run and leaves it alone. */
+function applyRuleNow(p){
+  if(!p || !p.pool) return;
+  const r = ruleFor(p.pool, p.week, p.id), st = S.status[p.id];
+  if(!r || r.on === null || r.on === undefined || !st || !st.online || st.on === r.on) { refreshStatus(); return; }
+  switchPlug(p, r.on, "rule: " + r.why);
+}
 function fold(id, title, body, force){
   const open = force || S.folds[id] === true;
   return `<details class="card fold" id="fold-${id}" data-fold="${id}" ${open ? "open" : ""}><summary><h2>${title} <span class="chev">${open ? "hide" : "show"}</span></h2></summary>${body}</details>`;
@@ -539,14 +547,14 @@ function render(){
     <div class="note" style="margin-top:6px">The Shelly key is NOT entered here — it stays in the Apps Script's Script Properties.</div>`, false)}`;
   document.querySelectorAll("[data-tile]").forEach(b => b.onclick = () => { S.openPool = S.openPool === b.dataset.tile ? null : b.dataset.tile; render(); const c = $("#opencard"); if(c && S.openPool) c.scrollIntoView({block:"nearest", behavior:"smooth"}); });
   if($("#closepool")) $("#closepool").onclick = () => { S.openPool = null; render(); };
-  document.querySelectorAll("[data-ovset]").forEach(b => b.onclick = () => { const id = b.dataset.ovset, on = $(`[data-ovon="${id}"]`).value === "1", until = Number($(`[data-ovuntil="${id}"]`).value);
+  document.querySelectorAll("[data-ovset]").forEach(b => b.onclick = async () => { const id = b.dataset.ovset, on = $(`[data-ovon="${id}"]`).value === "1", until = Number($(`[data-ovuntil="${id}"]`).value);
     const p = plugs.find(x => x.id === id); if(!p || !isFinite(until)) return;
     if(!confirm(`${p.name}: keep ${on ? "ON" : "OFF"} until ${hr(until)} today, whatever the schedule says?`)) return;
     const overrides = Object.assign({}, S.cfg.overrides || {}); overrides[id] = {date: dayKey(sgNow()), on, until, by: S.user.email, at: new Date().toISOString()};
-    saveCfg({overrides}); });
+    await saveCfg({overrides}); applyRuleNow(p); });
   document.querySelectorAll("[data-ovclear]").forEach(b => b.onclick = async () => { const id = b.dataset.ovclear, overrides = Object.assign({}, S.cfg.overrides || {}); delete overrides[id]; S.cfg.overrides = overrides; S.err = ""; render();
     try{ await db.doc("dosing_config/plugs").update({["overrides." + id]: firebase.firestore.FieldValue.delete()}); }catch(e){ S.err = "Couldn't cancel: " + e.message; render(); }   // merge:true would keep the key, so delete it properly
-    refreshStatus(); });
+    applyRuleNow(plugs.find(x => x.id === id)); });
   document.querySelectorAll("details.fold").forEach(d => d.addEventListener("toggle", () => { S.folds[d.dataset.fold] = d.open; try{ localStorage.setItem("hf-folds", JSON.stringify(S.folds)); }catch(e){} const c = d.querySelector(".chev"); if(c) c.textContent = d.open ? "hide" : "show"; }));
   $("#out").onclick = () => auth.signOut();
   { const g = $("#guard"); if(g) g.addEventListener("toggle", () => { S.guardOpen = g.open; try{ localStorage.setItem("hf-guard-open2", g.open ? "1" : "0"); }catch(e){} const c = g.querySelector(".chev"); if(c) c.textContent = g.open ? "hide" : "show"; }); }
