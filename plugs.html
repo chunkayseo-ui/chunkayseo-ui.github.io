@@ -374,9 +374,9 @@ function plugHtml(p){
       <button class="b ${st && st.on ? "main" : ""}" data-sw="${esc(p.id)}" data-on="0" ${S.busy[p.id] ? "disabled" : ""}>Switch OFF</button></div>
     ${rule && rule.lock ? `<div class="note" style="margin-top:4px">🔒 Switch ON is locked — ${esc(rule.why)}.</div>` : ""}
     ${p.pool ? (() => { const o = (S.cfg.overrides || {})[p.id], n0 = sgNow(), act = o && todayOverride(o, n0.getHours() + n0.getMinutes() / 60, dayKey(n0));
-      if(act) return `<div class="today on">📌 <b>Today only:</b> keep <b>${o.on ? "ON" : "OFF"}</b> until <b>${hr(Number(o.until))}</b>${o.by ? ` · set by ${esc(String(o.by).split("@")[0])}` : ""}. Back to the normal schedule after that. <button class="link" data-ovclear="${esc(p.id)}">Cancel</button></div>`;
+      if(act) return `<div class="today on">📌 <b>Today only:</b> keep <b>${o.on ? "ON" : "OFF"}</b> until <b>${hr(Number(o.until))}</b>${o.by ? ` · set by ${esc(String(o.by).split("@")[0])}` : ""}. Back to the normal schedule after that. <button class="link" data-ovclear="${esc(p.id)}">Cancel — back to the schedule now</button></div>`;
       const hNow = n0.getHours(), opts = []; for(let h = 8; h <= 23.5; h += 0.5) if(h > hNow) opts.push(`<option value="${h}" ${h === 21 ? "selected" : ""}>${hr(h)}</option>`);
-      return `<div class="today">📌 <span>Today only:</span> keep <select data-ovon="${esc(p.id)}"><option value="1">ON</option><option value="0">OFF</option></select> until <select data-ovuntil="${esc(p.id)}">${opts.join("")}</select> <button class="b sm" data-ovset="${esc(p.id)}">Set</button> <span class="note">— whatever the schedule says (the night-dosing lock still wins)</span></div>`; })() : ""}
+      return `<div class="today">📌 <span>Today only:</span> keep <select data-ovon="${esc(p.id)}"><option value="1">ON</option><option value="0">OFF</option></select> until <select data-ovuntil="${esc(p.id)}">${opts.join("")}</select> <button class="b sm main" data-ovset="${esc(p.id)}">Set &amp; switch ON</button> <span class="note">— switches it now, whatever the schedule says (the night-dosing lock still wins)</span></div>`; })() : ""}
     ${p.pool ? `<div class="rule">${fcLine}${ownWk ? ` <span class="note">· <b>own schedule for this plug</b></span><div class="note" style="margin:3px 0 2px;line-height:1.5">${WEEK_ORDER.map(i => `<span style="display:inline-block;width:34px;font-weight:600">${DAY_NAMES[i].slice(0,3)}</span>${esc(weekDayTxt(ownWk[i]))}`).join("<br>")}</div>` : ((RULES.pools || {})[p.pool] || {}).week ? ` <span class="note">· weekly schedule</span>` : ` <span class="note">· no schedule (hand only)</span>`}<br>Rule says now: ${rule.on === null ? "<b>wait</b>" : `<b class="${rule.on ? "on" : "off"}">${rule.on ? "ON" : "OFF"}</b>`} <span class="why">— ${esc(rule.why)}</span>
       ${(() => { const x = ((S.cfg.autoState || {}).plugs || {})[p.id];   // when the timer last switched this plug (Kay, 6 Oct 2026)
         if(!x || !x.at || x.want == null || new Date(x.at).toDateString() !== new Date().toDateString()) return "";
@@ -425,11 +425,17 @@ function stripHtml(){
 }
 /* After a Today-only Set/Cancel, switch the plug straight away if the rule now disagrees with it (Kay, 8 Oct 2026):
  * no need to wait up to 5 minutes for the timer. The timer sees the same key next run and leaves it alone. */
-function applyRuleNow(p){
+async function applyRuleNow(p){
   if(!p || !p.pool) return;
   const r = ruleFor(p.pool, p.week, p.id), st = S.status[p.id];
-  if(!r || r.on === null || r.on === undefined || !st || !st.online || st.on === r.on) { refreshStatus(); return; }
-  switchPlug(p, r.on, "rule: " + r.why);
+  if(!r || r.on === null || r.on === undefined) { refreshStatus(); return; }
+  if(st && st.online && st.on === r.on) { refreshStatus(); return; }   // already as the rule wants
+  await switchPlug(p, r.on, "rule: " + r.why);
+  if(S.err){   // Shelly answers 502 / "too many requests" now and then (9 Oct 2026) — wait a moment and try once more
+    await new Promise(res => setTimeout(res, 2500));
+    const r2 = ruleFor(p.pool, p.week, p.id);
+    if(r2 && r2.on === r.on) await switchPlug(p, r.on, "rule: " + r.why + " (retry)");
+  }
 }
 function fold(id, title, body, force){
   const open = force || S.folds[id] === true;
@@ -549,10 +555,13 @@ function render(){
   if($("#closepool")) $("#closepool").onclick = () => { S.openPool = null; render(); };
   document.querySelectorAll("[data-ovset]").forEach(b => b.onclick = async () => { const id = b.dataset.ovset, on = $(`[data-ovon="${id}"]`).value === "1", until = Number($(`[data-ovuntil="${id}"]`).value);
     const p = plugs.find(x => x.id === id); if(!p || !isFinite(until)) return;
-    if(!confirm(`${p.name}: keep ${on ? "ON" : "OFF"} until ${hr(until)} today, whatever the schedule says?`)) return;
+    if(!confirm(`${p.name}: switch ${on ? "ON" : "OFF"} now and keep it ${on ? "ON" : "OFF"} until ${hr(until)} today, whatever the schedule says?`)) return;
     const overrides = Object.assign({}, S.cfg.overrides || {}); overrides[id] = {date: dayKey(sgNow()), on, until, by: S.user.email, at: new Date().toISOString()};
-    await saveCfg({overrides}); applyRuleNow(p); });
-  document.querySelectorAll("[data-ovclear]").forEach(b => b.onclick = async () => { const id = b.dataset.ovclear, overrides = Object.assign({}, S.cfg.overrides || {}); delete overrides[id]; S.cfg.overrides = overrides; S.err = ""; render();
+    await saveCfg({overrides}); await applyRuleNow(p); });
+  document.querySelectorAll("[data-ovon]").forEach(s => s.onchange = () => { const b = $(`[data-ovset="${s.dataset.ovon}"]`); if(b) b.textContent = "Set & switch " + (s.value === "1" ? "ON" : "OFF"); });
+  document.querySelectorAll("[data-ovclear]").forEach(b => b.onclick = async () => { const id = b.dataset.ovclear; const pp = plugs.find(x => x.id === id);
+    if(!confirm(`${pp ? pp.name : id}: cancel the Today-only and go back to the schedule now? The plug switches straight away if the schedule says so.`)) return;
+    const overrides = Object.assign({}, S.cfg.overrides || {}); delete overrides[id]; S.cfg.overrides = overrides; S.err = ""; render();
     try{ await db.doc("dosing_config/plugs").update({["overrides." + id]: firebase.firestore.FieldValue.delete()}); }catch(e){ S.err = "Couldn't cancel: " + e.message; render(); }   // merge:true would keep the key, so delete it properly
     applyRuleNow(plugs.find(x => x.id === id)); });
   document.querySelectorAll("details.fold").forEach(d => d.addEventListener("toggle", () => { S.folds[d.dataset.fold] = d.open; try{ localStorage.setItem("hf-folds", JSON.stringify(S.folds)); }catch(e){} const c = d.querySelector(".chev"); if(c) c.textContent = d.open ? "hide" : "show"; }));
