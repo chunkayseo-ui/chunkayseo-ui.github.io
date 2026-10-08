@@ -174,6 +174,8 @@ function cleanWeek(w) {
     var of = n(d.onFrom, 0, 23.5); if (of !== null && of < c.closeAt) c.onFrom = of;
     var nf = n(d.nightFrom, 0, 24), nt = n(d.nightTo, 0, 24);
     if (nf !== null && nt !== null && nf !== nt) { c.nightFrom = nf; c.nightTo = nt; }
+    var mf = n(d.mornFrom, 0, 12), mt = n(d.mornTo, 0, 12);          // next-morning run (Kay, 8 Oct 2026 — DR 4:30–8 am)
+    if (mf !== null && mt !== null && mf < mt) { c.mornFrom = mf; c.mornTo = mt; }
     out.push(c);
   }
   return out;
@@ -187,6 +189,14 @@ function weekRule(pool, W, noTestHour, t, tp, h, dow) {
     return lp !== null && lp < P.below
       ? { on: true, key: 'night-on', why: 'night run until ' + hr(P.nightTo) + ' — ' + pn + '\'s FC ' + lp + ' was below ' + P.below }
       : { on: false, key: 'night-skip', why: 'no night run — ' + (lp === null ? pn + ' had no water test' : pn + '\'s FC ' + lp + ' was ' + P.below + ' or more') };
+  }
+  // Next-morning run (Kay, 8 Oct 2026 — DR): after midnight, ON from mornFrom to mornTo if the day before's latest FC was below.
+  var morn = function (x) { return x && !x.off && x.mornFrom !== undefined; };
+  if (morn(P) && h < P.mornTo) {
+    var lq = latest(tp);
+    if (lq === null || lq >= P.below) return { on: false, key: 'morn-skip', why: 'no early-morning run — ' + (lq === null ? pn + ' had no water test' : pn + '\'s FC ' + lq + ' was ' + P.below + ' or more') };
+    if (h < P.mornFrom) return { on: false, key: 'morn-wait', why: 'OFF until ' + hr(P.mornFrom) + ', then ON until ' + hr(P.mornTo) + ' — ' + pn + '\'s FC ' + lq + ' was below ' + P.below };
+    return { on: true, key: 'morn-on', why: 'early-morning run ' + hr(P.mornFrom) + '–' + hr(P.mornTo) + ' — ' + pn + '\'s FC ' + lq + ' was below ' + P.below };
   }
   if (!D || D.off) return { on: false, key: 'day-off', why: pool + ' is OFF all day on ' + dn + 's' };
   if (D.nightFrom !== undefined && h >= D.nightFrom && (wraps(D) || h < D.nightTo))
@@ -208,6 +218,7 @@ const WEEK_ORDER = [1,2,3,4,5,6,0];
 function weekDayTxt(d){ if(!d || d.off) return "OFF all day";
   let x = `ON if FC below ${d.below}` + (d.onFrom !== undefined ? `, else ON from ${hr(d.onFrom)}` : "") + `; OFF at ${hr(d.closeAt)}`;
   if(d.nightFrom !== undefined) x += `; night run ${hr(d.nightFrom)}–${hr(d.nightTo)} if FC below ${d.below}`;
+  if(d.mornFrom !== undefined) x += `; next morning ON ${hr(d.mornFrom)}–${hr(d.mornTo)} if FC below ${d.below}`;
   return x; }
 /* Night-dosing lock (Kay, 5 Oct 2026) — the one rule for every outlet. Once the night dose for an outlet is recorded in
  * the tracker ("Manual Dosing (Chlorine and Acid)"), its salt chlorinator is OFF until the next water test comes in (Kay,
@@ -360,10 +371,10 @@ function rulesCard(){
     const num = (id, v, lo, hi) => `<input id="${id}" type="number" min="${lo}" max="${hi}" step="0.5" value="${v === undefined || v === null ? "" : v}" style="width:68px">`;
     poolEdit = `<form id="poolf" style="margin-top:12px;border-top:1px solid var(--line);padding-top:12px">
       <div style="font-weight:600;margin-bottom:8px">${esc(pool)} — weekly schedule</div>
-      <div style="overflow-x:auto"><table class="dtab" id="wtab" style="font-size:13px"><tr><td></td><td>OFF all day</td><td>ON if FC below</td><td>OFF at</td><td>ON anyway from</td><td>Night run from</td><td>to</td></tr>
-      ${WEEK_ORDER.map(i => { const d = WW[i] || {}; return `<tr><td><b>${DAY_NAMES[i].slice(0,3)}</b></td><td><input type="checkbox" id="w${i}-off" ${d.off ? "checked" : ""}></td><td>${num(`w${i}-below`, d.below, 0, 5)}</td><td>${num(`w${i}-close`, d.closeAt, 8, 24)}</td><td>${num(`w${i}-from`, d.onFrom, 0, 23.5)}</td><td>${num(`w${i}-nf`, d.nightFrom, 0, 24)}</td><td>${num(`w${i}-nt`, d.nightTo, 0, 24)}</td></tr>`; }).join("")}</table></div>
+      <div style="overflow-x:auto"><table class="dtab" id="wtab" style="font-size:13px"><tr><td></td><td>OFF all day</td><td>ON if FC below</td><td>OFF at</td><td>ON anyway from</td><td>Night run from</td><td>to</td><td>Next morning ON from</td><td>to</td></tr>
+      ${WEEK_ORDER.map(i => { const d = WW[i] || {}; return `<tr><td><b>${DAY_NAMES[i].slice(0,3)}</b></td><td><input type="checkbox" id="w${i}-off" ${d.off ? "checked" : ""}></td><td>${num(`w${i}-below`, d.below, 0, 5)}</td><td>${num(`w${i}-close`, d.closeAt, 8, 24)}</td><td>${num(`w${i}-from`, d.onFrom, 0, 23.5)}</td><td>${num(`w${i}-nf`, d.nightFrom, 0, 24)}</td><td>${num(`w${i}-nt`, d.nightTo, 0, 24)}</td><td>${num(`w${i}-mf`, d.mornFrom, 0, 12)}</td><td>${num(`w${i}-mt`, d.mornTo, 0, 12)}</td></tr>`; }).join("")}</table></div>
       <div class="rgrid" style="margin-top:10px"><label for="p-noTestHour">No morning test by → OFF + tell Kay (weekdays without "ON anyway from")</label><span><input id="p-noTestHour" type="number" min="9" max="14" step="1" value="${E.noTestHour}" required> <span class="note">h</span></span></div>
-      <div class="note" style="margin-top:6px">24-hour clock (18 = 6 pm, 21.5 = 9:30 pm). The latest water test of the day decides. Leave "ON anyway from" and the night run empty if not used. A night run can pass midnight (23 to 6 = 11 pm to 6 am) and only happens if that day's latest FC is below the level. The night-dosing lock always wins.</div>
+      <div class="note" style="margin-top:6px">24-hour clock (18 = 6 pm, 21.5 = 9:30 pm). The latest water test of the day decides. Leave "ON anyway from" and the night run empty if not used. A night run can pass midnight (23 to 6 = 11 pm to 6 am) and only happens if that day's latest FC is below the level. "Next morning ON" is a run after midnight the next morning (4.5 to 8 = 4:30 am to 8 am), also only if that day's latest FC is below the level. The night-dosing lock always wins.</div>
       <div class="row" style="margin-top:10px"><button class="b sm main">Save ${esc(pool)}</button><button type="button" class="b sm" id="p-cancel">Cancel</button>${own[pool] ? `<button type="button" class="link" id="p-std" style="margin-left:auto">Remove the schedule (hand only)</button>` : ""}</div></form>`; }
   return `<div class="card"><h2>Rules</h2>
     <div style="font-size:14px;line-height:1.5;padding:8px 10px;border:1px solid var(--line);border-radius:10px;margin-bottom:10px">🔒 <b>Night-dosing lock — every outlet:</b> once the night dose is recorded in the tracker (Manual Dosing), that outlet's salt chlorinator is switched <b>OFF</b> and kept OFF until <b>the next water test comes in</b> (normally the next morning's report; at the latest midnight at the end of the next day). Switched ON by hand during the lock → OFF again within 5 minutes.</div>
@@ -464,7 +475,7 @@ function render(){
     const nt = Number($("#p-noTestHour").value); if(!isFinite(nt) || nt < 9 || nt > 14){ S.err = pool + " — no morning test by: use 9 to 14."; render(); return; }
     if(nt !== DEFAULT_RULES.noTestHour) c.noTestHour = nt;
     const v = id => $(id).value.trim(), w = [];
-    for(const i of [0,1,2,3,4,5,6]) w[i] = $(`#w${i}-off`).checked ? {off:true} : Object.fromEntries([["below", v(`#w${i}-below`)], ["closeAt", v(`#w${i}-close`)], ["onFrom", v(`#w${i}-from`)], ["nightFrom", v(`#w${i}-nf`)], ["nightTo", v(`#w${i}-nt`)]].filter(x => x[1] !== "").map(x => [x[0], Number(x[1])]));
+    for(const i of [0,1,2,3,4,5,6]) w[i] = $(`#w${i}-off`).checked ? {off:true} : Object.fromEntries([["below", v(`#w${i}-below`)], ["closeAt", v(`#w${i}-close`)], ["onFrom", v(`#w${i}-from`)], ["nightFrom", v(`#w${i}-nf`)], ["nightTo", v(`#w${i}-nt`)], ["mornFrom", v(`#w${i}-mf`)], ["mornTo", v(`#w${i}-mt`)]].filter(x => x[1] !== "").map(x => [x[0], Number(x[1])]));
     const wk = cleanWeek(w);
     if(!wk){ S.err = pool + " weekly schedule: each day needs 'ON if FC below' (0–5) and 'OFF at' (8–24), unless it is OFF all day."; render(); return; }
     c.week = wk; c.changedBy = S.user.email; c.changedAt = new Date().toISOString();
