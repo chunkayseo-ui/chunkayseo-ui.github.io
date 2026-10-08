@@ -1,0 +1,635 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>HF Pools · Smart plugs</title>
+<meta name="robots" content="noindex">
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700&family=IBM+Plex+Mono:wght@400;600&family=IBM+Plex+Sans:wght@400;600&display=swap" rel="stylesheet">
+<style>
+:root{--ground:#EEF3F3;--surface:#fff;--surface-2:#F6F9F9;--line:#C7D6D6;--line-soft:#DCE6E6;--ink:#0A1417;--ink-2:#33474D;--ink-3:#5B7378;
+--accent:#00676F;--accent-soft:#DCEEEE;--ok:#256B4C;--ok-soft:#DDEEE5;--warn:#8A590D;--warn-soft:#F6EAD4;--urgent:#B23A2E;--urgent-soft:#F8DEDA}
+*{box-sizing:border-box}
+body{margin:0;background:var(--ground);color:var(--ink);font:15px/1.45 "IBM Plex Sans",system-ui,sans-serif}
+.wrap{max-width:760px;margin:0 auto;padding:14px 16px 40px}
+header{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:12px}
+h1{font:700 26px/1 "Barlow Condensed",sans-serif;text-transform:uppercase;letter-spacing:.02em;margin:0}
+h1 small{font-size:15px;color:var(--accent);margin-left:6px}
+h2{font:700 15px/1 "Barlow Condensed",sans-serif;text-transform:uppercase;letter-spacing:.06em;color:var(--ink-2);margin:0 0 10px;display:flex;gap:8px;align-items:center}
+h2 small{margin-left:auto;font:400 12px "IBM Plex Sans";text-transform:none;letter-spacing:0;color:var(--ink-3)}
+.me{margin-left:auto;font-size:13px;color:var(--ink-3)}
+.link,.me button{border:0;background:none;color:var(--accent);text-decoration:underline;font:inherit;cursor:pointer;padding:0}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:14px;margin-bottom:12px}
+.note{font-size:13px;color:var(--ink-3)}
+.warnbox{background:var(--warn-soft);color:var(--warn);border-radius:8px;padding:9px 11px;font-size:13.5px;margin-bottom:10px}
+.okbox{background:var(--ok-soft);color:var(--ok);border-radius:8px;padding:9px 11px;font-size:13.5px;margin-bottom:10px}
+.okbox .note,.okbox .why{color:var(--ink-2)}
+.errbox{background:var(--urgent-soft);color:var(--urgent);border-radius:8px;padding:9px 11px;font-size:13.5px;margin-bottom:10px}
+.plug{border:1px solid var(--line);border-radius:12px;padding:12px;margin-bottom:10px}
+.plug-top{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+.dot{width:14px;height:14px;border-radius:50%;background:var(--line);flex:none}
+.dot.on{background:#2FA35A;box-shadow:0 0 0 4px #2FA35A33}
+.dot.off{background:#9AA9AC}
+.dot.offline{background:var(--urgent)}
+.pname{font-weight:600;font-size:17px}
+.pmeta{font-size:12.5px;color:var(--ink-3);font-family:"IBM Plex Mono",monospace}
+.state{margin-left:auto;font:700 14px "Barlow Condensed",sans-serif;letter-spacing:.06em;text-transform:uppercase;padding:4px 9px;border-radius:6px}
+.state.on{background:var(--ok-soft);color:var(--ok)}
+.state.off{background:var(--surface-2);color:var(--ink-3);border:1px solid var(--line)}
+.state.offline{background:var(--urgent-soft);color:var(--urgent)}
+.btns{display:flex;gap:8px;margin-top:10px}
+.b{flex:1;padding:12px;border-radius:10px;border:2px solid var(--accent);background:var(--surface);color:var(--accent);font:600 15px "IBM Plex Sans";cursor:pointer}
+.b.main{background:var(--accent);color:#fff}
+.b:disabled{opacity:.45;cursor:default}
+.b.sm{flex:none;padding:7px 11px;font-size:13px;border-width:1px}
+.rule{margin-top:10px;padding:9px 11px;border-radius:8px;background:var(--surface-2);font-size:13.5px}
+.rule b.on{color:var(--ok)} .rule b.off{color:var(--ink-2)}
+.rule .why{color:var(--ink-3)}
+.fc{font-family:"IBM Plex Mono",monospace;font-size:12.5px;color:var(--ink-2)}
+form.row,.row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+input,select{font:inherit;padding:8px 10px;border:1px solid var(--line);border-radius:7px;background:var(--surface);min-width:0}
+.rules{font-size:14px;margin:0;padding-left:18px}.rules li{margin:4px 0}
+.rgrid{display:grid;grid-template-columns:1fr auto;gap:8px 10px;align-items:center;font-size:14px}
+.rgrid input{width:70px;text-align:right}
+.chips{display:flex;gap:6px;flex-wrap:wrap}.chips label{border:1px solid var(--line);border-radius:7px;padding:5px 9px;font-size:13px}
+.dtab{border-collapse:collapse;font-size:13px;margin-top:6px;width:100%}.dtab td{padding:4px 6px;border-top:1px solid var(--line-soft)}.dtab td:first-child{width:46px;color:var(--ink-3);font-family:"IBM Plex Mono",monospace}
+.log{font-size:13px}
+.log div{display:flex;gap:8px;padding:5px 0;border-top:1px solid var(--line-soft)}
+.log div:first-child{border-top:0}
+.log .t{font-family:"IBM Plex Mono",monospace;color:var(--ink-3);flex:none;width:88px}
+.login{max-width:380px;margin:12vh auto 0}
+.login input{width:100%;margin-top:4px}
+.login label{display:block;font-size:13px;color:var(--ink-3);margin-top:12px}
+.msg{font-size:13px;margin-top:10px;min-height:18px}.msg.err{color:var(--urgent)}.msg.ok{color:var(--ok)}
+/* Safeguards card (Kay, 6 Oct 2026) */
+details.guard>summary{list-style:none;cursor:pointer}
+details.guard>summary::-webkit-details-marker{display:none}
+details.guard>summary h2{margin:0}
+details.guard>summary .chev{margin-left:auto;font:400 12px "IBM Plex Sans";text-transform:none;letter-spacing:0;color:var(--accent);text-decoration:underline}
+.lane{border:1px solid var(--line-soft);border-left:5px solid var(--accent);border-radius:10px;padding:10px 12px;margin-top:10px;background:var(--surface-2)}
+.lane.day{border-left-color:#C08A1E}.lane.hand{border-left-color:var(--warn)}.lane.night{border-left-color:#3B4C8C}.lane.tech{border-left-color:var(--ok)}
+.lane-h{font:700 14px "Barlow Condensed",sans-serif;letter-spacing:.05em;text-transform:uppercase;color:var(--ink-2);margin-bottom:8px}
+.flow{display:flex;align-items:stretch;gap:6px}
+.step{flex:1 1 0;background:var(--surface);border:1px solid var(--line);border-radius:9px;padding:8px 9px;font-size:13.5px;line-height:1.35}
+.step .ic{display:block;font-size:20px;line-height:1;margin-bottom:4px}
+.step.stop{background:var(--urgent-soft);border-color:#E7B5AE}
+.step.go{background:var(--ok-soft);border-color:#B8D8C7}
+.arr{flex:none;align-self:center;color:var(--ink-3);font-size:18px}
+.lane .note{margin-top:6px}
+.prio{display:flex;align-items:center;gap:6px;flex-wrap:wrap;font-size:13px;margin-top:10px}
+.prio span.p{background:var(--surface);border:1px solid var(--line);border-radius:999px;padding:3px 9px}
+.prio span.p.top{background:#E3E6F3;border-color:#B9C0E0;font-weight:600}
+.tl{width:100%;max-width:520px;height:auto;display:block;margin:8px auto 0;color:var(--ink-2)}
+.gaps li{margin:3px 0}
+@media (max-width:560px){.flow{flex-direction:column}.arr{transform:rotate(90deg);margin:-2px 0}}
+/* At-a-glance board (Kay, 8 Oct 2026): one tile per salt outlet, details folded below */
+.strip{display:flex;align-items:center;gap:10px;flex-wrap:wrap;font-size:13.5px;padding:9px 12px;border-radius:10px;margin-bottom:12px}
+.strip.ok{background:var(--ok-soft);color:var(--ok)}.strip.warn{background:var(--warn-soft);color:var(--warn)}
+.strip .b{margin-left:auto}
+.board{display:grid;grid-template-columns:repeat(auto-fill,minmax(168px,1fr));gap:10px;margin-bottom:14px}
+.tile{position:relative;background:var(--surface);border:1px solid var(--line);border-left:6px solid var(--line);border-radius:12px;padding:11px 12px 10px;cursor:pointer;text-align:left;font:inherit;color:inherit;min-height:112px;display:flex;flex-direction:column;gap:4px}
+.tile:hover{border-color:var(--accent);border-left-color:inherit}
+.tile.on{border-left-color:#2FA35A}.tile.off{border-left-color:#9AA9AC}.tile.offline{border-left-color:var(--urgent)}.tile.none{border-left-color:var(--line-soft);background:var(--surface-2);cursor:default;color:var(--ink-3)}
+.tile.open{outline:2px solid var(--accent);outline-offset:1px}
+.tile .tp{font:700 20px/1 "Barlow Condensed",sans-serif;letter-spacing:.03em;text-transform:uppercase;display:flex;align-items:center;gap:8px}
+.tile .tp .dot{width:12px;height:12px;margin-left:auto}
+.tile .ts{font:700 22px/1 "Barlow Condensed",sans-serif;letter-spacing:.05em;margin-top:2px}
+.tile.on .ts{color:var(--ok)}.tile.off .ts{color:var(--ink-2)}.tile.offline .ts{color:var(--urgent)}.tile.none .ts{color:var(--ink-3);font-size:17px}
+.tile .tfc{font-family:"IBM Plex Mono",monospace;font-size:12px;color:var(--ink-2)}
+.tile .tw{font-size:12px;color:var(--ink-3);line-height:1.3;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.tile .tsub{font-size:12px;color:var(--ink-2);display:flex;flex-direction:column;gap:2px;margin-top:2px}
+.tile .tsub span{display:flex;align-items:center;gap:6px}.tile .tsub .dot{width:9px;height:9px}
+.tile .tsub .dot.on{box-shadow:none}
+.tile .lock{position:absolute;top:8px;right:10px;font-size:14px}
+.open-card{border-color:var(--accent)}
+.open-card h2 .link{margin-left:auto;font:400 12px "IBM Plex Sans";text-transform:none;letter-spacing:0}
+details.fold>summary{list-style:none;cursor:pointer}
+details.fold>summary::-webkit-details-marker{display:none}
+details.fold>summary h2{margin:0}
+details.fold>summary .chev{margin-left:auto;font:400 12px "IBM Plex Sans";text-transform:none;letter-spacing:0;color:var(--accent);text-decoration:underline}
+details.fold[open]>summary{margin-bottom:10px}
+.folds-h{font:700 13px "Barlow Condensed",sans-serif;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-3);margin:18px 0 8px}
+@media (max-width:560px){.board{grid-template-columns:1fr 1fr;gap:8px}.tile{padding:10px 10px 9px;min-height:104px}.tile .tp{font-size:18px}.tile .ts{font-size:20px}}
+</style></head><body>
+<div class="wrap" id="app"><p class="note">Loading…</p></div>
+<script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore-compat.js"></script>
+<script>
+/* HF Pools — smart plug test page (Kay, 1 Oct 2026).
+ * Test the Shelly plugs before they go on the salt chlorinators: see each plug's state, switch it
+ * ON/OFF, and see what the automatic rule WOULD do right now from the pool's real water tests.
+ * Automatic switching (1 Oct 2026): the plugs Apps Script (plugs.gs autoRun, every 10 min) applies the same
+ * rules when dosing_config/plugs.auto is true and writes autoState; keep ruleFor() here = ruleFor_() there.
+ * The Shelly key never touches this page: switching goes through Kay's Apps Script (plugs.gs),
+ * which checks the sign-in and keeps the key in its Script Properties.
+ * Plug list + relay address: Firestore dosing_config/plugs. Switch log: plug_log. */
+firebase.initializeApp({
+  apiKey: "AIzaSyANFCZbvRGO9aMRtG9MF_qONO3FL85CzSo", authDomain: "maintenance-board-f931a.firebaseapp.com",
+  projectId: "maintenance-board-f931a", storageBucket: "maintenance-board-f931a.firebasestorage.app",
+  messagingSenderId: "169864970579", appId: "1:169864970579:web:bfb7490d0aebcfed17e1a6"
+});
+const auth = firebase.auth(), db = firebase.firestore();
+const HISTORY_API = "https://script.google.com/macros/s/AKfycbwYJLfkw5lwKnjwqmEtuRiREzbahnf2l63YhmX_7jMR9uqM9MpeqoxeVTTVw5rc76eZ6g/exec";
+const SALT_POOLS = ["BK","Lentor","Tengah","TPY","DR","HS","WWW"];
+/* Rules agreed 27 Sep 2026 (claude/salt-chlorinator-alert.md). One place to change them. */
+const DEFAULT_RULES = {
+  onBelow: 1.5,          // morning FC below this -> ON
+  offAtOrAbove: 1.5,     // an afternoon test at/above this -> OFF
+  dosingOffHour: 17,     // night-dosing day: OFF by 5 pm
+  eveningOffHour: 19.5,  // no dosing tonight: pools that don't run overnight go OFF at 7:30 pm
+  noTestHour: 11,        // no morning test by 11 am -> OFF + tell Kay
+  weekendOnHour: 8,      // Sat/Sun: ON from 8 am (not straight after the Fri/Sat night dosing)
+  // overnight pools on a no-dosing night keep the afternoon test's decision all night (no night test is done)
+  overnightPools: ["Tengah","HS","WWW"],
+  // Night dosing schedule (salt branches only). 0 = Sun.
+  dosing: {0:SALT_POOLS, 1:["Tengah","BK","Lentor"], 2:["WWW","BK","Lentor"], 3:["TPY","Tengah"], 4:["HS","DR"], 5:SALT_POOLS, 6:SALT_POOLS}
+};
+/* Kay can change the numbers + overnight pools on the page (saved in dosing_config/plugs.rules).
+ * The night dosing schedule stays the team's fixed schedule. */
+const RULE_NUMS = [
+  {k:"onBelow", l:"Morning FC below this → ON", min:0, max:5, step:0.5, unit:"ppm"},
+  {k:"offAtOrAbove", l:"Afternoon FC at or above this → OFF", min:0, max:5, step:0.5, unit:"ppm"},
+  {k:"noTestHour", l:"No morning test by → OFF + tell Kay", min:9, max:14, step:1, unit:"h"},
+  {k:"dosingOffHour", l:"Night dosing day → OFF from", min:12, max:19.5, step:0.5, unit:"h"},
+  {k:"eveningOffHour", l:"No dosing tonight → other pools OFF from", min:12, max:19.5, step:0.5, unit:"h"},
+  {k:"weekendOnHour", l:"Weekend → ON from", min:8, max:12, step:1, unit:"h"}];
+let RULES = mergeRules(null);
+function allRules(){ return RULES; } // ruleFor() has its own per-pool RULES; this reaches the page-wide one
+function mergeRules(saved){
+  const r = JSON.parse(JSON.stringify(DEFAULT_RULES));
+  if(saved && typeof saved === "object"){
+    RULE_NUMS.forEach(f => { const v = Number(saved[f.k]); if(saved[f.k] !== undefined && isFinite(v) && v >= f.min && v <= f.max) r[f.k] = v; });
+    if(Array.isArray(saved.overnightPools)) r.overnightPools = saved.overnightPools.filter(p => SALT_POOLS.includes(p));
+    r.pools = cleanPools(saved.pools);
+  }
+  return r;
+}
+/* Per-outlet rules (Kay, 5 Oct 2026): rules.pools[POOL] holds only the settings that pool changes
+ * (any of RULE_NUMS + overnight true/false); everything else follows the standard rules above.
+ * Same shape and checks as cleanPools_/poolRules_ in plugs.gs. */
+function cleanPools(src){
+  const out = {};
+  if(!src || typeof src !== "object") return out;
+  SALT_POOLS.forEach(p => { const o = src[p]; if(!o || typeof o !== "object") return; const c = {};
+    RULE_NUMS.forEach(f => { const v = Number(o[f.k]); if(o[f.k] !== undefined && o[f.k] !== null && isFinite(v) && v >= f.min && v <= f.max) c[f.k] = v; });
+    if(typeof o.overnight === "boolean") c.overnight = o.overnight;
+    const wk = cleanWeek(o.week); if(wk) c.week = wk;
+    if(Object.keys(c).length) out[p] = c; });
+  return out;
+}
+function poolRules(R, pool){
+  const o = (R.pools || {})[pool]; if(!o) return R;
+  const r = Object.assign({}, R, o);
+  if(typeof o.overnight === "boolean"){ r.overnightPools = R.overnightPools.filter(x => x !== pool); if(o.overnight) r.overnightPools.push(pool); }
+  return r;
+}
+/* Weekly schedule for one outlet (Kay, 5 Oct 2026 — first for BK). When an outlet has rules.pools[POOL].week it
+ * replaces the standard rules for that outlet. week = 7 days, 0 = Sunday. Each day is {off:true} or
+ * {below, closeAt, onFrom?, nightFrom?, nightTo?}: ON when the latest test today (afternoon, else morning) is below
+ * `below`, OFF when it is `below` or more; OFF from closeAt; onFrom = ON from this time whatever the FC;
+ * nightFrom–nightTo = a night run (can pass midnight) if the day's latest FC was below `below`.
+ * Same code in plugs.html (weekRule) and plugs.gs (weekRule_) — keep them identical. */
+var DAY_NAMES = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+function cleanWeek(w) {
+  if (w && !Array.isArray(w) && typeof w === 'object') w = [0, 1, 2, 3, 4, 5, 6].map(function (i) { return w[i]; });
+  if (!Array.isArray(w) || w.length !== 7) return null;
+  var n = function (v, lo, hi) { v = (v === null || v === undefined || v === '') ? NaN : Number(v); return isFinite(v) && v >= lo && v <= hi ? v : null; };
+  var out = [];
+  for (var i = 0; i < 7; i++) {
+    var d = w[i];
+    if (!d || typeof d !== 'object') return null;
+    if (d.off === true) { out.push({ off: true }); continue; }
+    var c = { below: n(d.below, 0, 5), closeAt: n(d.closeAt, 8, 24) };
+    if (c.below === null || c.closeAt === null) return null;
+    var of = n(d.onFrom, 0, 23.5); if (of !== null && of < c.closeAt) c.onFrom = of;
+    var nf = n(d.nightFrom, 0, 24), nt = n(d.nightTo, 0, 24);
+    if (nf !== null && nt !== null && nf !== nt) { c.nightFrom = nf; c.nightTo = nt; }
+    var mf = n(d.mornFrom, 0, 12), mt = n(d.mornTo, 0, 12);          // next-morning run (Kay, 8 Oct 2026 — DR 4:30–8 am)
+    if (mf !== null && mt !== null && mf < mt) { c.mornFrom = mf; c.mornTo = mt; }
+    out.push(c);
+  }
+  return out;
+}
+function weekRule(pool, W, noTestHour, t, tp, h, dow) {
+  var latest = function (x) { x = x || {}; return x.afternoon !== null && x.afternoon !== undefined ? x.afternoon : (x.morning !== null && x.morning !== undefined ? x.morning : null); };
+  var pd = (dow + 6) % 7, P = W[pd], D = W[dow], L = latest(t), dn = DAY_NAMES[dow], pn = DAY_NAMES[pd];
+  var wraps = function (x) { return x && !x.off && x.nightFrom !== undefined && x.nightTo <= x.nightFrom; };
+  if (wraps(P) && h < P.nightTo) {                                   // after midnight: the rest of last night's run
+    var lp = latest(tp);
+    return lp !== null && lp < P.below
+      ? { on: true, key: 'night-on', why: 'night run until ' + hr(P.nightTo) + ' — ' + pn + '\'s FC ' + lp + ' was below ' + P.below }
+      : { on: false, key: 'night-skip', why: 'no night run — ' + (lp === null ? pn + ' had no water test' : pn + '\'s FC ' + lp + ' was ' + P.below + ' or more') };
+  }
+  // Next-morning run (Kay, 8 Oct 2026 — DR): after midnight, ON from mornFrom to mornTo if the day before's latest FC was below.
+  var morn = function (x) { return x && !x.off && x.mornFrom !== undefined; };
+  if (morn(P) && h < P.mornTo) {
+    var lq = latest(tp);
+    if (lq === null || lq >= P.below) return { on: false, key: 'morn-skip', why: 'no early-morning run — ' + (lq === null ? pn + ' had no water test' : pn + '\'s FC ' + lq + ' was ' + P.below + ' or more') };
+    if (h < P.mornFrom) return { on: false, key: 'morn-wait', why: 'OFF until ' + hr(P.mornFrom) + ', then ON until ' + hr(P.mornTo) + ' — ' + pn + '\'s FC ' + lq + ' was below ' + P.below };
+    return { on: true, key: 'morn-on', why: 'early-morning run ' + hr(P.mornFrom) + '–' + hr(P.mornTo) + ' — ' + pn + '\'s FC ' + lq + ' was below ' + P.below };
+  }
+  if (!D || D.off) return { on: false, key: 'day-off', why: pool + ' is OFF all day on ' + dn + 's' };
+  if (D.nightFrom !== undefined && h >= D.nightFrom && (wraps(D) || h < D.nightTo))
+    return L !== null && L < D.below
+      ? { on: true, tests: true, key: 'night-on', why: 'night run ' + hr(D.nightFrom) + '–' + hr(D.nightTo) + ' — FC ' + L + ' is below ' + D.below }
+      : { on: false, tests: true, key: 'night-skip', why: 'no night run — ' + (L === null ? 'no water test today' : 'FC ' + L + ' is ' + D.below + ' or more') };
+  if (h >= D.closeAt) return { on: false, key: 'closed', why: 'OFF from ' + hr(D.closeAt) + ' on ' + dn + 's' + (D.nightFrom !== undefined && h < D.nightFrom ? ' (night run from ' + hr(D.nightFrom) + ' if FC is below ' + D.below + ')' : '') };
+  if (D.onFrom !== undefined && h >= D.onFrom) return { on: true, key: 'on-from', why: dn + ' — ON from ' + hr(D.onFrom) + ' until ' + hr(D.closeAt) };
+  if (L !== null) return L < D.below
+    ? { on: true, tests: true, key: 'low:' + L, why: 'FC ' + L + ' is below ' + D.below + ' — ON until ' + hr(D.closeAt) }
+    : { on: false, tests: true, key: 'ok:' + L, why: 'FC ' + L + ' is ' + D.below + ' or more' + (D.onFrom !== undefined ? ' — ON from ' + hr(D.onFrom) : '') };
+  // Kay, 7 Oct 2026: before today's first water test the plug is LOCKED OFF (Switch ON greyed out on the page; an ON from the
+  // Shelly app or the plug's button is switched OFF again within 5 minutes). The test (or an ON-from time) unlocks it.
+  if (D.onFrom === undefined && h >= noTestHour) return { on: false, tests: true, alert: true, lock: true, key: 'no-test', why: 'no morning water test by ' + hr(noTestHour) + ' — locked OFF until a water test comes in' };
+  if (wraps(P)) return { on: false, lock: true, key: 'night-over', why: 'night run ended at ' + hr(P.nightTo) + ' — locked OFF until the morning water test comes in' };
+  return { on: false, tests: true, lock: true, key: 'wait', why: 'locked OFF until the morning water test comes in' + (D.onFrom !== undefined ? ' (ON from ' + hr(D.onFrom) + ' anyway)' : '') };
+}
+const WEEK_ORDER = [1,2,3,4,5,6,0];
+function weekDayTxt(d){ if(!d || d.off) return "OFF all day";
+  let x = `ON if FC below ${d.below}` + (d.onFrom !== undefined ? `, else ON from ${hr(d.onFrom)}` : "") + `; OFF at ${hr(d.closeAt)}`;
+  if(d.nightFrom !== undefined) x += `; night run ${hr(d.nightFrom)}–${hr(d.nightTo)} if FC below ${d.below}`;
+  if(d.mornFrom !== undefined) x += `; next morning ON ${hr(d.mornFrom)}–${hr(d.mornTo)} if FC below ${d.below}`;
+  return x; }
+/* Night-dosing lock (Kay, 5 Oct 2026) — the one rule for every outlet. Once the night dose for an outlet is recorded in
+ * the tracker ("Manual Dosing (Chlorine and Acid)"), its salt chlorinator is OFF until the next water test comes in (Kay,
+ * 6 Oct 2026 -- was a fixed 8 am; it always ends by midnight at the end of the next day), whatever else
+ * says; switching it ON by hand during the lock is undone at the next check. d = autoState.dosed[POOL] = {at, by},
+ * written by the timer from dosing_rounds. Same code on the page (dosingLock) and in the script (dosingLock_). */
+function sgDayOf(ms) { return new Date(ms + 8 * 3600000).toISOString().slice(0, 10); }
+function dayStartMs(day) { return Date.parse(day + 'T00:00:00+08:00'); }
+function lockUntil(at) {                                        // the latest a lock can last
+  var t = Date.parse(at); if (!isFinite(t)) return 0;
+  return dayStartMs(sgDayOf(t - 4 * 3600000)) + 2 * 864e5;
+}
+function hasTest(t) { return !!t && ['morning', 'afternoon', 'night'].some(function (k) { return t[k] !== null && t[k] !== undefined && t[k] !== ''; }); }
+function dosingLock(pool, d, nowMs, t) {                        // t = today's water tests for the pool
+  if (!d || !d.at) return null;
+  var at = Date.parse(d.at);
+  if (!(nowMs >= at && nowMs < lockUntil(d.at))) return null;
+  var nextDayStart = dayStartMs(sgDayOf(at - 4 * 3600000)) + 864e5;
+  if (nowMs >= nextDayStart && hasTest(t)) return null;         // the next day's first water test ends it
+  var x = new Date(at + 8 * 3600000);
+  return { on: false, key: 'dosed', lock: true, why: 'night dosing done at ' + pool + ' at ' + hr(x.getUTCHours() + x.getUTCMinutes() / 60) + (d.by ? ' by ' + d.by : '') + ' — locked OFF until the next water test comes in' };
+}
+function prevTests(pool){ const a = S.cfg.autoState || {}, x = (a.prevTests || {})[pool], y = dayKey(new Date(sgNow().getTime() - 864e5));
+  return x && x.date === y ? x : {}; }
+const hr = h => { const x = Math.floor(h), m = Math.round((h - x) * 60), ap = x >= 12 ? "pm" : "am", h12 = x % 12 || 12; return h12 + (m ? ":" + String(m).padStart(2, "0") : "") + " " + ap; };
+const $ = s => document.querySelector(s);
+const esc = s => String(s == null ? "" : s).replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const pad = n => String(n).padStart(2, "0");
+const sgNow = () => new Date(new Date().toLocaleString("en-US", {timeZone:"Asia/Singapore"}));
+const dayKey = d => d.getFullYear() + "-" + pad(d.getMonth() + 1) + "-" + pad(d.getDate());
+const hhmm = iso => { const d = new Date(iso); return pad(d.getHours()) + ":" + pad(d.getMinutes()); };
+const S = {user:null, cfg:{plugs:[], apiUrl:""}, status:{}, fc:{}, log:[], busy:{}, err:"", note:""};
+S.guardOpen = (() => { try{ return localStorage.getItem("hf-guard-open") === "1"; }catch(e){ return false; } })();   // closed unless opened (8 Oct 2026)
+S.folds = (() => { try{ return JSON.parse(localStorage.getItem("hf-folds") || "{}") || {}; }catch(e){ return {}; } })();   // which detail sections are open
+S.openPool = null;   // outlet tile tapped open
+
+/* ---------- the rule, worked out from today's tests ---------- */
+function ruleFor(pool, pw){
+  // Kay, 7 Oct 2026: a plug can carry its own weekly schedule (plugs[].week, e.g. Tengah Room 2 — its pump stops at 7 pm);
+  // it replaces the outlet schedule for that plug only. Same in ruleFor_ (script).
+  // Kay, 5 Oct 2026: the standard rules are gone. 1) night-dosing lock for every outlet; 2) the outlet's weekly
+  // schedule if it has one; 3) otherwise no rule - the plug is switched by hand only. Same order as ruleFor_ in the script.
+  if(!pool) return null;
+  const RULES = poolRules(allRules(), pool);
+  const lk = dosingLock(pool, ((S.cfg.autoState || {}).dosed || {})[pool], Date.now(), S.fc[pool]); if(lk) return lk;
+  const W = cleanWeek(pw) || RULES.week;
+  if(!W) return {on:null, key:"manual", why:"no schedule — switched by hand only (the night-dosing lock still applies)"};
+  const now = sgNow(), h = now.getHours() + now.getMinutes() / 60, dow = now.getDay();
+  if(S.fc[pool] && S.fc[pool].err) return {on:null, why:"couldn't read the water tests yet — wait a minute or press Refresh"};
+  return weekRule(pool, W, RULES.noTestHour, S.fc[pool] || {}, prevTests(pool), h, dow);
+}
+async function loadFc(pools){
+  const today = dayKey(sgNow());
+  await Promise.all([...new Set(pools.filter(Boolean))].map(async p => {
+    try{
+      const j = await fetch(HISTORY_API + "?pool=" + encodeURIComponent(p) + "&_=" + Date.now()).then(r => r.json());
+      const row = (j[p] || []).find(x => x.date === today) || {};
+      const n = v => (v === null || v === undefined || v === "" || isNaN(Number(v))) ? null : Number(v);
+      S.fc[p] = {morning:n(row.fc && row.fc.morning), afternoon:n(row.fc && row.fc.afternoon), night:n(row.fc && row.fc.night)};
+    }catch(e){ if(!S.fc[p] || S.fc[p].err) S.fc[p] = {err:true}; }   // keep the last good reading if one read fails
+  }));
+  bgRender();
+}
+
+/* ---------- talking to the relay ---------- */
+async function relay(payload){
+  if(!S.cfg.apiUrl) throw new Error("Add the Apps Script web app address in Settings first.");
+  const idToken = await auth.currentUser.getIdToken();
+  const ac = new AbortController(), timer = setTimeout(() => ac.abort(), 30000);
+  try{
+    const r = await fetch(S.cfg.apiUrl, {method:"POST", signal:ac.signal, headers:{"Content-Type":"text/plain;charset=utf-8"}, body:JSON.stringify(Object.assign({idToken}, payload))});
+    const j = await r.json().catch(() => null);
+    if(!j) throw new Error("The relay sent something unexpected (HTTP " + r.status + ").");
+    if(!j.ok) throw new Error(j.error || "refused");
+    return j;
+  }catch(e){ throw new Error(e.name === "AbortError" ? "No answer from the relay in 30 s." : e.message); }
+  finally{ clearTimeout(timer); }
+}
+async function refreshStatus(retry){
+  const ids = S.cfg.plugs.map(p => p.id).filter(Boolean);
+  if(!ids.length || !S.cfg.apiUrl) return;
+  S.loading = true; bgRender();
+  try{ const j = await relay({action:"status", ids}); S.status = {}; (j.devices || []).forEach(d => S.status[d.id] = d); S.err = ""; S.checkedAt = new Date().toISOString(); }
+  catch(e){ if(!retry){ S.loading = false; setTimeout(() => refreshStatus(true), 3000); return; } S.err = "Couldn't reach the plugs: " + e.message + " — press Refresh."; }   // one quiet retry first
+  S.loading = false; bgRender();
+}
+async function switchPlug(p, on, reason){
+  S.busy[p.id] = true; S.err = ""; render();
+  try{
+    await relay({action:"switch", id:p.id, on});
+    S.status[p.id] = Object.assign({}, S.status[p.id] || {}, {on, online:true});
+    const entry = {at:new Date().toISOString(), by:S.user.email, id:p.id, name:p.name, pool:p.pool || null, on, reason:reason || "manual"};
+    S.log.unshift(entry);
+    db.collection("plug_log").add(entry).catch(() => {});
+    setTimeout(refreshStatus, 2500);   // Shelly allows 1 request a second
+  }catch(e){ S.err = p.name + ": " + e.message; }
+  S.busy[p.id] = false; render();
+}
+
+/* ---------- screens ---------- */
+function plugHtml(p){
+  const st = S.status[p.id], cls = !st ? "" : !st.online ? "offline" : st.on ? "on" : "off";
+  const label = !st ? (S.loading ? "checking…" : "—") : !st.online ? "Offline" : st.on ? "ON" : "OFF";
+  const rule = ruleFor(p.pool, p.week), t = p.pool ? S.fc[p.pool] : null, ownWk = cleanWeek(p.week);
+  const fcLine = !p.pool ? "" : !t ? `<span class="fc">${esc(p.pool)} · reading tests…</span>`
+    : t.err ? `<span class="fc">${esc(p.pool)} · couldn't read the water tests</span>`
+    : `<span class="fc">${esc(p.pool)} today · morning FC ${t.morning ?? "–"} · afternoon ${t.afternoon ?? "–"} · night ${t.night ?? "–"}${t.src === "timer" ? ` <span class="note">(timer last checked the sheet at ${hhmm(t.at)})</span>` : ""}</span>`;
+  const differs = rule && rule.on !== null && st && st.online && st.on !== rule.on;
+  return `<div class="plug">
+    <div class="plug-top"><span class="dot ${cls}"></span>
+      <div><div class="pname">${esc(p.name)}</div><div class="pmeta">${esc(p.id)}${st && st.watts !== null && st.watts !== undefined ? ` · ${st.watts} W` : ""}${st && st.volts ? ` · ${st.volts} V` : ""}</div></div>
+      <span class="state ${cls}">${label}</span></div>
+    <div class="btns"><button class="b ${st && !st.on ? "main" : ""}" data-sw="${esc(p.id)}" data-on="1" ${S.busy[p.id] || (rule && rule.lock) ? "disabled" : ""} ${rule && rule.lock ? `title="${esc(rule.why)}"` : ""}>${rule && rule.lock ? "🔒 Switch ON" : "Switch ON"}</button>
+      <button class="b ${st && st.on ? "main" : ""}" data-sw="${esc(p.id)}" data-on="0" ${S.busy[p.id] ? "disabled" : ""}>Switch OFF</button></div>
+    ${rule && rule.lock ? `<div class="note" style="margin-top:4px">🔒 Switch ON is locked — ${esc(rule.why)}.</div>` : ""}
+    ${p.pool ? `<div class="rule">${fcLine}${ownWk ? ` <span class="note">· <b>own schedule for this plug</b></span><div class="note" style="margin:3px 0 2px;line-height:1.5">${WEEK_ORDER.map(i => `<span style="display:inline-block;width:34px;font-weight:600">${DAY_NAMES[i].slice(0,3)}</span>${esc(weekDayTxt(ownWk[i]))}`).join("<br>")}</div>` : ((RULES.pools || {})[p.pool] || {}).week ? ` <span class="note">· weekly schedule</span>` : ` <span class="note">· no schedule (hand only)</span>`}<br>Rule says now: ${rule.on === null ? "<b>wait</b>" : `<b class="${rule.on ? "on" : "off"}">${rule.on ? "ON" : "OFF"}</b>`} <span class="why">— ${esc(rule.why)}</span>
+      ${(() => { const x = ((S.cfg.autoState || {}).plugs || {})[p.id];   // when the timer last switched this plug (Kay, 6 Oct 2026)
+        if(!x || !x.at || x.want == null || new Date(x.at).toDateString() !== new Date().toDateString()) return "";
+        return `<div class="note" style="margin-top:4px">⏱ The timer switched it <b>${x.want ? "ON" : "OFF"}</b> at <b>${hhmm(x.at)}</b> today${x.done === false ? " (not done yet — plug didn't answer)" : ""}.</div>`; })()}
+      ${(() => { const mo = ((S.cfg.autoState || {}).manual || {})[p.id]; return mo && mo.until ? `<div class="note" style="margin-top:4px">✋ Switched ${mo.on ? "ON" : "OFF"} by hand — the timer puts the rule back at ${hhmm(mo.until)}, unless the rule changes first.</div>` : ""; })()}
+      ${differs ? `<div style="margin-top:6px"><button class="b sm main" data-apply="${esc(p.id)}">Apply: switch ${rule.on ? "ON" : "OFF"}</button></div>` : ""}</div>` : `<div class="note" style="margin-top:8px">Not linked to a pool — manual only.</div>`}
+  </div>`;
+}
+function ago(iso){ if(!iso) return ""; const m = Math.round((Date.now() - new Date(iso)) / 60000); return m < 1 ? "just now" : m < 60 ? m + " min ago" : Math.round(m / 60) + " h ago"; }
+/* ---------- at-a-glance board (Kay, 8 Oct 2026) ---------- */
+function shortPlugName(p){ const m = /\(([^)]+)\)/.exec(p.name || ""); if(m) return m[1]; return (p.name || "").replace(/salt\s*chlorinator/i, "").replace(p.pool || "", "").replace(/\s+/g, " ").trim() || "Plug"; }
+function plugState(p){ const st = S.status[p.id]; return !st ? (S.loading ? "checking" : "unknown") : !st.online ? "offline" : st.on ? "on" : "off"; }
+function stateWord(c){ return c === "on" ? "ON" : c === "off" ? "OFF" : c === "offline" ? "OFFLINE" : c === "checking" ? "checking…" : "—"; }
+function tileHtml(pool){
+  const plugs = (S.cfg.plugs || []).filter(p => p.pool === pool);
+  if(!plugs.length) return `<div class="tile none"><div class="tp">${esc(pool)}</div><div class="ts">No plug yet</div><div class="tw">Switched in the pump room or the Shelly app.</div></div>`;
+  const states = plugs.map(plugState);
+  const cls = states.includes("on") ? "on" : states.every(x => x === "offline") ? "offline" : states.includes("off") ? "off" : "";
+  const t = S.fc[pool], fc = !t ? "FC today: reading…" : t.err ? "FC today: can't read the sheet" : `FC today: ${t.morning ?? "–"} / ${t.afternoon ?? "–"} / ${t.night ?? "–"}`;
+  const rules = plugs.map(p => ruleFor(pool, p.week)), lock = rules.some(r => r && r.lock);
+  const r0 = rules.find(r => r && r.why) || {};
+  const sub = plugs.length > 1 ? `<div class="tsub">${plugs.map((p, i) => `<span><span class="dot ${states[i]}"></span>${esc(shortPlugName(p))} · <b>${stateWord(states[i])}</b>${rules[i] && rules[i].lock ? " 🔒" : ""}</span>`).join("")}</div>` : "";
+  const open = S.openPool === pool;
+  return `<button class="tile ${cls}${open ? " open" : ""}" data-tile="${esc(pool)}" title="Tap for the switches and details">
+    ${lock ? `<span class="lock" title="Switch ON is locked">🔒</span>` : ""}
+    <div class="tp">${esc(pool)}${plugs.length === 1 ? `<span class="dot ${cls}"></span>` : ""}</div>
+    ${plugs.length === 1 ? `<div class="ts">${stateWord(states[0])}</div>` : sub}
+    <div class="tfc">${fc}</div>
+    <div class="tw">${esc(r0.why || "")}</div></button>`;
+}
+function boardHtml(){
+  const has = new Set((S.cfg.plugs || []).map(p => p.pool));
+  const order = SALT_POOLS.slice().sort((a, b) => (has.has(b) - has.has(a)));
+  return `<div class="board">${order.map(tileHtml).join("")}</div>`;
+}
+function stripHtml(){
+  const on = S.cfg.auto === true, a = S.cfg.autoState || {}, last = a.lastRun, night = a.note === "night";
+  const stale = !last || (!night && Date.now() - new Date(last) > 20 * 60000);
+  const when = !last ? "timer hasn't run yet" : night ? `timer asleep until ${hr(8)}` : `timer checked ${ago(last)}`;
+  return `<div class="strip ${on && !stale ? "ok" : "warn"}"><span>${on ? "🤖 <b>Automatic switching ON</b>" : "✋ <b>Automatic switching OFF</b>"} · ${when}${stale && on ? ` — <b>the timer doesn't seem to be running</b>` : ""}${S.checkedAt ? ` · plugs checked ${hhmm(S.checkedAt)}` : ""} <button class="link" id="refresh">Refresh</button></span>
+    <button class="b sm ${on ? "" : "main"}" id="autotgl">${on ? "Turn OFF" : "Turn ON"}</button></div>`;
+}
+function fold(id, title, body, force){
+  const open = force || S.folds[id] === true;
+  return `<details class="card fold" id="fold-${id}" data-fold="${id}" ${open ? "open" : ""}><summary><h2>${title} <span class="chev">${open ? "hide" : "show"}</span></h2></summary>${body}</details>`;
+}
+function autoCard(){
+  const on = S.cfg.auto === true, a = S.cfg.autoState || {}, last = a.lastRun, night = a.note === "night";
+  const win = {start: 8, end: 20};   // same as DAY_START / DAY_END in plugs.gs
+  const stale = !last || (!night && Date.now() - new Date(last) > 20 * 60000);
+  const plugs = (S.cfg.plugs || []).filter(p => p.pool);
+  const rows = plugs.map(p => { const x = (a.plugs || {})[p.id]; if(!x) return "";
+    return `<div><b>${esc(p.name)}</b>: ${x.want === true ? "ON" : x.want === false ? "OFF" : "—"}${x.why ? ` · <span class="why">${esc(x.why)}</span>` : ""}${x.err ? ` · <span style="color:var(--urgent)">${esc(x.err)}</span>` : ""}${x.at ? ` <span class="note">(${hhmm(x.at)})</span>` : ""}</div>`; }).join("");
+  return `<div class="${on ? "okbox" : "warnbox"}" id="autobox">
+    <div class="row"><span>${on ? "" : ""}${on ? `🤖 <b>Automatic switching is ON.</b> Every ${a.every === 1 ? "minute" : "5 minutes"} from ${hr(win.start)} to ${hr(win.end)} the timer reads the water test sheet and switches the plugs that follow a pool. At night it keeps checking every 5 minutes for the night-dosing lock, night runs and hand switches.${a.every === 1 && a.testUntil ? ` <b>Test mode</b> until ${hhmm(a.testUntil)}, then back to every 5 minutes.` : ""}` : "✋ <b>Automatic switching is OFF.</b> Nothing switches by itself — \"Rule says\" shows what it <i>would</i> do; press Apply to do it by hand."}</span>
+</div>
+    <div class="note" style="margin-top:6px">${last ? (night ? `Timer is asleep for the night — next check at ${hr(win.start)}.` : `Timer last checked ${ago(last)}${stale ? ` — <b style="color:var(--urgent)">the timer doesn't seem to be running</b>` : ""}.`) : "The timer hasn't run yet (run setupTimer in the Apps Script once)."}${a.tg && a.tg !== "ok" ? ` · Telegram: ${esc(a.tg)}` : ""}
+    A plug switched by hand sends a Telegram alert and goes back to its schedule after 1 hour; while a plug is locked (🔒 night-dosing lock, or before the day's first water test) it goes OFF again within 5 minutes. This page updates by itself.</div>
+    ${on && rows ? `<div style="margin-top:6px;font-size:13px">${rows}</div>` : ""}</div>`;
+}
+function rulesCard(){
+  const R = RULES, own = R.pools || {}, dosed = (S.cfg.autoState || {}).dosed || {};
+  const plugPools = new Set((S.cfg.plugs || []).map(x => x.pool).filter(Boolean));
+  const ownTxt = p => { const o = own[p];
+    if(!o || !o.week) return `<span class="note">no schedule — switched by hand only</span>`;
+    return `<b>weekly schedule:</b><div style="margin-top:4px;line-height:1.5">${WEEK_ORDER.map(i => `<div><span style="display:inline-block;width:36px;font-weight:600">${DAY_NAMES[i].slice(0,3)}</span>${esc(weekDayTxt(o.week[i]))}</div>`).join("")}</div>`
+      + (o.noTestHour !== undefined && o.noTestHour !== DEFAULT_RULES.noTestHour ? `<div class="note">No morning test by ${hr(o.noTestHour)} → OFF + alert</div>` : ""); };
+  const lockTxt = p => { const lk = dosingLock(p, dosed[p], Date.now(), S.fc[p]); return lk ? `<div class="note" style="margin-top:3px">🔒 ${esc(lk.why)}</div>` : ""; };
+  const plugOwn = p => (S.cfg.plugs || []).filter(x => x.pool === p && cleanWeek(x.week)).map(x => `<div class="note" style="margin-top:4px">🔌 <b>${esc(x.name)}</b> has its own schedule (shown on its card) — the one above does not apply to it.</div>`).join("");
+  const poolRows = SALT_POOLS.map(p => `<tr><td>${p}${plugPools.has(p) ? ' <span title="has a plug">🔌</span>' : ""}</td><td>${ownTxt(p)}${plugOwn(p)}${lockTxt(p)}</td><td style="text-align:right"><button class="link" data-pedit="${p}">${own[p] && own[p].week ? "Change" : "Set schedule"}</button></td></tr>`).join("");
+  let poolEdit = "";
+  if(S.editPool){ const pool = S.editPool, E = poolRules(R, pool);
+    const W = E.week || WEEK_ORDER.map(() => ({below:2, closeAt:18})), WW = []; W.forEach((d, i) => WW[i] = d);
+    const num = (id, v, lo, hi) => `<input id="${id}" type="number" min="${lo}" max="${hi}" step="0.5" value="${v === undefined || v === null ? "" : v}" style="width:68px">`;
+    poolEdit = `<form id="poolf" style="margin-top:12px;border-top:1px solid var(--line);padding-top:12px">
+      <div style="font-weight:600;margin-bottom:8px">${esc(pool)} — weekly schedule</div>
+      <div style="overflow-x:auto"><table class="dtab" id="wtab" style="font-size:13px"><tr><td></td><td>OFF all day</td><td>ON if FC below</td><td>OFF at</td><td>ON anyway from</td><td>Night run from</td><td>to</td><td>Next morning ON from</td><td>to</td></tr>
+      ${WEEK_ORDER.map(i => { const d = WW[i] || {}; return `<tr><td><b>${DAY_NAMES[i].slice(0,3)}</b></td><td><input type="checkbox" id="w${i}-off" ${d.off ? "checked" : ""}></td><td>${num(`w${i}-below`, d.below, 0, 5)}</td><td>${num(`w${i}-close`, d.closeAt, 8, 24)}</td><td>${num(`w${i}-from`, d.onFrom, 0, 23.5)}</td><td>${num(`w${i}-nf`, d.nightFrom, 0, 24)}</td><td>${num(`w${i}-nt`, d.nightTo, 0, 24)}</td><td>${num(`w${i}-mf`, d.mornFrom, 0, 12)}</td><td>${num(`w${i}-mt`, d.mornTo, 0, 12)}</td></tr>`; }).join("")}</table></div>
+      <div class="rgrid" style="margin-top:10px"><label for="p-noTestHour">No morning test by → OFF + tell Kay (weekdays without "ON anyway from")</label><span><input id="p-noTestHour" type="number" min="9" max="14" step="1" value="${E.noTestHour}" required> <span class="note">h</span></span></div>
+      <div class="note" style="margin-top:6px">24-hour clock (18 = 6 pm, 21.5 = 9:30 pm). The latest water test of the day decides. Leave "ON anyway from" and the night run empty if not used. A night run can pass midnight (23 to 6 = 11 pm to 6 am) and only happens if that day's latest FC is below the level. "Next morning ON" is a run after midnight the next morning (4.5 to 8 = 4:30 am to 8 am), also only if that day's latest FC is below the level. The night-dosing lock always wins.</div>
+      <div class="row" style="margin-top:10px"><button class="b sm main">Save ${esc(pool)}</button><button type="button" class="b sm" id="p-cancel">Cancel</button>${own[pool] ? `<button type="button" class="link" id="p-std" style="margin-left:auto">Remove the schedule (hand only)</button>` : ""}</div></form>`; }
+  return `<div class="card"><h2>Rules</h2>
+    <div style="font-size:14px;line-height:1.5;padding:8px 10px;border:1px solid var(--line);border-radius:10px;margin-bottom:10px">🔒 <b>Night-dosing lock — every outlet:</b> once the night dose is recorded in the tracker (Manual Dosing), that outlet's salt chlorinator is switched <b>OFF</b> and kept OFF until <b>the next water test comes in</b> (normally the next morning's report; at the latest midnight at the end of the next day). Switched ON by hand during the lock → OFF again within 5 minutes.</div>
+    <div class="note">Each outlet below follows its own weekly schedule. An outlet without one is only switched by hand (plus the lock). Switched by hand against the schedule → back to the schedule after 1 hour.</div>
+    <table class="dtab">${poolRows}</table>${poolEdit}</div>`;
+}
+/* Safeguards (Kay, 6 Oct 2026): one picture of everything that stops a salt chlorinator running when it
+ * shouldn't -- so whoever is in charge sees what the timer, the tracker and Telegram already do. */
+function guardCard(){
+  const plugs = (S.cfg.plugs || []).filter(p => p.pool);
+  const covered = plugs.map(p => esc(p.name)).join(", ") || "none yet";
+  const withPlug = new Set(plugs.map(p => p.pool));
+  const notCovered = SALT_POOLS.filter(p => !withPlug.has(p));
+  const own = (RULES.pools || {}), sched = SALT_POOLS.filter(p => own[p] && own[p].week);
+  const st = (ic, t, cls) => `<div class="step${cls ? " " + cls : ""}"><span class="ic">${ic}</span>${t}</div>`, ar = `<span class="arr" aria-hidden="true">➜</span>`;
+  // 24-hour strip, 6 am to 6 am: schedule by day, the lock from the night dose until the next morning's water test.
+  const x = h => 20 + ((h - 6 + 24) % 24) * (320 / 24);
+  const tl = `<svg class="tl" viewBox="0 0 360 96" role="img" aria-label="One day at a plug: by day the weekly schedule and the water test decide; once the night dose is recorded the plug is locked OFF until the next morning's water test comes in.">
+    <rect x="${x(9) + 2}" y="30" width="${x(21) - x(9) - 4}" height="22" rx="4" fill="#F3E3BE"/>
+    <text x="${(x(9) + x(21)) / 2}" y="45" text-anchor="middle" font-size="13" fill="currentColor">Weekly schedule + FC</text>
+    <rect x="${x(21)}" y="30" width="${340 - x(21)}" height="22" rx="4" fill="#3B4C8C"/>
+    <rect x="20" y="30" width="${x(9) - 20}" height="22" rx="4" fill="#3B4C8C"/>
+    <text x="${(x(21) + 340) / 2}" y="45" text-anchor="middle" font-size="12.5" fill="#fff">🔒 OFF till next test</text>
+    <line x1="${x(21)}" y1="22" x2="${x(21)}" y2="60" stroke="#B23A2E" stroke-width="2"/>
+    <text x="${x(21)}" y="16" text-anchor="middle" font-size="12" fill="#B23A2E" font-weight="600">Night dose recorded</text>
+    <line x1="20" y1="62" x2="340" y2="62" stroke="currentColor" stroke-width="1" opacity=".5"/>
+    ${[9, 12, 18, 21, 0, 6].map((h, i) => { const xx = i === 5 ? 340 : x(h); return `<line x1="${xx}" y1="62" x2="${xx}" y2="66" stroke="currentColor" opacity=".6"/><text x="${xx}" y="79" text-anchor="${i === 5 ? "end" : "middle"}" font-size="11.5" fill="currentColor">${h === 0 ? "12 am" : h < 12 ? h + " am" : h === 12 ? "12 pm" : (h - 12) + " pm"}</text>`; }).join("")}
+    <text x="180" y="94" text-anchor="middle" font-size="10.5" fill="currentColor" opacity=".8">The lock starts when dosing is done and ends at the morning test</text></svg>`;
+  return `<details class="card guard" id="guard" ${S.guardOpen ? "open" : ""}><summary><h2>🛡️ Salt chlorinator safeguards <span class="chev">${S.guardOpen ? "hide" : "show"}</span></h2>
+    <div class="note" style="margin-top:6px">What stops a salt chlorinator running after night dosing, or when someone switches it on by mistake. Plugs covered now: <b>${covered}</b>.</div></summary>
+    <div class="lane day"><div class="lane-h">☀️ 1 · Day time — weekly schedule</div>
+      <div class="flow">${st("🧪", "Water test comes in (latest FC of the day)")}${ar}${st("📅", "Today's rule for that outlet, e.g. <i>ON if FC below 2, OFF at 6 pm</i>")}${ar}${st("🔌", "Timer switches the plug — checked every 5 minutes", "go")}</div>
+      <div class="note">Outlets with a schedule: ${sched.length ? sched.map(esc).join(", ") : "none"}. Monday is OFF all day at both. An outlet without a schedule is switched by hand only.</div></div>
+    <div class="lane hand"><div class="lane-h">✋ 2 · Someone switches it by hand</div>
+      <div class="flow">${st("👆", "Switched in the Shelly app, on the plug's button or on this page")}${ar}${st("📣", "Telegram alert → <b>HF Pools Alerts › Smartplug Check</b>")}${ar}${st("⏱️", "1 hour later the timer puts it back to the schedule", "go")}</div>
+      <div class="note">No schedule at that outlet → it stays as switched (the alert still goes out).</div></div>
+    <div class="lane night"><div class="lane-h">🌙 3 · After night dosing — the lock</div>
+      <div class="flow">${st("🧴", "Night dose recorded in the tracker (Manual Dosing done)")}${ar}${st("🔒", "Plug switched <b>OFF</b> and kept OFF until <b>the next water test</b> (normally the morning report)", "stop")}${ar}${st("🚫", "Switched ON during the lock? <b>OFF again within 5 minutes</b> + alert", "stop")}</div>
+      ${tl}</div>
+    <div class="lane tech"><div class="lane-h">🧑‍🔧 4 · Technician check — every outlet</div>
+      <div class="flow">${st("1️⃣", "“Check Salt Chlorinator and Pump panel” is the first job — water test and dosing stay locked until it's done")}${ar}${st("👀", "The job shows the plug's live state next to the salt chlorinator question")}${ar}${st("⚠️", "Warning if what they see doesn't match the plug; the plug's state is saved with the job")}</div></div>
+    <div class="prio"><b>Who wins:</b><span class="p top">🔒 Night-dosing lock</span>➜<span class="p">✋ Hand switch (1 hour)</span>➜<span class="p">📅 Weekly schedule</span></div>
+    <div style="margin-top:12px;font-size:13.5px"><b>Not covered yet</b><ul class="gaps" style="margin:4px 0 0;padding-left:20px">
+      <li>Chlorinators without a plug${notCovered.length ? ` (${notCovered.map(esc).join(", ")})` : ""}, and Tengah Pump Room 2 — only the technician's check (4).</li>
+      <li>A night dose that isn't recorded in the tracker — no lock that night.</li>
+      <li>A plug that is offline (no Wi-Fi) — the timer can't switch it; the tracker shows it as “offline”.</li></ul></div>
+  </details>`;
+}
+function render(){
+  if(!S.user) return;
+  const plugs = S.cfg.plugs || [];
+  const openPlugs = S.openPool ? plugs.filter(p => p.pool === S.openPool) : [];
+  const unlinked = plugs.filter(p => !p.pool);
+  const plugsAdmin = (() => { const ed = S.editId ? plugs.find(p => p.id === S.editId) : null; return `<h2 style="margin-top:4px">${ed ? "Edit " + esc(ed.name) : "Add a plug"}</h2>
+    <form class="row" id="addf"><input id="a-name" placeholder="Name (e.g. Test HS)" required style="flex:1 1 150px" value="${ed ? esc(ed.name) : ""}">
+      <input id="a-id" placeholder="Device ID (e.g. e4b063a1b2c3)" required style="flex:1 1 170px" autocomplete="off" value="${ed ? esc(ed.id) : ""}" ${ed ? "readonly" : ""}>
+      <select id="a-pool"><option value="">Follow pool…</option>${SALT_POOLS.map(p => `<option ${ed && ed.pool === p ? "selected" : ""}>${p}</option>`).join("")}</select>
+      <button class="b sm main">${ed ? "Save" : "Add"}</button>${ed ? ` <button type="button" class="b sm" id="a-cancel">Cancel</button>` : ""}</form>
+    ${plugs.length ? `<div class="note" style="margin-top:10px">${plugs.map(p => `${esc(p.name)} → ${esc(p.pool || "manual")} <button class="link" data-edit="${esc(p.id)}">edit</button> <button class="link" data-del="${esc(p.id)}">remove</button>`).join(" · ")}</div>` : ""}
+    <div class="note" style="margin-top:8px">Device ID: Shelly app → the plug → Settings → Device information.</div>`; })();
+  $("#app").innerHTML = `
+  <header><h1>HF Pools <small>Smart plugs</small></h1><span class="me">${esc(S.user.email)} · <button id="out">Sign out</button></span></header>
+  ${stripHtml()}
+  ${S.err ? `<div class="errbox">${esc(S.err)}</div>` : ""}
+  ${boardHtml()}
+  ${S.openPool ? `<div class="card open-card" id="opencard"><h2>${esc(S.openPool)} · switches &amp; details <button class="link" id="closepool">close</button></h2>
+    ${openPlugs.length ? openPlugs.map(plugHtml).join("") : `<div class="note">No plug at ${esc(S.openPool)} yet.</div>`}</div>` : `<div class="note" style="margin:-4px 0 14px">Tap an outlet to switch its plug by hand or see today's rule. 🔒 = Switch ON is locked (night dosing done, or no water test yet).</div>`}
+  ${unlinked.length ? `<div class="card"><h2>Plugs not linked to a pool</h2>${unlinked.map(plugHtml).join("")}</div>` : ""}
+  <div class="folds-h">More — tap to open</div>
+  ${fold("timer", "🤖 Timer &amp; what it did today", autoCard(), false)}
+  ${guardCard()}
+  ${fold("rules", "📅 Rules &amp; weekly schedules", rulesCard().replace(/^<div class="card"><h2>Rules<\/h2>/, "<div>"), !!(S.editPool || S.editRules))}
+  ${fold("plugs", "🔌 Add or edit plugs", plugsAdmin, !!S.editId)}
+  ${fold("log", "🕘 Recent switches", `<div class="log">${S.log.length ? S.log.slice(0, 20).map(l => `<div><span class="t">${new Date(l.at).toLocaleString("en-SG", {day:"numeric", month:"short", hour:"2-digit", minute:"2-digit", hour12:false})}</span><span><b>${esc(l.name)}</b> ${l.on ? "ON" : "OFF"} · ${esc(l.reason)} · ${esc(String(l.by || "").split("@")[0])}</span></div>`).join("") : `<span class="note">Nothing switched yet.</span>`}</div>`, false)}
+  ${fold("settings", "⚙️ Settings", `<form class="row" id="apif"><input id="api" placeholder="Apps Script web app URL (…/exec)" value="${esc(S.cfg.apiUrl || "")}" style="flex:1 1 300px" autocomplete="off"><button class="b sm main">Save</button></form>
+    <div class="note" style="margin-top:6px">The Shelly key is NOT entered here — it stays in the Apps Script's Script Properties.</div>`, false)}`;
+  document.querySelectorAll("[data-tile]").forEach(b => b.onclick = () => { S.openPool = S.openPool === b.dataset.tile ? null : b.dataset.tile; render(); const c = $("#opencard"); if(c && S.openPool) c.scrollIntoView({block:"nearest", behavior:"smooth"}); });
+  if($("#closepool")) $("#closepool").onclick = () => { S.openPool = null; render(); };
+  document.querySelectorAll("details.fold").forEach(d => d.addEventListener("toggle", () => { S.folds[d.dataset.fold] = d.open; try{ localStorage.setItem("hf-folds", JSON.stringify(S.folds)); }catch(e){} const c = d.querySelector(".chev"); if(c) c.textContent = d.open ? "hide" : "show"; }));
+  $("#out").onclick = () => auth.signOut();
+  { const g = $("#guard"); if(g) g.addEventListener("toggle", () => { S.guardOpen = g.open; try{ localStorage.setItem("hf-guard-open", g.open ? "1" : "0"); }catch(e){} const c = g.querySelector(".chev"); if(c) c.textContent = g.open ? "hide" : "show"; }); }
+  $("#refresh").onclick = async () => { try{ const d = await db.doc("dosing_config/plugs").get(); if(d.exists){ S.cfg = Object.assign({plugs:[], apiUrl:""}, d.data()); RULES = mergeRules(S.cfg.rules); } }catch(e){} render(); refreshStatus(); loadFcNeeded(); };
+  document.querySelectorAll("[data-sw]").forEach(b => b.onclick = () => { const p = plugs.find(x => x.id === b.dataset.sw); if(!p) return; if(b.dataset.on === "1"){ const r = ruleFor(p.pool, p.week); if(r && r.lock){ S.err = p.name + ": " + r.why + "."; render(); return; } } switchPlug(p, b.dataset.on === "1", "manual"); });
+  document.querySelectorAll("[data-apply]").forEach(b => b.onclick = () => { const p = plugs.find(x => x.id === b.dataset.apply); const r = p && ruleFor(p.pool, p.week); if(p && r && r.on !== null) switchPlug(p, r.on, "rule: " + r.why); });
+  document.querySelectorAll("[data-del]").forEach(b => b.onclick = () => { if(!confirm("Remove this plug from the page? (It stays in your Shelly app.)")) return; saveCfg({plugs: plugs.filter(p => p.id !== b.dataset.del)}); });
+  $("#addf").onsubmit = e => { e.preventDefault();
+    const id = $("#a-id").value.trim().replace(/^shelly[\w-]*-/i, "").toLowerCase(), name = $("#a-name").value.trim(), pool = $("#a-pool").value;
+    if(!/^[0-9a-f]{6,16}$/.test(id)){ S.err = "Device ID should look like e4b063a1b2c3 (letters a–f and numbers)."; render(); return; }
+    if(S.editId){ const eid = S.editId; S.editId = null; saveCfg({plugs: plugs.map(p => p.id === eid ? Object.assign({}, p, {name, pool}) : p)}); return; }
+    if(plugs.some(p => p.id === id)){ S.err = "That plug is already on the list."; render(); return; }
+    saveCfg({plugs: plugs.concat([{id, name, pool}])}); };
+  document.querySelectorAll("[data-edit]").forEach(b => b.onclick = () => { S.editId = b.dataset.edit; render(); const n = $("#a-name"); n.focus(); n.select(); });
+  if($("#a-cancel")) $("#a-cancel").onclick = () => { S.editId = null; render(); };
+  $("#autotgl").onclick = () => { const on = S.cfg.auto === true;
+    if(!confirm(on ? "Turn OFF automatic switching? The plugs stay as they are now." : "Turn ON automatic switching? The timer will switch the plugs that follow a pool (" + plugs.filter(p => p.pool).map(p => p.name).join(", ") + ") by the rules, starting within 5 minutes (day time).")) return;
+    saveCfg({auto: !on, autoBy: S.user.email, autoAt: new Date().toISOString()}); };
+  if($("#r-edit")) $("#r-edit").onclick = () => { S.editRules = true; render(); };
+  if($("#r-show")) $("#r-show").onclick = () => { S.showStd = !S.showStd; render(); };
+  if($("#r-cancel")) $("#r-cancel").onclick = () => { S.editRules = false; render(); };
+  if($("#r-reset")) $("#r-reset").onclick = () => { if(!confirm("Put the default rules back to the original numbers? Each outlet's own settings are kept.")) return;
+    S.editRules = false; const keep = RULES.pools || {}; RULES = mergeRules({pools: keep}); savePools(keep, true); };
+  document.querySelectorAll("[data-pedit]").forEach(b => b.onclick = () => { S.editPool = b.dataset.pedit; render(); const f = $("#poolf"); if(f) f.scrollIntoView({block:"center"}); });
+  if($("#p-cancel")) $("#p-cancel").onclick = () => { S.editPool = null; render(); };
+  if($("#p-std")) $("#p-std").onclick = () => { const pool = S.editPool; if(!confirm("Remove " + pool + "'s schedule? It will only be switched by hand (the night-dosing lock still applies).")) return;
+    const pools = Object.assign({}, RULES.pools || {}); delete pools[pool]; S.editPool = null; RULES = mergeRules(Object.assign({}, S.cfg.rules || {}, {pools})); savePools(pools); };
+  if($("#poolf")) $("#poolf").onsubmit = e => { e.preventDefault(); const pool = S.editPool, c = {};
+    const nt = Number($("#p-noTestHour").value); if(!isFinite(nt) || nt < 9 || nt > 14){ S.err = pool + " — no morning test by: use 9 to 14."; render(); return; }
+    if(nt !== DEFAULT_RULES.noTestHour) c.noTestHour = nt;
+    const v = id => $(id).value.trim(), w = [];
+    for(const i of [0,1,2,3,4,5,6]) w[i] = $(`#w${i}-off`).checked ? {off:true} : Object.fromEntries([["below", v(`#w${i}-below`)], ["closeAt", v(`#w${i}-close`)], ["onFrom", v(`#w${i}-from`)], ["nightFrom", v(`#w${i}-nf`)], ["nightTo", v(`#w${i}-nt`)], ["mornFrom", v(`#w${i}-mf`)], ["mornTo", v(`#w${i}-mt`)]].filter(x => x[1] !== "").map(x => [x[0], Number(x[1])]));
+    const wk = cleanWeek(w);
+    if(!wk){ S.err = pool + " weekly schedule: each day needs 'ON if FC below' (0–5) and 'OFF at' (8–24), unless it is OFF all day."; render(); return; }
+    c.week = wk; c.changedBy = S.user.email; c.changedAt = new Date().toISOString();
+    const pools = Object.assign({}, RULES.pools || {}); pools[pool] = c;
+    S.editPool = null; RULES = mergeRules(Object.assign({}, S.cfg.rules || {}, {pools})); savePools(pools); };
+  if($("#rulef")) $("#rulef").onsubmit = e => { e.preventDefault();
+    const out = {}; for(const f of RULE_NUMS){ const v = Number($("#r-" + f.k).value); if(!isFinite(v) || v < f.min || v > f.max){ S.err = f.l + ": use a number from " + f.min + " to " + f.max + "."; render(); return; } out[f.k] = v; }
+    out.overnightPools = [...document.querySelectorAll("#rulef .chips input:checked")].map(x => x.value);
+    out.changedBy = S.user.email; out.changedAt = new Date().toISOString();
+    out.pools = RULES.pools || {};
+    S.editRules = false; RULES = mergeRules(out); saveCfg({rules: out}); };
+  $("#apif").onsubmit = e => { e.preventDefault(); const u = $("#api").value.trim();
+    if(u && !/^https:\/\/script\.google\.com\/macros\/s\/[\w-]+\/exec$/.test(u)){ S.err = "That doesn't look like an Apps Script web app address (…/exec)."; render(); return; }
+    saveCfg({apiUrl:u}); };
+}
+async function loadLog(){ try{ const q = await db.collection("plug_log").orderBy("at", "desc").limit(20).get(); S.log = []; q.forEach(x => S.log.push(x.data())); }catch(e){} }
+/* Every minute while the page is open: re-read the config (1 small read). If the timer has switched a plug
+ * since the page last asked the plugs, ask them again and reload the switch list. */
+/* Live updates while the page is open:
+ *  - the config doc is watched (onSnapshot): the timer writes it every run, so a switch it makes shows within seconds;
+ *    when its per-plug record changes, the plugs, the switch list and the water tests are read again;
+ *  - every minute the rule text follows the clock; every 3 minutes the water tests are re-read. */
+function editing(){ const a = document.activeElement; return S.editRules || S.editPool || S.editId || (a && /^(INPUT|SELECT|TEXTAREA)$/.test(a.tagName) && $("#app").contains(a)); }
+function bgRender(){ if(!editing()) render(); }
+/* The timer reads the sheet every run and leaves today's numbers in autoState.tests. When those are fresh the page
+ * uses them (same numbers the timer acted on) and only reads the sheet itself for pools the timer isn't covering. */
+function timerTests(){
+  const a = S.cfg.autoState || {}, T = a.tests || {}, today = dayKey(sgNow()), fresh = a.lastRun && Date.now() - new Date(a.lastRun) < 20 * 60000;
+  const covered = new Set();
+  if(S.cfg.auto === true && fresh) Object.keys(T).forEach(pool => { const x = T[pool]; if(x && x.date === today){ S.fc[pool] = {morning:x.morning, afternoon:x.afternoon, night:x.night ?? null, src:"timer", at:x.at}; covered.add(pool); } });
+  return covered;
+}
+function loadFcNeeded(){ const c = timerTests(); const need = (S.cfg.plugs || []).map(p => p.pool).filter(p => p && !c.has(p)); if(need.length) return loadFc(need); bgRender(); }
+let autoSig = null, fcAt = 0;
+function autoSigOf(){ const pl = (S.cfg.autoState || {}).plugs || {}; return JSON.stringify(Object.keys(pl).sort().map(k => [k, pl[k] && pl[k].at, pl[k] && pl[k].done, pl[k] && pl[k].err])); }
+function watchCfg(){
+  db.doc("dosing_config/plugs").onSnapshot(d => {
+    if(!d.exists) return;
+    S.cfg = Object.assign({plugs:[], apiUrl:""}, d.data()); RULES = mergeRules(S.cfg.rules);
+    const sig = autoSigOf(), changed = autoSig !== null && sig !== autoSig; autoSig = sig;
+    timerTests();
+    if(changed && !document.hidden){ loadLog().then(bgRender); setTimeout(refreshStatus, 1200); loadFcNeeded(); fcAt = Date.now(); }
+    bgRender();
+  }, () => {});
+}
+function liveTick(){
+  if(document.hidden || !S.user) return;
+  if(Date.now() - fcAt > 3 * 60000){ fcAt = Date.now(); loadFcNeeded(); }
+  bgRender();
+}
+async function savePools(pools, resetStandard){
+  const cur = Object.assign({}, S.cfg.rules || {});
+  const next = resetStandard ? {pools} : Object.assign(cur, {pools});
+  S.cfg.rules = next; S.err = ""; render();
+  try{ await db.doc("dosing_config/plugs").update({rules: next}); }catch(e){ S.err = "Couldn't save: " + e.message; render(); }
+  refreshStatus(); loadFcNeeded();
+}
+async function saveCfg(patch){
+  Object.keys(patch).forEach(k => { if(k === "rules" && !(patch.rules && (patch.rules.onBelow !== undefined || patch.rules.pools))) delete S.cfg.rules; else S.cfg[k] = patch[k]; }); S.err = ""; render();
+  try{ await db.doc("dosing_config/plugs").set(patch, {merge:true}); }catch(e){ S.err = "Couldn't save: " + e.message; render(); }
+  refreshStatus(); loadFcNeeded();
+}
+function loginView(msg){
+  $("#app").innerHTML = `<div class="card login"><h1 style="font-size:24px">HF Pools <small>Smart plugs</small></h1>
+    <form id="lf"><label>Email<input id="em" type="email" required autocomplete="username"></label><label>Password<input id="pw" type="password" required autocomplete="current-password"></label>
+    <button class="b main" style="width:100%;margin-top:16px">Sign in</button></form><div class="msg err">${esc(msg || "")}</div></div>`;
+  $("#lf").onsubmit = async e => { e.preventDefault(); try{ await auth.signInWithEmailAndPassword($("#em").value.trim(), $("#pw").value); }catch(err){ loginView("Email or password is not right."); } };
+}
+auth.onAuthStateChanged(async u => {
+  S.user = u; if(!u){ loginView(); return; }
+  render();
+  try{ const d = await db.doc("dosing_config/plugs").get(); if(d.exists) S.cfg = Object.assign({plugs:[], apiUrl:""}, d.data()); RULES = mergeRules(S.cfg.rules); }catch(e){}
+  await loadLog();
+  render(); refreshStatus(); loadFcNeeded(); fcAt = Date.now();
+  autoSig = autoSigOf(); watchCfg();
+  setInterval(liveTick, 60000);
+  document.addEventListener("visibilitychange", () => { if(!document.hidden && S.user){ refreshStatus(); loadLog().then(bgRender); fcAt = 0; liveTick(); } });
+});
+</script>
+<script src="https://hfpools.com/nav.js" defer></script>
+</body></html>
