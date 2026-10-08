@@ -544,7 +544,9 @@ function render(){
     if(!confirm(`${p.name}: keep ${on ? "ON" : "OFF"} until ${hr(until)} today, whatever the schedule says?`)) return;
     const overrides = Object.assign({}, S.cfg.overrides || {}); overrides[id] = {date: dayKey(sgNow()), on, until, by: S.user.email, at: new Date().toISOString()};
     saveCfg({overrides}); });
-  document.querySelectorAll("[data-ovclear]").forEach(b => b.onclick = () => { const overrides = Object.assign({}, S.cfg.overrides || {}); delete overrides[b.dataset.ovclear]; saveCfg({overrides}); });
+  document.querySelectorAll("[data-ovclear]").forEach(b => b.onclick = async () => { const id = b.dataset.ovclear, overrides = Object.assign({}, S.cfg.overrides || {}); delete overrides[id]; S.cfg.overrides = overrides; S.err = ""; render();
+    try{ await db.doc("dosing_config/plugs").update({["overrides." + id]: firebase.firestore.FieldValue.delete()}); }catch(e){ S.err = "Couldn't cancel: " + e.message; render(); }   // merge:true would keep the key, so delete it properly
+    refreshStatus(); });
   document.querySelectorAll("details.fold").forEach(d => d.addEventListener("toggle", () => { S.folds[d.dataset.fold] = d.open; try{ localStorage.setItem("hf-folds", JSON.stringify(S.folds)); }catch(e){} const c = d.querySelector(".chev"); if(c) c.textContent = d.open ? "hide" : "show"; }));
   $("#out").onclick = () => auth.signOut();
   { const g = $("#guard"); if(g) g.addEventListener("toggle", () => { S.guardOpen = g.open; try{ localStorage.setItem("hf-guard-open2", g.open ? "1" : "0"); }catch(e){} const c = g.querySelector(".chev"); if(c) c.textContent = g.open ? "hide" : "show"; }); }
