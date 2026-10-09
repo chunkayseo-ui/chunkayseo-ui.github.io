@@ -788,11 +788,11 @@ const LESSONS = [
     en:"After vacuuming, E1: disconnect the hose at the VACUUM PORT first. Keep the hose end up so the water stays in. Only then take the hose off the vacuum head. Never the other way round.",
     ms:"Selepas vakum, E1: tanggalkan hos di PORT VAKUM dahulu. Angkat hujung hos supaya air kekal di dalam. Barulah tanggalkan hos dari kepala vakum. Jangan sekali-kali terbalik.",
     ta:"வாக்யூம் முடிந்ததும், E1: முதலில் வாக்யூம் போர்ட்டில் ஹோஸைக் கழற்றுங்கள். தண்ணீர் உள்ளே இருக்க ஹோஸ் முனையை மேலே பிடியுங்கள். அதன் பிறகுதான் வாக்யூம் ஹெட்டிலிருந்து ஹோஸைக் கழற்றுங்கள். ஒருபோதும் தலைகீழாகச் செய்ய வேண்டாம்."}},
-  {pic:"svg:eorder", t:{
+  {pic:"svg:bkEorder", t:{
     en:"Then the order is ALWAYS: E2 open the skimmer control valve fully → E3 close the vacuum valve → E4 close the vacuum port. Open first, close after.",
     ms:"Kemudian urutannya SENTIASA: E2 buka penuh injap kawalan skimmer → E3 tutup injap vakum → E4 tutup port vakum. Buka dahulu, tutup kemudian.",
     ta:"பிறகு வரிசை எப்போதும்: E2 ஸ்கிம்மர் கண்ட்ரோல் வால்வை முழுவதும் திறக்கவும் → E3 வாக்யூம் வால்வை மூடவும் → E4 வாக்யூம் போர்ட்டை மூடவும். முதலில் திறங்கள், பிறகு மூடுங்கள்."}},
-  {pic:"⚠️", t:{
+  {pic:"svg:bkWrong", t:{
     en:"Why open first? If you close the vacuum valve or port while the skimmer valve is still half closed, the pump has almost no water coming in. It sucks air and can run dry.",
     ms:"Kenapa buka dahulu? Jika injap vakum atau port ditutup semasa injap skimmer masih separuh tutup, pam hampir tiada air masuk. Ia sedut udara dan boleh berjalan kering.",
     ta:"ஏன் முதலில் திறக்க வேண்டும்? ஸ்கிம்மர் வால்வு இன்னும் பாதி மூடியிருக்கும்போது வாக்யூம் வால்வையோ போர்ட்டையோ மூடினால், பம்புக்குள் தண்ணீர் கிட்டத்தட்ட வராது. காற்றை உறிஞ்சி, வறண்டு ஓடலாம்."}},
@@ -834,7 +834,7 @@ const PIC_WORDS = {
   vacport:{en:"vacuum port", ms:"port vakum", ta:"வாக்யூம் போர்ட்"}, pump:{en:"PUMP", ms:"PAM", ta:"பம்ப்"}, half:{en:"half open", ms:"separuh buka", ta:"பாதி திறந்து"}, closed:{en:"fully closed", ms:"tutup penuh", ta:"முழுவதும் மூடி"},
   nobubbles:{en:"no bubbles", ms:"tiada gelembung", ta:"குமிழ்கள் இல்லை"}, bubbles:{en:"bubbles = air", ms:"gelembung = udara", ta:"குமிழ்கள் = காற்று"},
   fillhose:{en:"fill the hose first, then connect", ms:"isi hos dahulu, kemudian sambung", ta:"முதலில் ஹோஸை நிரப்பி, பிறகு இணைக்கவும்"}, portfirst:{en:"1 port first, 2 head after", ms:"1 port dahulu, 2 kepala kemudian", ta:"1 முதலில் போர்ட், 2 பிறகு ஹெட்"},
-  open:{en:"OPEN", ms:"BUKA", ta:"திற"}, skimmers:{en:"skimmers", ms:"skimmer", ta:"ஸ்கிம்மர்கள்"}, inlets:{en:"inlets", ms:"inlet", ta:"இன்லெட்கள்"}, pumproom:{en:"PUMP ROOM", ms:"BILIK PAM", ta:"பம்ப் அறை"}, stairsout:{en:"stairs", ms:"tangga", ta:"படிக்கட்டு"}, onfloor:{en:"head on the floor", ms:"kepala di lantai", ta:"ஹெட் தரையில்"}, lifted:{en:"lifted = air in", ms:"diangkat = udara masuk", ta:"தூக்கினால் = காற்று"}, close:{en:"CLOSE", ms:"TUTUP", ta:"மூடு"},
+  open:{en:"OPEN", ms:"BUKA", ta:"திற"}, stillhalf:{en:"still half closed!", ms:"masih separuh tutup!", ta:"இன்னும் பாதி மூடி!"}, rundry:{en:"pump sucks air", ms:"pam sedut udara", ta:"பம்ப் காற்றை உறிஞ்சும்"}, skimmers:{en:"skimmers", ms:"skimmer", ta:"ஸ்கிம்மர்கள்"}, inlets:{en:"inlets", ms:"inlet", ta:"இன்லெட்கள்"}, pumproom:{en:"PUMP ROOM", ms:"BILIK PAM", ta:"பம்ப் அறை"}, stairsout:{en:"stairs", ms:"tangga", ta:"படிக்கட்டு"}, onfloor:{en:"head on the floor", ms:"kepala di lantai", ta:"ஹெட் தரையில்"}, lifted:{en:"lifted = air in", ms:"diangkat = udara masuk", ta:"தூக்கினால் = காற்று"}, close:{en:"CLOSE", ms:"TUTUP", ta:"மூடு"},
   germ:{en:"germ", ms:"kuman", ta:"கிருமி"}, chlorine:{en:"chlorine", ms:"klorin", ta:"குளோரின்"},
   acid:{en:"acid", ms:"asid", ta:"அமிலம்"}, ours:{en:"our pools", ms:"kolam kita", ta:"நம் குளங்கள்"}, alkaline:{en:"alkaline", ms:"alkali", ta:"காரத்தன்மை"},
   strong:{en:"strong chlorine", ms:"klorin kuat", ta:"வலுவான குளோரின்"},
@@ -942,16 +942,7 @@ try{ const l = localStorage.getItem("learn.lang"); if(LANGS.some(x => x.id === l
 
 /* ---------------- drawings ---------------- */
 const W = k => esc(tx(PIC_WORDS[k]));
-const PICS = {
-  headdown: () => `<svg viewBox="0 0 320 150" role="img" aria-label="vacuum head on the floor is right, lifted out of the water is wrong">
-    <rect x="0" y="34" width="320" height="96" fill="#BFE3F5"/><path d="M0 34 H320" stroke="#2E8CBE" stroke-width="3"/><rect x="0" y="118" width="320" height="12" fill="#4BAFE0"/>
-    <g><path d="M40 12 C 50 50, 65 85, 78 112" fill="none" stroke="#2F2F2F" stroke-width="9" stroke-linecap="round"/><rect x="58" y="110" width="44" height="10" rx="3" fill="#5B7378"/>
-      <text x="112" y="100" text-anchor="middle" font-size="24" fill="#256B4C">✓</text></g>
-    <g><rect x="212" y="12" width="44" height="10" rx="3" fill="#5B7378" transform="rotate(-25 234 17)"/><path d="M236 18 C 240 50, 232 80, 240 112" fill="none" stroke="#2F2F2F" stroke-width="9" stroke-linecap="round"/>
-      <g fill="#fff" stroke="#2E8CBE" stroke-width="1.5"><circle cx="252" cy="48" r="4"/><circle cx="256" cy="62" r="3"/><circle cx="250" cy="76" r="5"/><circle cx="258" cy="92" r="3"/><circle cx="251" cy="104" r="4"/></g>
-      <text x="285" y="76" text-anchor="middle" font-size="24" fill="#B23A2E">✗</text></g>
-    <text x="80" y="146" text-anchor="middle" font-size="12" fill="#33474D">${W("onfloor")}</text><text x="240" y="146" text-anchor="middle" font-size="12" fill="#33474D">${W("lifted")}</text></svg>`,
-  vacpipes: () => `<svg viewBox="0 0 340 310" role="img" aria-label="BK pool: 4 skimmers on the right, 10 inlets on the left, vacuum port at the bottom, pump room below the pool">
+const BKPOOL = mode => { const e = mode === true, w = mode === "wrong"; return `<svg viewBox="0 0 340 310" role="img" aria-label="BK pool: 4 skimmers on the right, 10 inlets on the left, vacuum port at the bottom, pump room below the pool">
     <rect x="120" y="6" width="100" height="26" fill="#E9B47F" opacity=".5"/><text x="170" y="23" text-anchor="middle" font-size="10" fill="#8E1B14">${W("stairsout")}</text>
     <rect x="110" y="32" width="120" height="170" fill="#4BAFE0" stroke="#2E8CBE" stroke-width="2"/>
     <line x1="110" y1="90" x2="230" y2="90" stroke="#0F2430" stroke-width="2"/><line x1="110" y1="120" x2="230" y2="120" stroke="#0F2430" stroke-width="2"/>
@@ -962,14 +953,36 @@ const PICS = {
     <text x="96" y="30" text-anchor="end" font-size="10" fill="#33474D">10 ${W("inlets")}</text>
     <rect x="122" y="180" width="18" height="18" rx="3" fill="#fff" stroke="#0B6E61" stroke-width="2.5"/><text x="131" y="193" text-anchor="middle" font-size="9" font-weight="700" fill="#0B6E61">VP</text>
     <text x="144" y="214" font-size="10" fill="#33474D">${W("vacport")}</text>
-    <rect x="30" y="224" width="290" height="80" rx="6" fill="#F3EBDD" stroke="#C88C55" stroke-width="2"/><text x="60" y="240" font-size="10" font-weight="700" fill="#8A590D">${W("pumproom")}</text>
+    <rect x="30" y="224" width="290" height="80" rx="6" fill="#F3EBDD" stroke="#C88C55" stroke-width="2"/><text x="${e || w ? 38 : 60}" y="${e || w ? 298 : 240}" font-size="10" font-weight="700" fill="#8A590D">${W("pumproom")}</text>
     <path d="M131 198 V272" fill="none" stroke="#33474D" stroke-width="5"/>
     <g transform="translate(131 244)"><rect x="-10" y="-10" width="20" height="20" fill="#F6EAD4" stroke="#8A590D" stroke-width="2"/><line x1="0" y1="-5" x2="0" y2="5" stroke="#8A590D" stroke-width="3"/></g><text x="148" y="248" font-size="8.5" fill="#33474D">${W("vacvalve")}</text>
     <g transform="translate(230 272)"><rect x="-10" y="-10" width="20" height="20" fill="#F6EAD4" stroke="#8A590D" stroke-width="2"/><line x1="-4" y1="-4" x2="4" y2="4" stroke="#8A590D" stroke-width="3"/></g><text x="236" y="298" text-anchor="middle" font-size="8.5" fill="#33474D">${W("skvalve")}</text>
     <path d="M220 272 H98" stroke="#33474D" stroke-width="5"/>
     <circle cx="80" cy="272" r="18" fill="#DCEEEE" stroke="#00676F" stroke-width="3"/><text x="80" y="276" text-anchor="middle" font-size="9" font-weight="700" fill="#00676F">${W("pump")}</text>
     <path d="M62 272 H46 V42 H90" fill="none" stroke="#256B4C" stroke-width="4" stroke-dasharray="6 4"/><path d="M90 42 V186" stroke="#256B4C" stroke-width="4" stroke-dasharray="6 4"/>
-    <defs><marker id="ah5" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="4" markerHeight="4" orient="auto"><path d="M0 0 L10 5 L0 10z" fill="#256B4C"/></marker></defs></svg>`,
+    ${e ? `
+    <g><circle cx="131" cy="164" r="11" fill="#33474D" stroke="#fff" stroke-width="1.5"/><text x="131" y="168" text-anchor="middle" font-size="9" font-weight="700" fill="#fff">E4</text><text x="146" y="168" font-size="9" font-weight="700" fill="#0A1417">${W("close")}</text></g>
+    <g><circle cx="106" cy="244" r="11" fill="#33474D"/><text x="106" y="248" text-anchor="middle" font-size="9" font-weight="700" fill="#fff">E3</text><text x="92" y="248" text-anchor="end" font-size="9" font-weight="700" fill="#33474D">${W("close")}</text></g>
+    <g><circle cx="262" cy="248" r="11" fill="#256B4C"/><text x="262" y="252" text-anchor="middle" font-size="9" font-weight="700" fill="#fff">E2</text><text x="276" y="252" font-size="9" font-weight="700" fill="#256B4C">${W("open")}</text></g>` : ""}
+    <defs><marker id="ah5" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="4" markerHeight="4" orient="auto"><path d="M0 0 L10 5 L0 10z" fill="#256B4C"/></marker></defs>${w ? `
+    <text x="131" y="170" text-anchor="middle" font-size="20" font-weight="700" fill="#B23A2E">✗</text><text x="146" y="172" font-size="9" font-weight="700" fill="#0A1417">${W("closed")}</text>
+    <text x="110" y="250" text-anchor="middle" font-size="20" font-weight="700" fill="#B23A2E">✗</text>
+    <text x="318" y="256" text-anchor="end" font-size="8.5" font-weight="700" fill="#B23A2E">${W("stillhalf")}</text>
+    <g fill="#fff" stroke="#2E8CBE" stroke-width="1.2"><circle cx="72" cy="266" r="3"/><circle cx="84" cy="262" r="2.5"/><circle cx="78" cy="278" r="3.5"/><circle cx="88" cy="276" r="2"/></g>
+    <text x="60" y="240" font-size="9" font-weight="700" fill="#B23A2E">${W("rundry")}</text>` : ""}
+    </svg>`; };
+const PICS = {
+  headdown: () => `<svg viewBox="0 0 320 150" role="img" aria-label="vacuum head on the floor is right, lifted out of the water is wrong">
+    <rect x="0" y="34" width="320" height="96" fill="#BFE3F5"/><path d="M0 34 H320" stroke="#2E8CBE" stroke-width="3"/><rect x="0" y="118" width="320" height="12" fill="#4BAFE0"/>
+    <g><path d="M40 12 C 50 50, 65 85, 78 112" fill="none" stroke="#2F2F2F" stroke-width="9" stroke-linecap="round"/><rect x="58" y="110" width="44" height="10" rx="3" fill="#5B7378"/>
+      <text x="112" y="100" text-anchor="middle" font-size="24" fill="#256B4C">✓</text></g>
+    <g><rect x="212" y="12" width="44" height="10" rx="3" fill="#5B7378" transform="rotate(-25 234 17)"/><path d="M236 18 C 240 50, 232 80, 240 112" fill="none" stroke="#2F2F2F" stroke-width="9" stroke-linecap="round"/>
+      <g fill="#fff" stroke="#2E8CBE" stroke-width="1.5"><circle cx="252" cy="48" r="4"/><circle cx="256" cy="62" r="3"/><circle cx="250" cy="76" r="5"/><circle cx="258" cy="92" r="3"/><circle cx="251" cy="104" r="4"/></g>
+      <text x="285" y="76" text-anchor="middle" font-size="24" fill="#B23A2E">✗</text></g>
+    <text x="80" y="146" text-anchor="middle" font-size="12" fill="#33474D">${W("onfloor")}</text><text x="240" y="146" text-anchor="middle" font-size="12" fill="#33474D">${W("lifted")}</text></svg>`,
+  vacpipes: () => BKPOOL(false),
+  bkEorder: () => BKPOOL(true),
+  bkWrong: () => BKPOOL("wrong"),
   halfvalve: () => `<svg viewBox="0 0 320 150" role="img" aria-label="skimmer control valve half open is right">
     <g transform="translate(70 70)"><rect x="-50" y="-14" width="100" height="28" rx="4" fill="#C7D6D6"/><circle r="22" fill="#F6EAD4" stroke="#8A590D" stroke-width="3"/><line x1="-14" y1="-14" x2="14" y2="14" stroke="#8A590D" stroke-width="5" stroke-linecap="round"/>
       <text x="0" y="48" text-anchor="middle" font-size="22" fill="#256B4C">✓</text><text x="0" y="66" text-anchor="middle" font-size="12" fill="#33474D">${W("half")}</text></g>
