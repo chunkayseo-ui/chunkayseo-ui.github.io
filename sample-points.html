@@ -84,7 +84,23 @@ async function loadPlans(){
     // Only the pool itself is needed here: drop the vacuum route, its arrows, START/END and section numbers.
     svg.querySelectorAll(".vac-pattern,.vac-sections,.photo-layer,.rt-a,.rt-b,.rt-c,.chev,.secn,.dr-end,[marker-end],[marker-start]").forEach(e => e.remove());
     svg.querySelectorAll("text").forEach(e => { if(/^\s*(START|END)\b/i.test(e.textContent)) e.remove(); });
-    svg.querySelectorAll("circle").forEach(e => { const f = (e.getAttribute("fill") || "").toUpperCase(); if(f === "#E2382C") { const n = e.nextElementSibling; e.remove(); if(n && n.tagName.toLowerCase() === "circle" && /^#fff/i.test(n.getAttribute("fill") || "")) n.remove(); } });
+    // Route notes (lower-case hints like "climb right to left", and CC's "LOOP A/B" headings).
+    svg.querySelectorAll("text").forEach(e => { const s = e.textContent.trim(); if(/^[a-z]/.test(s) || /^LOOP\b/.test(s)) e.remove(); });
+    // START markers: a coloured dot with a small white dot inside (red, or green/purple on HB).
+    svg.querySelectorAll("circle").forEach(e => { if(!e.isConnected) return; const n = e.nextElementSibling, f = (e.getAttribute("fill") || "").toUpperCase();
+      const inner = n && n.tagName.toLowerCase() === "circle" && /^#fff/i.test(n.getAttribute("fill") || "") && Number(n.getAttribute("r")) < 6;
+      if(f === "#E2382C" || inner){ e.remove(); if(inner) n.remove(); } });
+    // Vacuum ports (Kay, 9 Oct): the VP box, its "VP" / "1" / "2" letters and the "VACUUM PORT" tag.
+    svg.querySelectorAll("rect[class*='vp']").forEach(r => { let n = r.nextElementSibling; r.remove();
+      while(n && n.tagName.toLowerCase() === "text" && /^\s*(VP|\d)\s*$/.test(n.textContent)){ const nx = n.nextElementSibling; n.remove(); n = nx; } });
+    svg.querySelectorAll("text").forEach(t => { if(!/VACUUM PORT|^\s*VP\d?\s*$/i.test(t.textContent)) return; const pr = t.previousElementSibling;
+      if(/VACUUM PORT/i.test(t.textContent) && pr && pr.tagName.toLowerCase() === "rect" && /^#0F2430$/i.test(pr.getAttribute("fill") || "")) pr.remove(); t.remove(); });
+    // Some cards split the tag into two lines: "VACUUM" then "PORT", each on its own dark tag.
+    svg.querySelectorAll("text").forEach(t => { if(!t.isConnected || !/^\s*VACUUM\s*$/i.test(t.textContent)) return;
+      const pr = t.previousElementSibling, r2 = t.nextElementSibling, t2 = r2 && r2.nextElementSibling;
+      if(pr && pr.tagName.toLowerCase() === "rect") pr.remove();
+      if(t2 && /^\s*PORT\s*$/i.test(t2.textContent)){ if(r2.tagName.toLowerCase() === "rect") r2.remove(); t2.remove(); }
+      t.remove(); });
     svg.querySelectorAll("g[transform]").forEach(g => { const pth = g.querySelector("path"); if(g.children.length === 1 && pth && /^M0 6 L0 -10/.test(pth.getAttribute("d") || "")) g.remove(); });
     const h3 = c.querySelector("h3");
     return {code: code.trim(), name: h3 ? h3.textContent.trim() : "", svg: svg.outerHTML};
