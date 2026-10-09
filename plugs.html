@@ -54,6 +54,12 @@ input,select{font:inherit;padding:8px 10px;border:1px solid var(--line);border-r
 .log div{display:flex;gap:8px;padding:5px 0;border-top:1px solid var(--line-soft)}
 .log div:first-child{border-top:0}
 .log .t{font-family:"IBM Plex Mono",monospace;color:var(--ink-3);flex:none;width:88px}
+.log .day{display:block;border-top:0;margin-top:10px;padding:2px 0;font:700 13px "Barlow Condensed",sans-serif;letter-spacing:.06em;text-transform:uppercase;color:var(--ink-3)}
+.log .day:first-child{margin-top:0}
+.log .dur{color:var(--ink-3);font-family:"IBM Plex Mono",monospace;font-size:12px;white-space:nowrap}
+.logbar{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:10px;font-size:13px}
+.logbar select{padding:6px 8px;font-size:13px}
+.logbar .n{color:var(--ink-3);margin-left:auto}
 .login{max-width:380px;margin:12vh auto 0}
 .login input{width:100%;margin-top:4px}
 .login label{display:block;font-size:13px;color:var(--ink-3);margin-top:12px}
@@ -284,6 +290,9 @@ const hhmm = iso => { const d = new Date(iso); return pad(d.getHours()) + ":" + 
 const S = {user:null, cfg:{plugs:[], apiUrl:""}, status:{}, fc:{}, log:[], busy:{}, err:"", note:""};
 S.guardOpen = (() => { try{ return localStorage.getItem("hf-guard-open2") === "1"; }catch(e){ return false; } })();   // closed unless opened (8 Oct 2026)
 S.folds = (() => { try{ return JSON.parse(localStorage.getItem("hf-folds") || "{}") || {}; }catch(e){ return {}; } })();   // which detail sections are open
+// Recent switches filter (Kay, 9 Oct 2026): one plug or all, and how far back — for checking a chlorinator while reviewing its dosing.
+S.logPlug = (() => { try{ return localStorage.getItem("hf-log-plug") || ""; }catch(e){ return ""; } })();
+S.logDays = (() => { try{ return Number(localStorage.getItem("hf-log-days")) || 0; }catch(e){ return 0; } })();   // 0 = latest 20 only
 S.openPool = null;   // outlet tile tapped open
 
 /* ---------- the rule, worked out from today's tests ---------- */
@@ -523,6 +532,29 @@ function guardCard(){
       <li>A plug that is offline (no Wi-Fi) — the timer can't switch it; the tracker shows it as “offline”.</li></ul></div>
   </details>`;
 }
+function logDur(ms){ const m = Math.round(ms / 60000); if(m < 60) return m + " min"; const h = Math.floor(m / 60); return h + " h" + (m % 60 ? " " + (m % 60) + " min" : ""); }
+function logHtml(plugs){
+  const one = S.logPlug;
+  const rows = one ? S.log.filter(l => l.id === one) : S.log;
+  const names = {}; plugs.forEach(p => names[p.id] = p.name); S.log.forEach(l => { if(!names[l.id] && l.name) names[l.id] = l.name; });
+  const bar = `<div class="logbar"><select data-logplug><option value="">All plugs</option>${Object.keys(names).map(id => `<option value="${esc(id)}" ${id === one ? "selected" : ""}>${esc(names[id])}</option>`).join("")}</select>
+    <select data-logdays>${[[0, "Latest 20"], [7, "Last 7 days"], [14, "Last 14 days"], [30, "Last 30 days"], [60, "Last 60 days"], [90, "Last 90 days"]].map(([d, t]) => `<option value="${d}" ${d === S.logDays ? "selected" : ""}>${t}</option>`).join("")}</select>
+    <span class="n">${rows.length} switch${rows.length === 1 ? "" : "es"}${S.logDays ? "" : " (choose a range to see more)"}</span></div>`;
+  if(!rows.length) return bar + `<div class="log"><span class="note">${one ? "Nothing switched for this plug in that range." : "Nothing switched yet."}</span></div>`;
+  let lastDay = "", out = "";
+  rows.forEach((l, i) => {
+    const d = new Date(l.at), day = d.toLocaleDateString("en-SG", {weekday:"short", day:"numeric", month:"short"});
+    if(day !== lastDay){ out += `<div class="day">${day}</div>`; lastDay = day; }
+    let dur = "";
+    if(one){   // how long the plug stayed in this state: until the next switch of the same plug, or until now
+      const next = i > 0 ? rows[i - 1] : null;
+      const ms = (next ? new Date(next.at) : new Date()) - d;
+      if(ms >= 0) dur = ` <span class="dur">· ${l.on ? "ON" : "OFF"} for ${logDur(ms)}${next ? "" : " so far"}</span>`;
+    }
+    out += `<div><span class="t">${d.toLocaleString("en-SG", {day:"numeric", month:"short", hour:"2-digit", minute:"2-digit", hour12:false})}</span><span><b>${esc(l.name)}</b> ${l.on ? "ON" : "OFF"} · ${esc(l.reason)} · ${esc(String(l.by || "").split("@")[0])}${dur}</span></div>`;
+  });
+  return bar + `<div class="log">${out}</div>`;
+}
 function render(){
   if(!S.user) return;
   const plugs = S.cfg.plugs || [];
@@ -548,7 +580,7 @@ function render(){
   ${guardCard()}
   ${fold("rules", "📅 Rules &amp; weekly schedules", rulesCard().replace(/^<div class="card"><h2>Rules<\/h2>/, "<div>"), !!(S.editPool || S.editRules))}
   ${fold("plugs", "🔌 Add or edit plugs", plugsAdmin, !!S.editId)}
-  ${fold("log", "🕘 Recent switches", `<div class="log">${S.log.length ? S.log.slice(0, 20).map(l => `<div><span class="t">${new Date(l.at).toLocaleString("en-SG", {day:"numeric", month:"short", hour:"2-digit", minute:"2-digit", hour12:false})}</span><span><b>${esc(l.name)}</b> ${l.on ? "ON" : "OFF"} · ${esc(l.reason)} · ${esc(String(l.by || "").split("@")[0])}</span></div>`).join("") : `<span class="note">Nothing switched yet.</span>`}</div>`, false)}
+  ${fold("log", "🕘 Recent switches", logHtml(plugs), false)}
   ${fold("settings", "⚙️ Settings", `<form class="row" id="apif"><input id="api" placeholder="Apps Script web app URL (…/exec)" value="${esc(S.cfg.apiUrl || "")}" style="flex:1 1 300px" autocomplete="off"><button class="b sm main">Save</button></form>
     <div class="note" style="margin-top:6px">The Shelly key is NOT entered here — it stays in the Apps Script's Script Properties.</div>`, false)}`;
   document.querySelectorAll("[data-tile]").forEach(b => b.onclick = () => { S.openPool = S.openPool === b.dataset.tile ? null : b.dataset.tile; render(); const c = $("#opencard"); if(c && S.openPool) c.scrollIntoView({block:"nearest", behavior:"smooth"}); });
@@ -565,6 +597,8 @@ function render(){
     try{ await db.doc("dosing_config/plugs").update({["overrides." + id]: firebase.firestore.FieldValue.delete()}); }catch(e){ S.err = "Couldn't cancel: " + e.message; render(); }   // merge:true would keep the key, so delete it properly
     applyRuleNow(plugs.find(x => x.id === id)); });
   document.querySelectorAll("details.fold").forEach(d => d.addEventListener("toggle", () => { S.folds[d.dataset.fold] = d.open; try{ localStorage.setItem("hf-folds", JSON.stringify(S.folds)); }catch(e){} const c = d.querySelector(".chev"); if(c) c.textContent = d.open ? "hide" : "show"; }));
+  { const sp = $("[data-logplug]"); if(sp) sp.onchange = () => { S.logPlug = sp.value; try{ localStorage.setItem("hf-log-plug", S.logPlug); }catch(e){} render(); };
+    const sd = $("[data-logdays]"); if(sd) sd.onchange = () => { S.logDays = Number(sd.value) || 0; try{ localStorage.setItem("hf-log-days", String(S.logDays)); }catch(e){} S.folds.log = true; render(); loadLog().then(render); }; }
   $("#out").onclick = () => auth.signOut();
   { const g = $("#guard"); if(g) g.addEventListener("toggle", () => { S.guardOpen = g.open; try{ localStorage.setItem("hf-guard-open2", g.open ? "1" : "0"); }catch(e){} const c = g.querySelector(".chev"); if(c) c.textContent = g.open ? "hide" : "show"; }); }
   $("#refresh").onclick = async () => { try{ const d = await db.doc("dosing_config/plugs").get(); if(d.exists){ S.cfg = Object.assign({plugs:[], apiUrl:""}, d.data()); RULES = mergeRules(S.cfg.rules); } }catch(e){} render(); refreshStatus(); loadFcNeeded(); };
@@ -611,7 +645,14 @@ function render(){
     if(u && !/^https:\/\/script\.google\.com\/macros\/s\/[\w-]+\/exec$/.test(u)){ S.err = "That doesn't look like an Apps Script web app address (…/exec)."; render(); return; }
     saveCfg({apiUrl:u}); };
 }
-async function loadLog(){ try{ const q = await db.collection("plug_log").orderBy("at", "desc").limit(20).get(); S.log = []; q.forEach(x => S.log.push(x.data())); }catch(e){} }
+async function loadLog(){
+  try{
+    let q = db.collection("plug_log").orderBy("at", "desc");
+    if(S.logDays){ const from = new Date(Date.now() - S.logDays * 86400000).toISOString(); q = q.where("at", ">=", from).limit(1500); }   // `at` is an ISO string, so the range works as text
+    else q = q.limit(20);
+    const r = await q.get(); S.log = []; r.forEach(x => S.log.push(x.data()));
+  }catch(e){}
+}
 /* Every minute while the page is open: re-read the config (1 small read). If the timer has switched a plug
  * since the page last asked the plugs, ask them again and reload the switch list. */
 /* Live updates while the page is open:
