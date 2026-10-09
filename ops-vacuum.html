@@ -86,6 +86,12 @@ const slug = s => String(s || "").toLowerCase().replace(/[^a-z0-9]+/g, "-").repl
 const uid = () => Math.random().toString(36).slice(2, 9);
 const clock = iso => new Date(iso).toLocaleTimeString("en-SG", {hour:"2-digit", minute:"2-digit", hour12:false});
 const emailKey = e => String(e || "").trim().toLowerCase().replace(/[^a-z0-9]/g, "_");
+// Kay and William may open the page to check it without being certified (same email hashes as /learn).
+const BOSSES = {"d05dba20d3700faa4e379cb3efaf38d69ea2e16a6eb31ddbf8166facafde882d":"Kay", "6ba3ddae7dbb119b31d474b6551b38f271c6df9613b44889fd8cfff6e8c47edf":"William"};
+async function bossName(email){
+  try{ const h = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(String(email || "").trim().toLowerCase()));
+    return BOSSES[Array.from(new Uint8Array(h)).map(b => b.toString(16).padStart(2, "0")).join("")] || null; }catch(e){ return null; }
+}
 
 // Extra rules for people who are not pool technicians — added on top of the route card's own step text.
 const EXTRA = {
@@ -116,11 +122,13 @@ async function loadMe(){
   try{ const d = await db.doc("dosing_config/ops_staff").get(); const people = (d.exists && d.data().people) || {}; rec = people[emailKey(email)] || Object.values(people).find(p => String(p.email || "").toLowerCase() === email) || null; }catch(e){ S.err = "Couldn't read the staff list: " + e.message; }
   let quiz = null;
   try{ const q = await db.collection("learn_results").where("login", "==", email).where("lesson", "==", LESSON_ID).get(); q.forEach(x => quiz = x.data()); }catch(e){}
-  S.me = rec ? {name: rec.name || email.split("@")[0], outlet: rec.outlet || "BK", listed:true} : {name: email.split("@")[0], outlet:"BK", listed:false};
+  const boss = await bossName(email);
+  S.me = rec ? {name: rec.name || email.split("@")[0], outlet: rec.outlet || "BK", listed:true} : {name: boss || email.split("@")[0], outlet:"BK", listed:false};
+  S.me.boss = !!boss;
   S.cert = {quiz: !!(quiz && quiz.passed), practical: !!(rec && rec.practical), listed: !!rec};
   S.pool = S.me.outlet;
 }
-const certified = () => S.cert && S.cert.listed && S.cert.quiz && S.cert.practical;
+const certified = () => !!(S.cert && ((S.cert.listed && S.cert.quiz && S.cert.practical) || (S.me && S.me.boss)));
 
 /* ---------- steps from the route card ---------- */
 async function loadSteps(pool){
@@ -184,7 +192,7 @@ async function takePhoto(file, stepId, label){
   ph.status = "uploading"; ph.dataUrl = prepared.dataUrl; render();
   try{
     const n = Object.keys(j.photos).length;
-    const r = await relayUpload({kind:"job", outlet:S.pool, pool:S.pool, job:`Spot vacuum (Ops team) · ${stepId} ${label}`, person:S.me.name + " (Ops)", takenAt:ph.takenAt, date:todayKey(), tool:"none", wantReading:false, imageBase64:prepared.base64, photoNo:n});
+    const r = await relayUpload({kind:"job", outlet:S.pool, pool:S.pool, job:`Spot vacuum (Ops team) · ${stepId} ${label}`, person:S.me.name + (S.me.boss ? " (Ops test)" : " (Ops)"), takenAt:ph.takenAt, date:todayKey(), tool:"none", wantReading:false, imageBase64:prepared.base64, photoNo:n});
     Object.assign(ph, {status:"done", fileId:r.fileId, url:r.url, thumb:r.thumb || null}); delete ph.dataUrl; ph.preview = r.thumb || r.url;
   }catch(e){ ph.status = "failed"; ph.error = e.message; }
   saveDraft(); render();
@@ -210,20 +218,21 @@ async function finishJob(){
   const photos = {}; Object.keys(j.photos).forEach(id => { const p = j.photos[id]; if(p.status === "done") photos[id] = {fileId:p.fileId || null, url:p.url || null, thumb:p.thumb || null, takenAt:p.takenAt}; });
   const ids = Object.keys(photos), ts = ids.map(id => photos[id].takenAt).sort();
   const minutes = j.vacStart && j.vacEnd ? Math.max(0, Math.round((new Date(j.vacEnd) - new Date(j.vacStart)) / 60000)) : null;
-  const person = S.me.name + " (Ops)", docId = j.date + "__ops-" + slug(S.me.name);
+  const testRun = !!(S.me.boss && !(S.cert.listed && S.cert.quiz && S.cert.practical));
+  const person = S.me.name + (testRun ? " (Ops test)" : " (Ops)"), docId = j.date + "__ops-" + slug(S.me.name) + (testRun ? "-test" : "");
   const task = {id:"opsvac-" + j.id, name:"Spot vacuum (Ops team)", pool:S.pool, claimedBy:person, startedAt:j.startedAt, doneAt:j.doneAt, ops:true,
     vac:{spot:true, poolKey:S.pool, by:person, photos, firstAt:j.startedAt, lastAt:j.doneAt, minutes, vacuumMin:minutes, sections:{total:0, done:[], skipped:[], notDone:[]}}};
   try{
     const ref = db.doc("dosing_rounds/" + docId);
     await db.runTransaction(async tx => {
       const snap = await tx.get(ref);
-      const r = snap.exists ? snap.data() : {date:j.date, person, personSlug:slug(person), kind:"ops-vacuum", createdAt:j.startedAt, stops:[]};
+      const r = snap.exists ? snap.data() : {date:j.date, person, personSlug:slug(person), kind:"ops-vacuum", createdAt:j.startedAt, stops:[], ...(testRun ? {test:true} : {})};
       let stop = (r.stops || []).find(s => s.outlet === S.pool);
       if(!stop){ stop = {outlet:S.pool, arriveAt:j.startedAt, departAt:null, tasks:[]}; r.stops = (r.stops || []).concat([stop]); }
       stop.tasks = (stop.tasks || []).filter(t => t.id !== task.id).concat([task]); stop.departAt = j.doneAt;
       tx.set(ref, r);
     });
-    j.saved = true; j.roundId = docId; j.taskId = task.id;
+    j.saved = true; j.roundId = docId; j.taskId = task.id; j.test = testRun;
     S.history.unshift({at:j.doneAt, by:person, minutes, photos:ids.length, link:`https://hfpools.com/vacuum?r=${encodeURIComponent(docId)}&t=${encodeURIComponent(task.id)}`});
   }catch(e){ S.err = "Couldn't save the job: " + e.message + " — check the signal and press Save again."; j.doneAt = null; }
   S.busy = false; saveDraft(); render();
@@ -233,7 +242,7 @@ async function loadHistory(){
     const from = new Date(Date.now() - 14 * 86400000); const fk = from.getFullYear() + "-" + pad(from.getMonth() + 1) + "-" + pad(from.getDate());
     const q = await db.collection("dosing_rounds").where("kind", "==", "ops-vacuum").where("date", ">=", fk).get();
     const out = [];
-    q.forEach(d => { const r = d.data(); (r.stops || []).forEach(s => { if(s.outlet !== S.pool) return; (s.tasks || []).forEach(t => { if(!t.doneAt) return; const v = t.vac || {}; out.push({at:t.doneAt, by:t.claimedBy || r.person, minutes:v.minutes, photos:Object.keys(v.photos || {}).length, link:`https://hfpools.com/vacuum?r=${encodeURIComponent(d.id)}&t=${encodeURIComponent(t.id)}`}); }); }); });
+    q.forEach(d => { const r = d.data(); if(r.test || /test/i.test(String(r.person || ""))) return; (r.stops || []).forEach(s => { if(s.outlet !== S.pool) return; (s.tasks || []).forEach(t => { if(!t.doneAt) return; const v = t.vac || {}; out.push({at:t.doneAt, by:t.claimedBy || r.person, minutes:v.minutes, photos:Object.keys(v.photos || {}).length, link:`https://hfpools.com/vacuum?r=${encodeURIComponent(d.id)}&t=${encodeURIComponent(t.id)}`}); }); }); });
     S.history = out.sort((a, b) => b.at < a.at ? -1 : 1);
   }catch(e){ /* a missing index just means no list */ }
 }
@@ -256,6 +265,7 @@ function homeView(){
   const h = S.history.slice(0, 10);
   return `${header()}<div class="card"><h2>Today</h2>
     <p class="steptext">Quick vacuum of the visible dirt at ${esc(OUTLET_NAMES[S.pool] || S.pool)}. About 5–10 minutes. One photo at every step.</p>
+    ${S.me.boss && !(S.cert.listed && S.cert.quiz && S.cert.practical) ? `<div class="warn">Supervisor check: you can go through the whole job. Your run is saved as a TEST — no message goes to the BK group and it stays off the dashboard.</div>` : ""}
     ${relayCfg() ? "" : `<div class="danger">The photo relay isn't set up, so photos can't be saved. Tell Kay.</div>`}
     <button class="b main" id="start" ${relayCfg() ? "" : "disabled"}>Start spot vacuum</button></div>
     <div class="card"><h2>Last 14 days</h2>${h.length ? `<div class="hist">${h.map(x => `<div><span class="t">${esc(new Date(x.at).toLocaleDateString("en-SG", {day:"numeric", month:"short"}))} ${esc(clock(x.at))}</span><span><b>${esc(String(x.by).replace(/ \(Ops\)$/, ""))}</b>${x.minutes != null ? ` · ${x.minutes} min` : ""} · ${x.photos} photos · <a class="link" href="${esc(x.link)}" target="_blank" rel="noopener">view</a></span></div>`).join("")}</div>` : `<span class="note">No spot vacuum recorded yet.</span>`}</div>
@@ -289,7 +299,7 @@ function doneView(){
   const j = S.job, n = Object.keys(j.photos).filter(photoOk).length, mins = j.vacStart && j.vacEnd ? Math.round((new Date(j.vacEnd) - new Date(j.vacStart)) / 60000) : null;
   return `${header()}<div class="card"><h2>Spot vacuum saved ✓</h2>
     <p class="steptext">${esc(OUTLET_NAMES[S.pool] || S.pool)} · ${esc(clock(j.startedAt))}–${esc(clock(j.doneAt))}${mins != null ? ` · ${mins} min vacuuming` : ""} · ${n} photos</p>
-    <div class="okbox">The BK group gets a message with the photos. Thank you!</div>
+    ${j.test ? `<div class="warn">Saved as a test run — nothing was sent to the BK group.</div>` : `<div class="okbox">The BK group gets a message with the photos. Thank you!</div>`}
     ${j.roundId ? `<a class="b" href="https://hfpools.com/vacuum?r=${encodeURIComponent(j.roundId)}&t=${encodeURIComponent(j.taskId)}" target="_blank" rel="noopener">See the record</a>` : ""}
     <button class="b main" id="home">Done</button></div>
     <p class="motto">Test right, dose right, let little swimmers thrive.</p>`;
