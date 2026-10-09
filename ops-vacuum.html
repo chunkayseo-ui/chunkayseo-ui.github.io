@@ -102,7 +102,8 @@ const EXTRA = {
   },
   vacuum: {
     title: "Vacuum the visible dirt",
-    text: "Move the head slowly along the floor, like mopping. Overlap each stroke a little. Keep the head on the floor — lifting it lets air in. You only need to clean the dirty spots, not the whole pool.",
+    text: "Move the head slowly along the floor, like mopping. Overlap each stroke a little. You only need to clean the dirty spots, not the whole pool.",
+    keep: "Keep the vacuum head ON THE FLOOR the whole time. Lifting it out of the water, even for a second, sucks air into the pump. To move to another spot, slide it along the floor.",
     stop: "STOP and call the facility team if: the pump gets loud, the suction stops, bubbles keep coming in the pump cover, or something is stuck."
   },
   E1: "Disconnect the hose at the VACUUM PORT first. Keep the hose end up so the water stays in. Only then take the hose off the vacuum head. Never the other way round — an open hose on the port sucks air into the pump.",
@@ -279,7 +280,7 @@ function stepView(){
   let extra = "";
   if(s.stage === "before" && s.id === steps[0].id) extra = `<div class="warn">Do the steps in this order. Take the photo only after the step is really done.</div>`;
   if(s.why) extra += `<div class="warn">${esc(s.why)}</div>`;
-  if(s.stage === "vacuum") extra += `<div class="danger">${esc(EXTRA.vacuum.stop)}</div>`;
+  if(s.stage === "vacuum") extra += `<div class="danger">${esc(EXTRA.vacuum.keep)}</div><div class="warn">${esc(EXTRA.vacuum.stop)}</div>`;
   if(s.stage === "after" && EXTRA[s.id]) extra += `<div class="${s.id === "E2" ? "danger" : "warn"}">${esc(EXTRA[s.id])}</div>`;
   if(s.stage === "after" && s.id === (S.steps.after[0] || {}).id) extra += `<div class="okbox">${esc(EXTRA.order)}</div>`;
   const timer = s.stage === "vacuum" && S.job.vacStart ? `<div class="clock" id="clock">${elapsed(S.job.vacStart)}<small>vacuuming time · about 5–10 min is normal</small></div>` : "";

@@ -741,7 +741,7 @@ const LESSONS = [
    o:[{en:"It gets weak or lumpy — wasted", ms:"Ia jadi lemah atau bergumpal — membazir", ta:"பலவீனமாகும் அல்லது கட்டியாகும் — வீண்"},{en:"Nothing", ms:"Tiada apa", ta:"ஒன்றுமில்லை"}], a:0},
   ]},
 /* ---------------- 14. Spot vacuum — operations team (Kay, 9 Oct 2026) ---------------- */
-{ id:"opsvac", icon:"🧹", mins:7, ops:true,
+{ id:"opsvac", icon:"🧹", mins:8, ops:true,
   title:{en:"Spot vacuum — operations team", ms:"Vakum tompok — pasukan operasi", ta:"ஸ்பாட் வாக்யூம் — செயல்பாட்டுக் குழு"},
   cards:[
   {pic:"🎯", t:{
@@ -776,6 +776,10 @@ const LESSONS = [
     en:"Vacuum slowly, like mopping. Overlap each stroke a little. Keep the head on the floor — lifting it lets air in. Clean only the dirty spots, not the whole pool.",
     ms:"Vakum perlahan-lahan, macam mengelap lantai. Tindih sedikit setiap gerakan. Kepala vakum kekal di lantai — jika diangkat, udara masuk. Bersihkan tempat kotor sahaja, bukan seluruh kolam.",
     ta:"துடைப்பது போல மெதுவாக வாக்யூம் செய்யுங்கள். ஒவ்வொரு அசைவும் கொஞ்சம் மேல்பொருந்தட்டும். ஹெட் தரையிலேயே இருக்கட்டும் — தூக்கினால் காற்று உள்ளே போகும். அழுக்கான இடங்களை மட்டும் சுத்தம் செய்யுங்கள், முழுக் குளத்தையும் அல்ல."}},
+  {pic:"svg:headdown", t:{
+    en:"Keep the vacuum head ON THE FLOOR all the time. If you lift it out of the water, even for a second, the hose sucks air straight into the pump. To move to another spot, slide the head along the floor — never lift it.",
+    ms:"Kepala vakum mesti sentiasa DI LANTAI. Jika diangkat keluar dari air, walaupun sesaat, hos terus sedut udara ke dalam pam. Untuk pindah ke tempat lain, seret kepala di lantai — jangan angkat.",
+    ta:"வாக்யூம் ஹெட் எப்போதும் தரையிலேயே இருக்க வேண்டும். ஒரு நொடி தண்ணீரிலிருந்து தூக்கினாலும், ஹோஸ் நேராக பம்புக்குள் காற்றை உறிஞ்சும். வேறு இடத்திற்குப் போக, ஹெட்டைத் தரையோடு நகர்த்துங்கள் — ஒருபோதும் தூக்க வேண்டாம்."}},
   {pic:"🛑", t:{
     en:"STOP and call the facility team if: the pump gets loud, the suction stops, bubbles keep coming in the pump cover, or something is stuck. Do not try to fix it yourself.",
     ms:"BERHENTI dan hubungi pasukan fasiliti jika: pam berbunyi kuat, sedutan hilang, gelembung terus masuk ke penutup pam, atau ada benda tersangkut. Jangan cuba baiki sendiri.",
@@ -808,6 +812,8 @@ const LESSONS = [
    o:[{en:"Close the vacuum port", ms:"Tutup port vakum", ta:"வாக்யூம் போர்ட்டை மூடுவது"},{en:"Open the skimmer control valve fully", ms:"Buka penuh injap kawalan skimmer", ta:"ஸ்கிம்மர் கண்ட்ரோல் வால்வை முழுவதும் திறப்பது"}], a:1},
   {q:{en:"Where do you disconnect the hose first?", ms:"Di mana hos ditanggalkan dahulu?", ta:"ஹோஸை முதலில் எங்கே கழற்றுவீர்கள்?"},
    o:[{en:"At the vacuum head", ms:"Di kepala vakum", ta:"வாக்யூம் ஹெட்டில்"},{en:"At the vacuum port", ms:"Di port vakum", ta:"வாக்யூம் போர்ட்டில்"}], a:1},
+  {q:{en:"You want to move the vacuum head to another dirty spot. How?", ms:"Anda mahu pindahkan kepala vakum ke tempat kotor lain. Bagaimana?", ta:"வாக்யூம் ஹெட்டை வேறு அழுக்கான இடத்திற்கு நகர்த்த வேண்டும். எப்படி?"},
+   o:[{en:"Lift it out and put it down there", ms:"Angkat dan letak di sana", ta:"தூக்கி அங்கே வைப்பது"},{en:"Slide it along the floor, never lift it", ms:"Seret di lantai, jangan angkat", ta:"தரையோடு நகர்த்துவது, தூக்கக் கூடாது"}], a:1},
   {q:{en:"What do you vacuum?", ms:"Apa yang divakum?", ta:"எதை வாக்யூம் செய்வீர்கள்?"},
    o:[{en:"Only the dirty spots you can see", ms:"Hanya tempat kotor yang nampak", ta:"தெரியும் அழுக்கான இடங்களை மட்டும்"},{en:"The whole pool, section by section", ms:"Seluruh kolam, bahagian demi bahagian", ta:"முழுக் குளத்தையும், பகுதி பகுதியாக"}], a:0},
   {q:{en:"The pump suddenly gets loud and the suction stops. What now?", ms:"Pam tiba-tiba berbunyi kuat dan sedutan hilang. Apa sekarang?", ta:"பம்ப் திடீரென சத்தமாகி உறிஞ்சல் நிற்கிறது. இப்போது?"},
@@ -824,7 +830,7 @@ const PIC_WORDS = {
   vacport:{en:"vacuum port", ms:"port vakum", ta:"வாக்யூம் போர்ட்"}, pump:{en:"PUMP", ms:"PAM", ta:"பம்ப்"}, half:{en:"half open", ms:"separuh buka", ta:"பாதி திறந்து"}, closed:{en:"fully closed", ms:"tutup penuh", ta:"முழுவதும் மூடி"},
   nobubbles:{en:"no bubbles", ms:"tiada gelembung", ta:"குமிழ்கள் இல்லை"}, bubbles:{en:"bubbles = air", ms:"gelembung = udara", ta:"குமிழ்கள் = காற்று"},
   fillhose:{en:"fill the hose first, then connect", ms:"isi hos dahulu, kemudian sambung", ta:"முதலில் ஹோஸை நிரப்பி, பிறகு இணைக்கவும்"}, portfirst:{en:"1 port first, 2 head after", ms:"1 port dahulu, 2 kepala kemudian", ta:"1 முதலில் போர்ட், 2 பிறகு ஹெட்"},
-  open:{en:"OPEN", ms:"BUKA", ta:"திற"}, close:{en:"CLOSE", ms:"TUTUP", ta:"மூடு"},
+  open:{en:"OPEN", ms:"BUKA", ta:"திற"}, onfloor:{en:"head on the floor", ms:"kepala di lantai", ta:"ஹெட் தரையில்"}, lifted:{en:"lifted = air in", ms:"diangkat = udara masuk", ta:"தூக்கினால் = காற்று"}, close:{en:"CLOSE", ms:"TUTUP", ta:"மூடு"},
   germ:{en:"germ", ms:"kuman", ta:"கிருமி"}, chlorine:{en:"chlorine", ms:"klorin", ta:"குளோரின்"},
   acid:{en:"acid", ms:"asid", ta:"அமிலம்"}, ours:{en:"our pools", ms:"kolam kita", ta:"நம் குளங்கள்"}, alkaline:{en:"alkaline", ms:"alkali", ta:"காரத்தன்மை"},
   strong:{en:"strong chlorine", ms:"klorin kuat", ta:"வலுவான குளோரின்"},
@@ -933,6 +939,14 @@ try{ const l = localStorage.getItem("learn.lang"); if(LANGS.some(x => x.id === l
 /* ---------------- drawings ---------------- */
 const W = k => esc(tx(PIC_WORDS[k]));
 const PICS = {
+  headdown: () => `<svg viewBox="0 0 320 150" role="img" aria-label="vacuum head on the floor is right, lifted out of the water is wrong">
+    <rect x="0" y="34" width="320" height="96" fill="#BFE3F5"/><path d="M0 34 H320" stroke="#2E8CBE" stroke-width="3"/><rect x="0" y="118" width="320" height="12" fill="#4BAFE0"/>
+    <g><path d="M40 12 C 50 50, 65 85, 78 112" fill="none" stroke="#2F2F2F" stroke-width="9" stroke-linecap="round"/><rect x="58" y="110" width="44" height="10" rx="3" fill="#5B7378"/>
+      <text x="112" y="100" text-anchor="middle" font-size="24" fill="#256B4C">✓</text></g>
+    <g><rect x="212" y="12" width="44" height="10" rx="3" fill="#5B7378" transform="rotate(-25 234 17)"/><path d="M236 18 C 240 50, 232 80, 240 112" fill="none" stroke="#2F2F2F" stroke-width="9" stroke-linecap="round"/>
+      <g fill="#fff" stroke="#2E8CBE" stroke-width="1.5"><circle cx="252" cy="48" r="4"/><circle cx="256" cy="62" r="3"/><circle cx="250" cy="76" r="5"/><circle cx="258" cy="92" r="3"/><circle cx="251" cy="104" r="4"/></g>
+      <text x="285" y="76" text-anchor="middle" font-size="24" fill="#B23A2E">✗</text></g>
+    <text x="80" y="146" text-anchor="middle" font-size="12" fill="#33474D">${W("onfloor")}</text><text x="240" y="146" text-anchor="middle" font-size="12" fill="#33474D">${W("lifted")}</text></svg>`,
   vacpipes: () => `<svg viewBox="0 0 320 150" role="img" aria-label="vacuum port and skimmer both feed the same pump">
     <rect x="10" y="20" width="120" height="110" fill="#4BAFE0" stroke="#2E8CBE" stroke-width="2"/>
     <rect x="118" y="88" width="20" height="20" rx="3" fill="#fff" stroke="#0B6E61" stroke-width="2.5"/><text x="128" y="102" text-anchor="middle" font-size="9" font-weight="700" fill="#0B6E61">VP</text>
