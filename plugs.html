@@ -53,7 +53,10 @@ input,select{font:inherit;padding:8px 10px;border:1px solid var(--line);border-r
 .log{font-size:13px}
 .log div{display:flex;gap:8px;padding:5px 0;border-top:1px solid var(--line-soft)}
 .log div:first-child{border-top:0}
-.log .t{font-family:"IBM Plex Mono",monospace;color:var(--ink-3);flex:none;width:88px}
+.log .t{font-family:"IBM Plex Mono",monospace;color:var(--ink-3);flex:none;width:48px}
+.log .pill{flex:none;width:40px;text-align:center;align-self:flex-start;font:700 12px/1 "Barlow Condensed",sans-serif;letter-spacing:.06em;padding:4px 0;border-radius:5px;margin-top:1px}
+.log .pill.on{background:var(--ok-soft);color:var(--ok);border:1px solid #2FA35A}
+.log .pill.off{background:var(--surface-2);color:var(--ink-3);border:1px solid var(--line)}
 .log .day{display:block;border-top:0;margin-top:10px;padding:2px 0;font:700 13px "Barlow Condensed",sans-serif;letter-spacing:.06em;text-transform:uppercase;color:var(--ink-3)}
 .log .day:first-child{margin-top:0}
 .log .dur{color:var(--ink-3);font-family:"IBM Plex Mono",monospace;font-size:12px;white-space:nowrap}
@@ -551,7 +554,7 @@ function logHtml(plugs){
       const ms = (next ? new Date(next.at) : new Date()) - d;
       if(ms >= 0) dur = ` <span class="dur">· ${l.on ? "ON" : "OFF"} for ${logDur(ms)}${next ? "" : " so far"}</span>`;
     }
-    out += `<div><span class="t">${d.toLocaleString("en-SG", {day:"numeric", month:"short", hour:"2-digit", minute:"2-digit", hour12:false})}</span><span><b>${esc(l.name)}</b> ${l.on ? "ON" : "OFF"} · ${esc(l.reason)} · ${esc(String(l.by || "").split("@")[0])}${dur}</span></div>`;
+    out += `<div><span class="t">${d.toLocaleTimeString("en-SG", {hour:"2-digit", minute:"2-digit", hour12:false})}</span><span class="pill ${l.on ? "on" : "off"}">${l.on ? "ON" : "OFF"}</span><span>${one ? "" : `<b>${esc(l.name)}</b> · `}${esc(l.reason)} · ${esc(String(l.by || "").split("@")[0])}${dur}</span></div>`;
   });
   return bar + `<div class="log">${out}</div>`;
 }

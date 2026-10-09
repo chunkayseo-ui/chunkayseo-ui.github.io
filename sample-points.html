@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>HF Pools · Water sample points</title>
+<meta name="robots" content="noindex">
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700&family=IBM+Plex+Mono:wght@400;600&family=IBM+Plex+Sans:wght@400;600&display=swap" rel="stylesheet">
+<style>
+:root{--ground:#EEF3F3;--surface:#fff;--surface-2:#F6F9F9;--line:#C7D6D6;--line-soft:#DCE6E6;--ink:#0A1417;--ink-2:#33474D;--ink-3:#5B7378;
+--accent:#00676F;--accent-soft:#DCEEEE;--ok:#256B4C;--ok-soft:#DDEEE5;--warn:#8A590D;--warn-soft:#F6EAD4;--urgent:#B23A2E;--urgent-soft:#F8DEDA;--pin:#D7263D}
+*{box-sizing:border-box}
+body{margin:0;background:var(--ground);color:var(--ink);font:15px/1.45 "IBM Plex Sans",system-ui,sans-serif}
+.wrap{max-width:760px;margin:0 auto;padding:14px 16px 40px}
+header{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:12px}
+h1{font:700 26px/1 "Barlow Condensed",sans-serif;text-transform:uppercase;letter-spacing:.02em;margin:0}
+h1 small{font-size:15px;color:var(--accent);margin-left:6px}
+h2{font:700 15px/1 "Barlow Condensed",sans-serif;text-transform:uppercase;letter-spacing:.06em;color:var(--ink-2);margin:0 0 10px}
+.me{margin-left:auto;font-size:13px;color:var(--ink-3)}
+.me button,.link{border:0;background:none;color:var(--accent);text-decoration:underline;font:inherit;cursor:pointer;padding:0}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:14px;margin-bottom:12px}
+.note{font-size:13px;color:var(--ink-3)}
+.steps{margin:0;padding-left:20px;font-size:14.5px}.steps li{margin:5px 0}
+.steps b{color:var(--ink)}
+.why{background:var(--warn-soft);color:var(--warn);border-radius:8px;padding:9px 11px;font-size:13.5px;margin-top:10px}
+.chips{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px}
+.chip{border:1px solid var(--line);background:var(--surface);border-radius:999px;padding:6px 12px;font:600 13px "IBM Plex Sans";cursor:pointer;color:var(--ink-2)}
+.chip.on{background:var(--accent);border-color:var(--accent);color:#fff}
+.chip .d{display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--line);margin-right:6px;vertical-align:1px}
+.chip .d.set{background:#2FA35A}
+.pool-head{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap;margin-bottom:8px}
+.pool-head .code{font:700 22px/1 "Barlow Condensed",sans-serif;letter-spacing:.03em}
+.pool-head .nm{font-size:14px;color:var(--ink-2)}
+.tag{margin-left:auto;font:700 12px "Barlow Condensed",sans-serif;letter-spacing:.06em;text-transform:uppercase;padding:3px 8px;border-radius:6px}
+.tag.set{background:var(--ok-soft);color:var(--ok)}
+.tag.unset{background:var(--warn-soft);color:var(--warn)}
+.plan{background:#F3EBDD;border-radius:10px;overflow:hidden;position:relative}
+.plan svg{display:block;width:100%;height:auto;max-height:70vh}
+.plan svg .vac-pattern,.plan svg .vac-sections,.plan svg .photo-layer,.plan svg [marker-end],.plan svg [marker-start]{display:none!important}
+.plan.edit svg{cursor:crosshair}
+.plan .hint{position:absolute;left:8px;top:8px;background:#0A1417cc;color:#fff;font-size:12.5px;padding:5px 9px;border-radius:7px;pointer-events:none}
+.where{margin-top:8px;font-size:14px}
+.where b{color:var(--pin)}
+.row{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-top:10px}
+input[type=text]{font:inherit;padding:8px 10px;border:1px solid var(--line);border-radius:7px;background:var(--surface);flex:1;min-width:0}
+.b{padding:9px 14px;border-radius:9px;border:2px solid var(--accent);background:var(--surface);color:var(--accent);font:600 14px "IBM Plex Sans";cursor:pointer}
+.b.main{background:var(--accent);color:#fff}
+.b:disabled{opacity:.45;cursor:default}
+.msg{font-size:13px;margin-top:8px;min-height:18px}.msg.err{color:var(--urgent)}.msg.ok{color:var(--ok)}
+.login{max-width:380px;margin:12vh auto 0}
+.login input{width:100%;margin-top:4px;font:inherit;padding:8px 10px;border:1px solid var(--line);border-radius:7px}
+.login label{display:block;font-size:13px;color:var(--ink-3);margin-top:12px}
+.motto{text-align:center;font:600 13px "IBM Plex Sans";color:var(--ink-3);margin-top:18px}
+@media print{.chips,.me,.row,.hint,.noprint{display:none!important}.card{break-inside:avoid;border:0}body{background:#fff}}
+</style></head><body>
+<div class="wrap" id="app"><p class="note">Loading…</p></div>
+<script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore-compat.js"></script>
+<script>
+/* HF Pools — water sample points (Kay, 9 Oct 2026).
+ * Where to take the water test sample at each pool, marked on the same pool plans as the vacuum route
+ * cards (drawings come live from dosing-app/vacuum-route-maps.html, with the vacuum layers hidden).
+ * Rule: elbow deep, away from the skimmers and the return jets, never surface water.
+ * Points are stored in Firestore dosing_config/sample_points {pools:{CODE:{x,y,note,by,at}}} in the
+ * plan's own SVG coordinates, so the tracker can draw the same point in the water test job. */
+firebase.initializeApp({
+  apiKey: "AIzaSyANFCZbvRGO9aMRtG9MF_qONO3FL85CzSo", authDomain: "maintenance-board-f931a.firebaseapp.com",
+  projectId: "maintenance-board-f931a", storageBucket: "maintenance-board-f931a.firebasestorage.app",
+  messagingSenderId: "169864970579", appId: "1:169864970579:web:bfb7490d0aebcfed17e1a6"
+});
+const auth = firebase.auth(), db = firebase.firestore();
+const ROUTE_URL = "https://hfpools.com/dosing-app/vacuum-route-maps.html";
+const DOC = "dosing_config/sample_points";
+const $ = s => document.querySelector(s);
+const esc = s => String(s == null ? "" : s).replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const S = {user:null, pools:[], points:{}, sel:"", edit:false, draft:{}, busy:false, msg:"", err:""};
+try{ S.sel = localStorage.getItem("hf-wsp-sel") || ""; }catch(e){}
+
+async function loadPlans(){
+  const t = await fetch(ROUTE_URL + "?v=" + Math.floor(Date.now() / 3600e3), {cache:"no-cache"}).then(r => r.ok ? r.text() : "");
+  const doc = new DOMParser().parseFromString(t, "text/html");
+  S.pools = Array.from(doc.querySelectorAll(".card")).map(c => {
+    const code = (c.querySelector(".code") || {}).textContent, svg = c.querySelector(".plan svg");
+    if(!code || !svg) return null;
+    svg.removeAttribute("data-steps");
+    // Only the pool itself is needed here: drop the vacuum route, its arrows, START/END and section numbers.
+    svg.querySelectorAll(".vac-pattern,.vac-sections,.photo-layer,.rt-a,.rt-b,.rt-c,.chev,.secn,.dr-end,[marker-end],[marker-start]").forEach(e => e.remove());
+    svg.querySelectorAll("text").forEach(e => { if(/^\s*(START|END)\b/i.test(e.textContent)) e.remove(); });
+    svg.querySelectorAll("circle").forEach(e => { const f = (e.getAttribute("fill") || "").toUpperCase(); if(f === "#E2382C") { const n = e.nextElementSibling; e.remove(); if(n && n.tagName.toLowerCase() === "circle" && /^#fff/i.test(n.getAttribute("fill") || "")) n.remove(); } });
+    svg.querySelectorAll("g[transform]").forEach(g => { const pth = g.querySelector("path"); if(g.children.length === 1 && pth && /^M0 6 L0 -10/.test(pth.getAttribute("d") || "")) g.remove(); });
+    const h3 = c.querySelector("h3");
+    return {code: code.trim(), name: h3 ? h3.textContent.trim() : "", svg: svg.outerHTML};
+  }).filter(Boolean);
+  if(!S.sel || !S.pools.some(p => p.code === S.sel)) S.sel = S.pools.length ? S.pools[0].code : "";
+}
+async function loadPoints(){
+  try{ const d = await db.doc(DOC).get(); S.points = (d.exists && d.data().pools) || {}; }catch(e){ S.err = "Couldn't read the saved points: " + e.message; }
+}
+
+// The red W pin, drawn in the plan's own coordinates. r scales with the plan so it reads the same size on every pool.
+function pinSvg(pt, vb, ghost){
+  const r = Math.max(vb[2], vb[3]) / 34, lw = r * 9.2;
+  const lx = pt.x + r * 1.4 + lw > vb[0] + vb[2] ? pt.x - r * 1.4 - lw : pt.x + r * 1.4;   // label flips left near the right edge
+  return `<g class="wpin" pointer-events="none" ${ghost ? 'opacity=".55"' : ""}>
+    <circle cx="${pt.x}" cy="${pt.y}" r="${r * 1.9}" fill="#D7263D" opacity=".18"/>
+    <circle cx="${pt.x}" cy="${pt.y}" r="${r}" fill="#D7263D" stroke="#fff" stroke-width="${r * .22}"/>
+    <text x="${pt.x}" y="${pt.y + r * .38}" text-anchor="middle" font-family="Barlow Condensed,sans-serif" font-weight="700" font-size="${r * 1.15}" fill="#fff">W</text>
+    <rect x="${lx}" y="${pt.y - r * .75}" width="${lw}" height="${r * 1.5}" rx="${r * .3}" fill="#0A1417" opacity=".85"/>
+    <text x="${lx + r * .35}" y="${pt.y + r * .28}" font-family="IBM Plex Mono,monospace" font-weight="600" font-size="${r * .78}" fill="#fff">SAMPLE · ELBOW DEEP</text>
+  </g>`;
+}
+function vbOf(svgText){
+  const m = svgText.match(/viewBox="([^"]+)"/); return m ? m[1].trim().split(/[\s,]+/).map(Number) : [0, 0, 640, 640];
+}
+function poolCard(p){
+  const saved = S.points[p.code], draft = S.draft[p.code], pt = draft || saved, vb = vbOf(p.svg);
+  const svg = p.svg.replace(/<\/svg>\s*$/, (pt ? pinSvg(pt, vb, !!draft && !saved) : "") + "</svg>");
+  const note = draft ? (draft.note || "") : (saved && saved.note) || "";
+  const when = saved && saved.at ? new Date(saved.at).toLocaleDateString("en-SG", {day:"numeric", month:"short"}) : "";
+  return `<div class="card">
+    <div class="pool-head"><span class="code">${esc(p.code)}</span><span class="nm">${esc(p.name)}</span>
+      <span class="tag ${saved ? "set" : "unset"}">${saved ? "Point set" : "Not set yet"}</span></div>
+    <div class="plan ${S.edit ? "edit" : ""}" data-plan="${esc(p.code)}">${svg}${S.edit ? `<span class="hint">Tap where the sample should be taken</span>` : ""}</div>
+    <div class="where">${pt ? `<b>W</b> — take the sample here, elbow deep.${note ? " " + esc(note.charAt(0).toUpperCase() + note.slice(1)) : ""}` : `<span class="note">No sample point marked for this pool yet.</span>`}
+      ${saved && !draft ? `<span class="note"> · set by ${esc(String(saved.by || "").split("@")[0])}${when ? ", " + when : ""}</span>` : ""}</div>
+    ${S.edit ? `<div class="row"><input type="text" id="wnote" maxlength="120" placeholder="Short note, e.g. middle of the right side, opposite the stairs" value="${esc(note)}">
+      <button class="b main" id="wsave" ${draft ? "" : "disabled"}>Save point</button>
+      ${saved ? `<button class="b" id="wclear">Remove</button>` : ""}</div>` : ""}
+  </div>`;
+}
+function render(){
+  const p = S.pools.find(x => x.code === S.sel);
+  $("#app").innerHTML = `<header><h1>HF Pools <small>Water sample points</small></h1>
+      <span class="me">${esc((S.user.email || "").split("@")[0])} · <button id="out">Sign out</button></span></header>
+    <div class="card">
+      <h2>How to take the water sample</h2>
+      <ol class="steps">
+        <li>Go to the <b>W point</b> on your pool's map below.</li>
+        <li>Rinse the sample cup with pool water, then throw that water away.</li>
+        <li>Turn the cup <b>upside down</b> (mouth facing down).</li>
+        <li>Push it straight down to <b>elbow depth (30 – 40 cm)</b>.</li>
+        <li>Turn the cup upright <b>under the water</b> so it fills, then lift it out.</li>
+        <li>Test straight away at the counter, following the FC test SOP.</li>
+      </ol>
+      <div class="why"><b>Never take surface water.</b> Stay away from the <b>skimmers</b> (they pull in the dirty top layer) and the <b>return jets</b> (fresh chlorinated water comes out there and reads too high). Not right after dosing.</div>
+    </div>
+    <div class="chips noprint">${S.pools.map(x => `<button class="chip ${x.code === S.sel ? "on" : ""}" data-pool="${esc(x.code)}"><span class="d ${S.points[x.code] ? "set" : ""}"></span>${esc(x.code)}</button>`).join("")}</div>
+    ${S.err ? `<div class="msg err">${esc(S.err)}</div>` : ""}
+    ${p ? poolCard(p) : `<p class="note">Couldn't load the pool maps.</p>`}
+    <div class="row noprint">
+      <button class="b" id="wedit">${S.edit ? "Done editing" : "Edit sample points"}</button>
+      <button class="b" id="wprint">Print this pool</button>
+      <span class="msg ${S.msg.startsWith("Saved") || S.msg.startsWith("Removed") ? "ok" : ""}">${esc(S.msg)}</span>
+    </div>
+    <p class="motto">Test right, dose right, let little swimmers thrive.</p>`;
+  bind();
+}
+function bind(){
+  $("#out").onclick = () => auth.signOut();
+  document.querySelectorAll("[data-pool]").forEach(b => b.onclick = () => { S.sel = b.dataset.pool; S.msg = ""; try{ localStorage.setItem("hf-wsp-sel", S.sel); }catch(e){} render(); });
+  $("#wedit").onclick = () => { S.edit = !S.edit; S.msg = ""; if(!S.edit) S.draft = {}; render(); };
+  $("#wprint").onclick = () => window.print();
+  const plan = $("[data-plan]");
+  if(plan && S.edit){
+    const svg = plan.querySelector("svg");
+    svg.addEventListener("click", e => {
+      const pt = svg.createSVGPoint(); pt.x = e.clientX; pt.y = e.clientY;
+      const m = svg.getScreenCTM(); if(!m) return;
+      const q = pt.matrixTransform(m.inverse());
+      const code = plan.dataset.plan, n = $("#wnote");
+      S.draft[code] = {x: Math.round(q.x), y: Math.round(q.y), note: n ? n.value.trim() : ""};
+      S.msg = "Not saved yet — press Save point."; render();
+    });
+  }
+  const n = $("#wnote"); if(n) n.oninput = () => { const c = S.sel; const base = S.draft[c] || S.points[c]; if(!base) return; S.draft[c] = Object.assign({}, base, {note: n.value.trim()}); const sv = $("#wsave"); if(sv) sv.disabled = false; };
+  const sv = $("#wsave"); if(sv) sv.onclick = async () => {
+    const c = S.sel, d = S.draft[c]; if(!d) return;
+    const rec = {x: d.x, y: d.y, note: d.note || "", by: S.user.email || "", at: new Date().toISOString()};
+    sv.disabled = true;
+    try{ await db.doc(DOC).set({pools: {[c]: rec}}, {merge: true}); S.points[c] = rec; delete S.draft[c]; S.msg = "Saved " + c + "."; S.err = ""; }
+    catch(e){ S.err = "Couldn't save: " + e.message; }
+    render();
+  };
+  const cl = $("#wclear"); if(cl) cl.onclick = async () => {
+    const c = S.sel; if(!confirm("Remove the sample point for " + c + "?")) return;
+    try{ await db.doc(DOC).update({["pools." + c]: firebase.firestore.FieldValue.delete()}); delete S.points[c]; delete S.draft[c]; S.msg = "Removed " + c + "."; }
+    catch(e){ S.err = "Couldn't remove: " + e.message; }
+    render();
+  };
+}
+function loginView(msg){
+  $("#app").innerHTML = `<div class="card login"><h1 style="font-size:24px">HF Pools <small>Sample points</small></h1>
+    <form id="lf"><label>Email<input id="em" type="email" required autocomplete="username"></label><label>Password<input id="pw" type="password" required autocomplete="current-password"></label>
+    <button class="b main" style="width:100%;margin-top:16px">Sign in</button></form><div class="msg err">${esc(msg || "")}</div></div>`;
+  $("#lf").onsubmit = async e => { e.preventDefault(); try{ await auth.signInWithEmailAndPassword($("#em").value.trim(), $("#pw").value); }catch(err){ loginView("Email or password is not right."); } };
+}
+auth.onAuthStateChanged(async u => {
+  S.user = u; if(!u){ loginView(); return; }
+  $("#app").innerHTML = `<p class="note">Loading the pool maps…</p>`;
+  try{ await loadPlans(); }catch(e){ S.err = "Couldn't load the pool maps: " + e.message; }
+  await loadPoints();
+  render();
+});
+</script>
+<script src="https://hfpools.com/nav.js" defer></script>
+</body></html>

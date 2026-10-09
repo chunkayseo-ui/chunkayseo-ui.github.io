@@ -43,6 +43,8 @@ h1 small{font-size:15px;color:var(--accent);margin-left:6px}
 .slide{text-align:center}
 .pic{min-height:150px;display:flex;align-items:center;justify-content:center;font-size:84px;line-height:1;margin:6px 0 14px}
 .pic svg{width:100%;max-width:440px;height:auto}
+.vid{display:block;width:100%;max-width:360px;margin:4px auto 12px;border-radius:10px;background:#000}
+.golink{display:inline-block;text-decoration:none;margin:0 0 12px}
 .say{font-size:20px;line-height:1.55;text-align:left;margin:0}
 body.ta .say{font-size:18px}
 .nav{display:flex;gap:10px;margin-top:18px}
@@ -217,17 +219,25 @@ const LESSONS = [
   ]},
 
 /* ---------------- 4. Water test ---------------- */
-{ id:"test", icon:"🔬", mins:4,
+{ id:"test", icon:"🔬", mins:6,
   title:{en:"Doing the FC test right", ms:"Ujian FC yang betul", ta:"FC சோதனையைச் சரியாகச் செய்வது"},
   cards:[
   {pic:"🎯", t:{
     en:"A wrong test = a wrong dose. Test the same way every time.",
     ms:"Ujian salah = dos salah. Uji dengan cara yang sama setiap kali.",
     ta:"தவறான சோதனை = தவறான டோஸ். ஒவ்வொரு முறையும் ஒரே மாதிரி சோதியுங்கள்."}},
-  {pic:"💪", t:{
-    en:"Take the water from elbow deep (30 – 40 cm under the surface), away from the return jets and the skimmer.",
-    ms:"Ambil air sedalam siku (30 – 40 cm bawah permukaan), jauh dari jet pulangan dan skimmer.",
-    ta:"முழங்கை ஆழத்திலிருந்து (மேற்பரப்புக்குக் கீழ் 30 – 40 cm) தண்ணீர் எடுங்கள், திரும்பும் ஜெட் மற்றும் ஸ்கிம்மரிலிருந்து தள்ளி."}},
+  {pic:"🎬", video:"https://hfpools.com/dosing-app/video/fc-test-5-rules.mp4", t:{
+    en:"Watch the FC test video first (2½ min). Then go through the cards.",
+    ms:"Tonton video ujian FC dahulu (2½ minit). Kemudian baca kad-kad ini.",
+    ta:"முதலில் FC சோதனை வீடியோவைப் பாருங்கள் (2½ நிமிடம்). பிறகு அட்டைகளைப் படியுங்கள்."}},
+  {pic:"svg:sample", t:{
+    en:"Take the sample elbow deep (30 – 40 cm). Rinse the cup. Turn it upside down. Push it straight down. Turn it upright under the water, then lift it out. Never scoop the surface.",
+    ms:"Ambil sampel sedalam siku (30 – 40 cm). Bilas cawan. Terbalikkan cawan. Tolak terus ke bawah. Pusingkan cawan tegak di dalam air, kemudian angkat. Jangan cedok air di permukaan.",
+    ta:"முழங்கை ஆழத்தில் (30 – 40 cm) மாதிரி எடுங்கள். கோப்பையைக் கழுவுங்கள். தலைகீழாகத் திருப்புங்கள். நேராகக் கீழே அழுத்துங்கள். தண்ணீருக்குள்ளேயே நேராகத் திருப்பி, பிறகு வெளியே எடுங்கள். மேற்பரப்பு நீரை அள்ள வேண்டாம்."}},
+  {pic:"📍", link:{href:"https://hfpools.com/sample-points", label:{en:"Open the pool maps", ms:"Buka peta kolam", ta:"குள வரைபடங்களைத் திறக்கவும்"}}, t:{
+    en:"Take it at the W point on your pool's map. Stay away from the skimmers (dirty top water) and the return jets (fresh chlorine comes out there and reads too high).",
+    ms:"Ambil di titik W pada peta kolam anda. Jauhkan dari skimmer (air permukaan yang kotor) dan jet pulangan (klorin baru keluar di situ, bacaan jadi terlalu tinggi).",
+    ta:"உங்கள் குளத்தின் வரைபடத்தில் உள்ள W இடத்தில் எடுங்கள். ஸ்கிம்மரிலிருந்து (அழுக்கான மேல் நீர்) மற்றும் திரும்பும் ஜெட்டிலிருந்து (அங்கே புதிய குளோரின் வருவதால் அளவு அதிகமாகக் காட்டும்) தள்ளி இருங்கள்."}},
   {pic:"svg:tube", t:{
     en:"Stand the tube on the counter — don't hold it in your hand. Fill to the 10 mL line. Add 2 scoops of R-0870 powder. Swirl until pink. Start the R-0871 drops straight away. No pink at all = FC 0 — tell the supervisor.",
     ms:"Letak tiub tegak di atas kaunter — jangan pegang di tangan. Isi hingga garisan 10 mL. Masukkan 2 sudu penyukat serbuk R-0870. Pusingkan tiub perlahan-lahan sehingga merah jambu. Terus mula titiskan R-0871. Tiada warna merah jambu langsung = FC 0 — beritahu penyelia.",
@@ -250,6 +260,10 @@ const LESSONS = [
     ta:"ஒவ்வொரு கிளையிலும் முதல் வேலை: நீர் சோதனை மற்றும் இரவு அறிக்கை. முதலில் அறிக்கை அனுப்புங்கள், பிறகு டோஸ்."}},
   ],
   quiz:[
+  {q:{en:"Where do you take the water sample?", ms:"Di mana ambil sampel air?", ta:"நீர் மாதிரியை எங்கே எடுப்பது?"},
+   o:[{en:"Scoop from the surface near the skimmer", ms:"Cedok dari permukaan dekat skimmer", ta:"ஸ்கிம்மர் அருகே மேற்பரப்பில் அள்ளுவது"},{en:"Elbow deep, at the W point on the map", ms:"Sedalam siku, di titik W pada peta", ta:"முழங்கை ஆழத்தில், வரைபடத்தின் W இடத்தில்"}], a:1},
+  {q:{en:"You take the sample in front of a return jet. The FC reading will be…", ms:"Sampel diambil di depan jet pulangan. Bacaan FC akan…", ta:"திரும்பும் ஜெட் முன் மாதிரி எடுத்தால் FC அளவு…"},
+   o:[{en:"Too high", ms:"Terlalu tinggi", ta:"அதிகமாகக் காட்டும்"},{en:"Correct", ms:"Betul", ta:"சரியாக இருக்கும்"}], a:0},
   {q:{en:"10 drops of R-0871. What is the FC?", ms:"10 titis R-0871. Berapa FC?", ta:"R-0871 10 சொட்டுகள். FC எவ்வளவு?"},
    o:[{en:"5 ppm", ms:"5 ppm", ta:"5 ppm"},{en:"10 ppm", ms:"10 ppm", ta:"10 ppm"},{en:"20 ppm", ms:"20 ppm", ta:"20 ppm"}], a:0},
   {q:{en:"How do you hold the R-0871 bottle?", ms:"Bagaimana pegang botol R-0871?", ta:"R-0871 பாட்டிலை எப்படிப் பிடிப்பது?"},
@@ -730,6 +744,7 @@ const LESSONS = [
 
 /* Words used inside the drawings. */
 const PIC_WORDS = {
+  surface:{en:"surface", ms:"permukaan", ta:"மேற்பரப்பு"}, elbow:{en:"elbow deep", ms:"sedalam siku", ta:"முழங்கை ஆழம்"},
   germ:{en:"germ", ms:"kuman", ta:"கிருமி"}, chlorine:{en:"chlorine", ms:"klorin", ta:"குளோரின்"},
   acid:{en:"acid", ms:"asid", ta:"அமிலம்"}, ours:{en:"our pools", ms:"kolam kita", ta:"நம் குளங்கள்"}, alkaline:{en:"alkaline", ms:"alkali", ta:"காரத்தன்மை"},
   strong:{en:"strong chlorine", ms:"klorin kuat", ta:"வலுவான குளோரின்"},
@@ -849,6 +864,17 @@ const PICS = {
         <text x="${x + 30}" y="${104 - h}" text-anchor="middle" font-size="15" font-weight="700" fill="#0A1417">~${v}%</text>
         <text x="${x + 30}" y="130" text-anchor="middle" font-size="14" fill="#33474D">pH ${p.toFixed(1)}</text>`; }).join("")}
       <text x="160" y="160" text-anchor="middle" font-size="12" fill="#5B7378">${W("strong")}</text></svg>`; },
+  sample: () => `<svg viewBox="0 0 320 150" role="img" aria-label="surface scoop is wrong, cup upside down to elbow depth is right">
+    <rect x="0" y="40" width="320" height="110" fill="#BFE3F5"/><path d="M0 40 H320" stroke="#2E8CBE" stroke-width="3"/>
+    <g transform="translate(70 0)"><path d="M-22 34 h44 l-5 18 h-34z" fill="#fff" stroke="#33474D" stroke-width="3"/>
+      <text x="0" y="22" text-anchor="middle" font-size="22" fill="#B23A2E">✗</text>
+      <text x="0" y="78" text-anchor="middle" font-size="13" fill="#33474D">${W("surface")}</text></g>
+    <g transform="translate(220 0)"><path d="M0 2 V98" stroke="#C9956B" stroke-width="12" stroke-linecap="round"/>
+      <path d="M-22 120 h44 l-5 -18 h-34z" fill="#fff" stroke="#33474D" stroke-width="3"/>
+      <path d="M40 42 V114" stroke="#256B4C" stroke-width="2"/><path d="M34 42 h12 M34 114 h12" stroke="#256B4C" stroke-width="2"/>
+      <text x="52" y="74" font-size="12" fill="#256B4C">30–40</text><text x="52" y="88" font-size="12" fill="#256B4C">cm</text>
+      <text x="-26" y="30" text-anchor="middle" font-size="22" fill="#256B4C">✓</text>
+      <text x="0" y="142" text-anchor="middle" font-size="13" fill="#33474D">${W("elbow")}</text></g></svg>`,
   tube: () => `<svg viewBox="0 0 320 150" role="img" aria-label="test tube 10 mL turning pink">
     <rect x="30" y="126" width="260" height="8" rx="3" fill="#C7D6D6"/>
     <path d="M70 20 v96 a14 14 0 0 0 28 0 v-96" fill="#fff" stroke="#33474D" stroke-width="3"/><rect x="72" y="60" width="24" height="58" fill="#E9F3FA"/>
@@ -991,6 +1017,8 @@ function lessonView(){
   <div class="card slide"><div class="num" style="text-align:left">${esc(l.icon)} ${esc(tx(l.title))}</div>
     <div class="pic">${picHtml(c.pic)}</div>
     <p class="say" id="say">${esc(tx(c.t))}</p>
+    ${c.video ? `<video class="vid" src="${esc(c.video)}" controls playsinline preload="metadata"></video>` : ""}
+    ${c.link ? `<a class="b main golink" href="${esc(c.link.href)}" target="_blank" rel="noopener">${esc(tx(c.link.label))} ↗</a>` : ""}
     <div style="text-align:left"><button class="listen" id="listen">🔊 ${esc(tx(UI.listen))}</button><div class="hint" id="vhint"></div></div>
     <div class="nav"><button class="b" id="prev" ${S.card === 0 ? "disabled" : ""}>${esc(tx(UI.prev))}</button>
       <button class="b main" id="next">${esc(tx(last ? UI.toquiz : UI.next))}</button></div></div>`;
