@@ -1,0 +1,623 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Manual vacuum · area covered</title>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700&family=IBM+Plex+Sans:wght@400;600&display=swap" rel="stylesheet">
+<style>
+:root{--ground:#EEF3F3;--surface:#fff;--line:#C7D6D6;--ink:#0A1417;--ink-2:#33474D;--ink-3:#5B7378;--accent:#00676F;--ok:#256B4C;--ok-soft:#DDEEE5;--warn:#8A590D;--warn-soft:#F6EAD4;--urgent:#B23A2E;--urgent-soft:#F8DEDA}
+*{box-sizing:border-box}body{margin:0;background:var(--ground);color:var(--ink);font:15px/1.45 "IBM Plex Sans",system-ui,sans-serif}
+.wrap{max-width:720px;margin:0 auto;padding:14px 12px 40px}
+h1{font:700 26px/1.05 "Barlow Condensed",sans-serif;text-transform:uppercase;letter-spacing:.02em;margin:0 0 4px}
+h2{font:700 15px/1 "Barlow Condensed",sans-serif;text-transform:uppercase;letter-spacing:.06em;color:var(--ink-2);margin:0 0 8px}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:14px;margin:12px 0}
+.meta{color:var(--ink-3);font-size:14px}.meta b{color:var(--ink)}
+.tag{display:inline-block;padding:3px 9px;border-radius:999px;font-size:12px;font-weight:600;margin-right:6px}
+.tag.ok{background:var(--ok-soft);color:var(--ok)}.tag.warn{background:var(--warn-soft);color:var(--warn)}.tag.run{background:#DCEEEE;color:var(--accent)}
+.map svg{width:100%;height:auto;display:block}
+.legend{display:flex;gap:14px;flex-wrap:wrap;font-size:13px;color:var(--ink-3);margin-top:8px}
+.legend i{display:inline-block;width:14px;height:14px;border-radius:3px;vertical-align:-2px;margin-right:5px}
+ul{margin:4px 0 0;padding-left:20px}li{margin:3px 0}
+.photos{display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:8px}
+.photos a{display:block;border:1px solid var(--line);border-radius:8px;overflow:hidden;background:#fff;text-decoration:none;color:var(--ink)}
+.photos img{width:100%;aspect-ratio:4/3;object-fit:cover;display:block;background:#eee}
+.photos span{display:block;font-size:11px;padding:4px 6px;color:var(--ink-2);line-height:1.3}
+.note{color:var(--ink-3);font-size:13px}.err{color:var(--urgent)}
+</style></head><body><div class="wrap" id="app"><div class="card"><div class="note">Loading…</div></div></div>
+<script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore-compat.js"></script>
+<script>
+/* Manual vacuum — area covered (Kay, 9 Oct 2026). Public page linked from the branch's Telegram
+ * "vacuum done" message: the finished route map (green = vacuumed, grey = skipped / not done),
+ * the sections, and the proof photos, read straight from the tracker's round (dosing_rounds/{r}, task {t}).
+ * The map code is the tracker's own (vacMapHtml & co.); keep them the same. */
+firebase.initializeApp({
+  apiKey: "AIzaSyANFCZbvRGO9aMRtG9MF_qONO3FL85CzSo", authDomain: "maintenance-board-f931a.firebaseapp.com",
+  projectId: "maintenance-board-f931a", storageBucket: "maintenance-board-f931a.firebasestorage.app",
+  messagingSenderId: "169864970579", appId: "1:169864970579:web:bfb7490d0aebcfed17e1a6"
+});
+const db = firebase.firestore();
+const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const DOSING_KEY_MAP = {LENTOR:"Lentor", TENGAH:"Tengah"};
+const dosingKeyFor = (outletCode, pool) => pool || DOSING_KEY_MAP[outletCode] || outletCode;
+const SG = {timeZone:"Asia/Singapore"};
+const clock = iso => iso ? new Date(iso).toLocaleTimeString("en-SG", Object.assign({hour:"numeric", minute:"2-digit"}, SG)).toLowerCase() : "";
+const day = iso => iso ? new Date(iso).toLocaleDateString("en-SG", Object.assign({day:"numeric", month:"short", year:"numeric"}, SG)) : "";
+const dur = m => { m = Math.round(Number(m) || 0); return m >= 60 ? Math.floor(m / 60) + " h " + (m % 60 ? (m % 60) + " min" : "") : m + " min"; };
+const VAC_ROUTE_URL = "https://hfpools.com/dosing-app/vacuum-route-maps.html";
+const VACMAP_KEY = "drt.vaccard.v1";
+const vacMap = {html:null, loading:false, tried:false, svgs:{}, marked:{}};
+// Whether the map is folded away is remembered on the phone -- a technician
+// who knows the pool by heart hides it once and it stays hidden.
+vacMap.hidden = (() => { try{ return localStorage.getItem("drt.vacmap.hidden") === "1"; }catch(e){ return false; } })();
+function vacMapToggle(){
+  vacMap.hidden = !vacMap.hidden;
+  try{ localStorage.setItem("drt.vacmap.hidden", vacMap.hidden ? "1" : "0"); }catch(e){}
+  void 0;
+}
+// The photo-point badges and arrows can be switched off to see the route and
+// vacuum strokes on their own; remembered on the phone like the map itself.
+vacMap.noPhotos = (() => { try{ return localStorage.getItem("drt.vacmap.nophotos") === "1"; }catch(e){ return false; } })();
+function vacPhotosToggle(){
+  vacMap.noPhotos = !vacMap.noPhotos;
+  try{ localStorage.setItem("drt.vacmap.nophotos", vacMap.noPhotos ? "1" : "0"); }catch(e){}
+  void 0;
+}
+try{ const c = JSON.parse(localStorage.getItem(VACMAP_KEY) || "null"); if(c && c.html) vacMap.html = c.html; }catch(e){}
+function vacMapLoad(){
+  if(vacMap.loading || vacMap.tried) return;
+  vacMap.loading = true;
+  fetch(VAC_ROUTE_URL + "?v=" + Math.floor(Date.now() / 3600e3), {cache:"no-cache"})
+    .then(r => r.ok ? r.text() : null)
+    .then(t => {
+      if(t && t.includes('class="card"') && t !== vacMap.html){
+        vacMap.html = t; vacMap.svgs = {}; vacMap.marked = {}; vacMap.cols = {};
+        try{ localStorage.setItem(VACMAP_KEY, JSON.stringify({html:t, at:Date.now()})); }catch(e){}
+        if(document.querySelector("[data-vacmap]")) void 0;
+      }
+    })
+    .catch(() => {})
+    .finally(() => { vacMap.loading = false; vacMap.tried = true; });
+}
+function vacMapSvg(card){
+  if(!vacMap.html) return null;
+  if(card in vacMap.svgs) return vacMap.svgs[card];
+  let out = null;
+  try{
+    const doc = new DOMParser().parseFromString(vacMap.html, "text/html");
+    const c = Array.from(doc.querySelectorAll(".card")).find(x => { const k = x.querySelector(".code"); return k && k.textContent.trim() === card; });
+    const svg = c && c.querySelector(".plan svg");
+    if(svg && svg.querySelector(".photo-layer")){
+      out = document.importNode(svg, true);
+      // The card leaves wide margins round each pool for its labels; on a
+      // phone that shrinks the pool to a stamp. Trim the view to what is
+      // actually drawn (photo points included) so the pool fills the width.
+      try{
+        out.classList.add("photos-on");
+        const box = document.createElement("div");
+        box.style.cssText = "position:absolute;left:-9999px;top:0;width:640px;visibility:hidden";
+        box.appendChild(out); document.body.appendChild(box);
+        const layer = out.querySelector(".photo-layer"); if(layer) layer.style.display = "inline";
+        const bb = out.getBBox();
+        if(layer) layer.style.display = "";
+        box.remove();
+        if(bb && bb.width > 50 && bb.height > 50){
+          const p = 10; out.setAttribute("viewBox", [bb.x - p, bb.y - p, bb.width + 2*p, bb.height + 2*p].map(v => Math.round(v)).join(" "));
+        }
+      }catch(e){}
+    }
+  }catch(e){ out = null; }
+  vacMap.svgs[card] = out;
+  return out;
+}
+// The card's drawing with every photo point still readable: the NEXT one at
+// full strength with a yellow ring, ones still to come clearly visible, and
+// ones already taken dimmed with a green tick. Badges are matched to their
+// arrows by colour, which is how the card itself pairs them.
+// The ids a route-card badge stands for: "P3" -> [P3], "E1–3" -> [E1,E2,E3],
+// "E1,3" -> [E1,E3], "E1,3–4" -> [E1,E3,E4].
+function vacBadgeIds(label){
+  const m = String(label || "").replace(/\s/g, "").match(/^([PES])([\d,–-]+)$/);
+  if(!m) return null;
+  const ids = [];
+  for(const part of m[2].split(",")){
+    const r = part.match(/^(\d+)(?:[–-](\d+))?$/); if(!r) return null;
+    for(let i = +r[1]; i <= (r[2] ? +r[2] : +r[1]); i++) ids.push(m[1] + i);
+  }
+  return ids.length ? ids : null;
+}
+// Which photo points prove each coloured section of the pool, read from the
+// card's own Play steps ("1 · Left half" -> P2 ...). A section with no photo
+// of its own is proved by the next photo taken after it; a trailing section
+// with none is tied to the last photo before it.
+function vacSecPhotos(card){
+  vacMap.secs = vacMap.secs || {};
+  if(card in vacMap.secs) return vacMap.secs[card];
+  let out = {};
+  try{
+    const src = vacMapSvg(card);
+    const steps = src && src.getAttribute("data-steps") ? JSON.parse(src.getAttribute("data-steps")) : [];
+    let pend = [], last = null;
+    vacMap.secTitles = vacMap.secTitles || {}; vacMap.secTitles[card] = {};
+    steps.forEach(st => {
+      if(st.sec){ pend.push(String(st.sec)); vacMap.secTitles[card][String(st.sec)] = String(st.t || "").replace(/^\d+\s*·\s*/, ""); }
+      const ph = (st.photos || []).filter(id => /^P\d+$/.test(id));
+      if(ph.length && pend.length){ pend.forEach(n => { out[n] = ph.slice(); }); pend = []; last = ph; }
+    });
+    if(pend.length && last) pend.forEach(n => { out[n] = last.slice(); });
+  }catch(e){ out = {}; }
+  vacMap.secs[card] = out;
+  return out;
+}
+// The section to vacuum now: the one whose first proof photo is the next
+// photo due. Nothing while the next photo is a prep, set-up or close-down one.
+function vacCurrentSec(card, nextId){
+  if(!nextId || !/^P\d+$/.test(nextId)) return null;
+  const secs = vacSecPhotos(card);
+  const n = Object.keys(secs).find(k => secs[k][0] === nextId);
+  return n ? {n, title:((vacMap.secTitles || {})[card] || {})[n] || ""} : null;
+}
+function vacMapHtml(card, nextId, doneIds, skipIds, partial){
+  doneIds = doneIds || []; skipIds = skipIds || [];
+  const k = card + "|" + (nextId || "") + "|" + doneIds.join(",") + "|" + skipIds.join(",") + "|" + (partial ? 1 : 0);
+  if(k in vacMap.marked) return vacMap.marked[k];
+  const src = vacMapSvg(card); if(!src){ return ""; }
+  const svg = src.cloneNode(true);
+  svg.classList.add("photos-on");
+  svg.removeAttribute("width"); svg.removeAttribute("height");
+  const layer = svg.querySelector(".photo-layer");
+  if(layer){
+    const NS = "http://www.w3.org/2000/svg";
+    const idOf = t => t.textContent.replace(/\s/g, "");
+    // colour -> the ids that badge stands for ("E1–3" covers E1, E2, E3)
+    const badges = Array.from(layer.querySelectorAll("text")).map(t => {
+      const label = idOf(t), rect = t.previousElementSibling;
+      const ids = vacBadgeIds(label) || [label];
+      return {t, rect, ids, col:((rect && rect.getAttribute("fill")) || "").toLowerCase()};
+    });
+    // A badge is "skipped" when every photo it stands for was skipped; a badge
+    // with some taken and some skipped counts as done (the tick) -- the text
+    // under the map lists exactly which sections were skipped.
+    const stateOf = b => b.ids.includes(nextId) ? "next"
+      : (b.ids.every(id => skipIds.includes(id)) ? "skipped"
+      : (b.ids.every(id => doneIds.includes(id) || skipIds.includes(id)) ? "done"
+      : ((!nextId && !partial) ? "done" : "todo")));
+    const byCol = {}; badges.forEach(b => { if(b.col) byCol[b.col] = b; });
+    // While vacuuming, the NEXT point is what matters, so done ones dim; on a
+    // finished job the vacuumed sections stay in full colour and the skipped
+    // ones fade right out, so the map reads "done vs not done" at a glance.
+    // While vacuuming, the NEXT point is what matters, so done ones dim. On a
+    // finished job the vacuumed sections keep their colour and everything
+    // not vacuumed -- skipped, or never reached -- is turned grey and faded,
+    // so the map reads "done vs not done" at a glance.
+    const fade = nextId ? {next:1, todo:0.8, done:0.3, skipped:0.5} : {next:1, todo:0.5, done:1, skipped:0.5};
+    const grey = st => st === "skipped" || (st === "todo" && !nextId);
+    if(!svg.querySelector("#vm-grey")){
+      const defs = document.createElementNS(NS, "defs");
+      defs.innerHTML = `<filter id="vm-grey"><feColorMatrix type="saturate" values="0"/></filter>`;
+      svg.insertBefore(defs, svg.firstChild);
+    }
+    Array.from(layer.children).forEach(el => {
+      const tag = el.tagName.toLowerCase();
+      let b = badges.find(x => x.t === el || x.rect === el);
+      const isBadge = !!b;
+      if(!b){ const c = ((el.getAttribute("fill") || "") + "|" + (el.getAttribute("stroke") || "")).toLowerCase(); b = Object.values(byCol).find(x => x.col && c.includes(x.col)); }
+      if(!b) return;
+      const st = stateOf(b);
+      const base = parseFloat(el.getAttribute("opacity") || "1");
+      if(st === "next" && tag === "path") el.setAttribute("opacity", "0.8");
+      else if(st !== "next") el.setAttribute("opacity", String(Math.round(base * fade[st] * 100) / 100));
+      if(grey(st) && !isBadge){ el.setAttribute("filter", "url(#vm-grey)"); el.classList.add("vm-grey"); }
+    });
+    // The pool itself: each coloured section is washed over according to its
+    // photos -- green "DONE" where it was vacuumed, grey "SKIPPED" / "NOT
+    // DONE" where it was not -- so the map reads at a glance on the water,
+    // not only on the little badges. Only on a finished or partly-done job.
+    const secs = vacSecPhotos(card);
+    const secKeys = Object.keys(secs);
+    if(secKeys.length && (partial || skipIds.length)){
+      const wash = document.createElementNS(NS, "g");
+      wash.setAttribute("class", "vm-wash");
+      const labels = [];
+      let box = null;
+      try{
+        box = document.createElement("div");
+        box.style.cssText = "position:absolute;left:-9999px;top:0;width:640px;visibility:hidden";
+        box.appendChild(svg); document.body.appendChild(box);
+      }catch(e){ box = null; }
+      secKeys.forEach(n => {
+        const ids = secs[n];
+        const skipped = ids.every(id => skipIds.includes(id));
+        const done = !skipped && ids.every(id => doneIds.includes(id) || skipIds.includes(id));
+        const notDone = !skipped && !done && !nextId && partial;
+        let st = skipped ? "skipped" : (notDone ? "notdone" : (done && !nextId ? "done" : null));
+        if(!st) return;
+        const paths = [];
+        svg.querySelectorAll(".vac-pattern path").forEach(pth => { if(new RegExp("-" + n + "\\)").test(pth.getAttribute("marker-end") || "")) paths.push(pth); });
+        if(!paths.length) return;
+        const col = st === "done" ? "#16A34A" : "#6B7280";
+        let x1 = Infinity, y1 = Infinity, x2 = -Infinity, y2 = -Infinity;
+        paths.forEach(pth => {
+          const w = document.createElementNS(NS, "path");
+          w.setAttribute("d", pth.getAttribute("d")); w.setAttribute("fill", "none");
+          w.setAttribute("stroke", col); w.setAttribute("stroke-width", "24"); w.setAttribute("stroke-linecap", "round"); w.setAttribute("stroke-linejoin", "round");
+          w.setAttribute("opacity", st === "done" ? "0.45" : "0.82");
+          wash.appendChild(w);
+          try{ const bb = pth.getBBox(); if(bb.width || bb.height){ x1 = Math.min(x1, bb.x); y1 = Math.min(y1, bb.y); x2 = Math.max(x2, bb.x + bb.width); y2 = Math.max(y2, bb.y + bb.height); } }catch(e){}
+        });
+        if(st !== "done"){
+          svg.querySelectorAll(`[data-sec="${n}"]`).forEach(el => { el.setAttribute("filter", "url(#vm-grey)"); el.classList.add("vm-grey"); });
+        }
+        if(isFinite(x1)){
+          const cw = x2 - x1, ch = y2 - y1;
+          const txt = st === "done" ? "✓ DONE" : (st === "skipped" ? "✕ SKIPPED" : "NOT DONE");
+          const fs = Math.max(11, Math.min(18, Math.min(cw, ch) / 4));
+          labels.push({x:(x1 + x2) / 2, y:(y1 + y2) / 2, txt, fs, col: st === "done" ? "#166534" : "#374151"});
+        }
+      });
+      if(box){ try{ box.remove(); }catch(e){} }
+      // Two narrow sections side by side (the two halves of a leg, say) would
+      // print their labels on top of each other: merge same-word labels that
+      // overlap into one, centred between them.
+      const merged = [];
+      labels.forEach(l => {
+        const w = l.txt.length * l.fs * 0.62, h = l.fs * 1.2;
+        const hit = merged.find(m => m.txt === l.txt && Math.abs(m.x - l.x) < (w + m.txt.length * m.fs * 0.62) / 2 && Math.abs(m.y - l.y) < h);
+        if(hit){ hit.x = (hit.x * hit.n + l.x) / (hit.n + 1); hit.y = (hit.y * hit.n + l.y) / (hit.n + 1); hit.n++; hit.fs = Math.max(hit.fs, l.fs); }
+        else merged.push(Object.assign({n:1}, l));
+      });
+      merged.forEach(l => {
+        const t = document.createElementNS(NS, "text");
+        [["x", l.x], ["y", l.y], ["text-anchor", "middle"], ["dominant-baseline", "middle"], ["font-family", "IBM Plex Sans, Arial, sans-serif"], ["font-weight", "800"], ["font-size", l.fs],
+         ["fill", l.col], ["stroke", "#ffffff"], ["stroke-width", "3.5"], ["paint-order", "stroke"], ["class", "vm-label"]].forEach(([a, v]) => t.setAttribute(a, v));
+        t.textContent = l.txt;
+        wash.appendChild(t);
+      });
+      // Under the photo layer so badges, ticks and crosses stay on top.
+      svg.insertBefore(wash, layer);
+    }
+    // While vacuuming: the section to do now pulses, and a dot runs along its
+    // strokes and on to the next photo point -- "vacuum this, then take P5".
+    const cur = vacCurrentSec(card, nextId);
+    const nb = cur && badges.find(x => x.ids.includes(nextId) && x.rect);
+    if(cur && nb){
+      const n = cur.n;
+      const strokes = Array.from(svg.querySelectorAll(".vac-pattern path")).filter(pth => new RegExp("-" + n + "\\)").test(pth.getAttribute("marker-end") || ""));
+      const tints = Array.from(svg.querySelectorAll(`.vac-sections [data-sec="${n}"]`));
+      (tints.length ? tints : strokes).forEach(el => {
+        const a = document.createElementNS(NS, "animate");
+        const base = parseFloat(el.getAttribute("opacity") || "1");
+        [["attributeName", "opacity"], ["values", `${base};${Math.min(1, base + 0.45)};${base}`], ["dur", "1.4s"], ["repeatCount", "indefinite"]].forEach(([k, v]) => a.setAttribute(k, v));
+        el.appendChild(a);
+      });
+      strokes.forEach(el => el.setAttribute("opacity", "1"));
+      if(strokes.length){
+        const bx = parseFloat(nb.rect.getAttribute("x")) + parseFloat(nb.rect.getAttribute("width")) / 2;
+        const by = parseFloat(nb.rect.getAttribute("y")) + parseFloat(nb.rect.getAttribute("height")) / 2;
+        const d = strokes.map(pth => pth.getAttribute("d")).join(" ") + ` L${bx} ${by}`;
+        const pid = "vm-run-" + card.toLowerCase() + "-" + n;
+        const run = document.createElementNS(NS, "path");
+        [["id", pid], ["d", d], ["fill", "none"], ["stroke", "none"]].forEach(([k, v]) => run.setAttribute(k, v));
+        layer.appendChild(run);
+        let len = 1200;
+        try{
+          const box = document.createElement("div"); box.style.cssText = "position:absolute;left:-9999px;top:0;width:640px;visibility:hidden";
+          box.appendChild(svg); document.body.appendChild(box); len = run.getTotalLength() || len; box.remove();
+        }catch(e){}
+        const dur = Math.max(6, Math.min(22, len / 150)) + 2;
+        const cycle = dur;
+        const start = -((Date.now() / 1000) % cycle);
+        const dot = document.createElementNS(NS, "g");
+        dot.setAttribute("class", "vm-dot");
+        dot.innerHTML = `<circle r="11" fill="#FFD23F" opacity="0.35"><animate attributeName="r" values="9;14;9" dur="1s" repeatCount="indefinite"/></circle><circle r="6.5" fill="#FFD23F" stroke="#0F2430" stroke-width="2"/>`;
+        const am = document.createElementNS(NS, "animateMotion");
+        [["dur", dur + "s"], ["repeatCount", "indefinite"], ["begin", start + "s"], ["calcMode", "linear"], ["keyPoints", "0;1;1"], ["keyTimes", "0;0.9;1"], ["rotate", "0"]].forEach(([k, v]) => am.setAttribute(k, v));
+        const mp = document.createElementNS(NS, "mpath"); mp.setAttribute("href", "#" + pid); mp.setAttributeNS("http://www.w3.org/1999/xlink", "xlink:href", "#" + pid);
+        am.appendChild(mp); dot.appendChild(am);
+        layer.appendChild(dot);
+      }
+    }
+    badges.forEach(b => {
+      if(!b.rect) return;
+      const st = stateOf(b);
+      const x = parseFloat(b.rect.getAttribute("x")), y = parseFloat(b.rect.getAttribute("y")), w = parseFloat(b.rect.getAttribute("width")), h = parseFloat(b.rect.getAttribute("height"));
+      if(st === "next"){
+        const ring = document.createElementNS(NS, "rect");
+        [["x", x - 5], ["y", y - 5], ["width", w + 10], ["height", h + 10], ["rx", (parseFloat(b.rect.getAttribute("rx")) || 9) + 5],
+         ["fill", "none"], ["stroke", "#FFD23F"], ["stroke-width", "4"], ["class", "vm-ring"]].forEach(([a, v]) => ring.setAttribute(a, v));
+        layer.appendChild(ring); layer.appendChild(b.rect); layer.appendChild(b.t);
+      } else if(st === "done"){
+        const tick = document.createElementNS(NS, "g");
+        tick.setAttribute("class", "vm-tick");
+        tick.innerHTML = `<circle cx="${x + w}" cy="${y}" r="7" fill="#256B4C" stroke="#fff" stroke-width="1.5"/><path d="M${x + w - 3.2} ${y} l2.2 2.4 l4 -4.6" fill="none" stroke="#fff" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>`;
+        layer.appendChild(tick);
+      } else if(st === "skipped"){
+        const x0 = document.createElementNS(NS, "g");
+        x0.setAttribute("class", "vm-skip");
+        x0.innerHTML = `<circle cx="${x + w}" cy="${y}" r="7" fill="#B42318" stroke="#fff" stroke-width="1.5"/><path d="M${x + w - 2.8} ${y - 2.8} l5.6 5.6 M${x + w + 2.8} ${y - 2.8} l-5.6 5.6" fill="none" stroke="#fff" stroke-width="1.8" stroke-linecap="round"/>`;
+        layer.appendChild(x0);
+      }
+    });
+  }
+  // The card hides its photo layer unless .photos-on is set by its own CSS;
+  // here there is no such rule, so it simply shows.
+  const html = svg.outerHTML;
+  vacMap.marked[k] = html;
+  return html;
+}
+/* The finished map as a picture, for the branch's Telegram group (Kay, 9 Oct 2026):
+ * the same drawing vacMapHtml makes for a finished job, drawn onto a canvas and
+ * saved as a JPEG. Sent through the photo relay like a section photo, kept on the
+ * job as vac.map; the Pool Telegram Logger posts it with the "vacuum done" message. */
+async function vacMapImage(card, doneIds, skipIds, partial, width){
+  const html = vacMapHtml(card, null, doneIds, skipIds, partial); if(!html) return null;
+  const box = document.createElement("div"); box.innerHTML = html; const svg = box.firstElementChild; if(!svg) return null;
+  svg.setAttribute("xmlns", "http://www.w3.org/2000/svg"); svg.setAttribute("xmlns:xlink", "http://www.w3.org/1999/xlink");
+  const vb = (svg.getAttribute("viewBox") || "0 0 800 600").split(/[\s,]+/).map(Number);
+  const W = width || 900, H = Math.max(100, Math.round(W * vb[3] / vb[2]));
+  svg.setAttribute("width", W); svg.setAttribute("height", H);
+  const st = document.createElementNS("http://www.w3.org/2000/svg", "style"); st.textContent = "text{font-family:Helvetica,Arial,sans-serif}"; svg.insertBefore(st, svg.firstChild);
+  const xml = new XMLSerializer().serializeToString(svg);
+  const url = "data:image/svg+xml;base64," + btoa(unescape(encodeURIComponent(xml)));
+  const img = new Image();
+  await new Promise((res, rej) => { img.onload = res; img.onerror = () => rej(new Error("map draw failed")); img.src = url; });
+  const c = document.createElement("canvas"); c.width = W; c.height = H; const g = c.getContext("2d");
+  g.fillStyle = "#fff"; g.fillRect(0, 0, W, H); g.drawImage(img, 0, 0, W, H);
+  const dataUrl = c.toDataURL("image/jpeg", 0.85);
+  return dataUrl.split(",")[1];
+}
+// Which sections were vacuumed and which were not, in words, for the branch message.
+// Sections come from the route card's Play steps (vacSecPhotos); if the card isn't
+// loaded on this phone, the photo-point labels stand in.
+function vacSectionSummary(spec, doneIds, skipped){
+  const skipIds = Object.keys(skipped || {});
+  const secs = spec.card ? vacSecPhotos(spec.card) : {}, titles = ((vacMap.secTitles || {})[spec.card] || {});
+  const out = {total:0, done:[], skipped:[], notDone:[]};
+  const keys = Object.keys(secs);
+  if(keys.length){
+    keys.forEach(n => {
+      const ids = secs[n], title = titles[n] || ("Section " + n);
+      const sk = ids.every(id => skipIds.includes(id));
+      const dn = !sk && ids.every(id => doneIds.includes(id) || skipIds.includes(id));
+      out.total++;
+      if(sk) out.skipped.push({sec:n, title, reason:(skipped[ids[0]] || {}).reason || ""});
+      else if(dn) out.done.push(title);
+      else out.notDone.push(title);
+    });
+  } else {
+    spec.list.filter(x => x.when === "start" && /^P\d+$/.test(x.id)).forEach(x => {
+      out.total++;
+      if(skipIds.includes(x.id)) out.skipped.push({sec:x.id, title:x.label, reason:(skipped[x.id] || {}).reason || ""});
+      else if(doneIds.includes(x.id)) out.done.push(x.label);
+      else out.notDone.push(x.label);
+    });
+  }
+  return out;
+}
+
+const VAC_PHOTOS = {
+  // normalMin: how long a proper vacuum usually takes here, first photo to last.
+  // Leave null until it's known; a job much quicker than it gets flagged.
+  Tengah: {card:"TENGAH", normalMin:null, list:[
+    {id:"S1", when:"prep", label:"Vacuum port opened", hint:"Close-up of the vacuum port open, before connecting the hose."},
+    {id:"S2", when:"prep", label:"Vacuum valve opened", hint:"Close-up of the vacuum valve handle in the open position."},
+    {id:"P1", when:"start", label:"Set-up at the vacuum port", hint:"Hose, vacuum head and telescopic pole connected at the vacuum port, top right corner."},
+    {id:"P2", when:"start", label:"Corner 1 – left side", hint:"Stand on the left deck level with the top half of the arm. Look right along it towards the port."},
+    {id:"P3", when:"start", label:"Corner 2 – bottom of the leg", hint:"Stand at the bottom right of the leg. Look diagonally up across the leg."},
+    {id:"P4", when:"start", label:"Corner 3 – inner corner", hint:"Stand at the inner corner by the stairs. Look diagonally down across the leg."},
+    {id:"P5", when:"start", label:"Corner 4 – right side", hint:"Stand on the right side below the port. Look left along the lower half of the arm."},
+    {id:"E1", when:"end", label:"Vacuum head, pipe and telescopic pole kept", hint:"Vacuum head, pipe and telescopic pole put back in storage."},
+    {id:"E2", when:"end", label:"Vacuum port closed", hint:"Close-up of the port with the cover on."},
+    {id:"E3", when:"end", label:"Vacuum valve closed", hint:"Close-up of the valve handle in the closed position."}
+  ]},
+  // Lentor -- two routes because the pole can't reach the far wall:
+  // route 1 the inner half from the inner deck, route 2 the outer half
+  // from the right and bottom decks. One photo at the end of each route.
+  Lentor: {card:"LENTOR", normalMin:null, list:[
+    {id:"S1", when:"prep", label:"Vacuum port opened", hint:"Close-up of the vacuum port open, before connecting the hose."},
+    {id:"S2", when:"prep", label:"Vacuum valve opened", hint:"Close-up of the vacuum valve handle in the open position."},
+    {id:"P1", when:"start", label:"Route 1 – end of the inner part", hint:"After route 1. Stand at the left end of the inner deck. Look back along the inner part of the pool."},
+    {id:"P2", when:"start", label:"Route 2 – end of the outer part", hint:"After route 2. Stand at the bottom-left corner by Stairs Out. Look along the outer part of the pool."},
+    {id:"E1", when:"end", label:"Vacuum head, pipe and telescopic pole kept", hint:"Vacuum head, pipe and telescopic pole put back in storage."},
+    {id:"E2", when:"end", label:"Vacuum port closed", hint:"Close-up of the port with the cover on."},
+    {id:"E3", when:"end", label:"Vacuum valve closed", hint:"Close-up of the valve handle in the closed position."}
+  ]},
+  // Same order as the photo badges on the route card (vacuum-route-maps.html#WWW).
+  WWW: {card:"WWW", normalMin:null, list:[
+    {id:"S1", when:"prep", label:"Vacuum port opened", hint:"Close-up of the vacuum port open, before connecting the hose."},
+    {id:"S2", when:"prep", label:"Vacuum valve opened", hint:"Close-up of the vacuum valve handle in the open position."},
+    {id:"S3", when:"prep", label:"Skimmer control valve half open", hint:"Close-up of the skimmer control valve set to half open."},
+    {id:"S4", when:"prep", label:"Pump cover – no bubbles", hint:"Photo through the pump cover showing no air bubbles."},
+    {id:"P1", when:"start", label:"Set-up", hint:"Hose, vacuum head and telescopic pole connected at the vacuum port, left side."},
+    {id:"P2", when:"start", label:"Corner 1 – bottom", hint:"Stand on the bottom deck. Look up the left half towards the port."},
+    {id:"P3", when:"start", label:"Corner 2 – top right", hint:"Stand on the top deck at the right. Look down the right half of the pool."},
+    {id:"P4", when:"start", label:"Corner 3 – left side", hint:"Stand on the left deck just above the port. Look diagonally up across the left half and the ledge."},
+    {id:"E1", when:"end", label:"Vacuum head, pipe and telescopic pole kept", hint:"Vacuum head, pipe and telescopic pole put back in storage."},
+    {id:"E2", when:"end", label:"Vacuum port closed", hint:"Close-up of the port with the cover on."},
+    {id:"E3", when:"end", label:"Vacuum valve closed", hint:"Close-up of the valve handle in the closed position."}
+  ]},
+  // CC has 2 skimmer control valves; the one used for vacuuming is fully
+  // closed before starting (don't touch the other one), and opened again
+  // as the last close-down photo.
+  CC: {card:"CC", normalMin:null, list:[
+    {id:"S1", when:"prep", label:"Vacuum port opened", hint:"Close-up of the vacuum port open, before connecting the hose."},
+    {id:"S2", when:"prep", label:"Vacuum valve opened", hint:"Close-up of the vacuum valve handle in the open position."},
+    {id:"S3", when:"prep", label:"Skimmer control valve closed", hint:"Close-up of the skimmer control valve closed. The other skimmer valves are left as they are."},
+    {id:"P1", when:"start", label:"Set-up", hint:"Hose, vacuum head and telescopic pole connected at the vacuum port, on the wide ledge."},
+    {id:"P2", when:"start", label:"Corner 1 – Loop A, bottom", hint:"Stand on the bottom deck below the port. Look up the right half of the left pool."},
+    {id:"P3", when:"start", label:"Corner 2 – Loop A, top left", hint:"Stand on the top deck at the left. Look down the left half of the left pool."},
+    {id:"P4", when:"start", label:"Corner 3 – top arm", hint:"Stand at the top of the wide ledge. Look up the top arm."},
+    {id:"P5", when:"start", label:"Corner 4 – Loop B, bottom", hint:"Stand on the bottom deck near the stairs. Look up the left half of the right pool."},
+    {id:"P6", when:"start", label:"Corner 5 – Loop B, top right", hint:"Stand on the top deck at the right. Look down the right half of the right pool."},
+    {id:"E1", when:"end", label:"Vacuum head, pipe and telescopic pole kept", hint:"Vacuum head, pipe and telescopic pole put back in storage."},
+    {id:"E2", when:"end", label:"Skimmer control valve opened", hint:"Close-up of the skimmer control valve handle in the open position."},
+    {id:"E3", when:"end", label:"Vacuum valve closed", hint:"Close-up of the valve handle in the closed position."},
+    {id:"E4", when:"end", label:"Vacuum port closed", hint:"Close-up of the port with the cover on."}
+  ]},
+  BK: {card:"BK", normalMin:null, list:[
+    {id:"S1", when:"prep", label:"Vacuum port opened", hint:"Close-up of the vacuum port open, before connecting the hose."},
+    {id:"S2", when:"prep", label:"Vacuum valve opened", hint:"Close-up of the vacuum valve handle in the open position."},
+    {id:"S3", when:"prep", label:"Skimmer control valve half open", hint:"Close-up of the skimmer control valve set to half open."},
+    {id:"S4", when:"prep", label:"Pump cover – no bubbles", hint:"Photo through the pump cover showing no air bubbles."},
+    {id:"P1", when:"start", label:"Set-up", hint:"Hose, vacuum head and telescopic pole connected at the vacuum port, bottom left. Stand at the bottom-left corner of the deck."},
+    {id:"P2", when:"start", label:"Corner 1 – right half, bottom", hint:"After the right half. Stand on the bottom deck. Look up the right half of the pool."},
+    {id:"P3", when:"start", label:"Corner 2 – left half, top", hint:"After the left half. Stand at the top of the left deck. Look down the left half of the pool."},
+    {id:"E1", when:"end", label:"Vacuum head, pipe and telescopic pole kept", hint:"Vacuum head, pipe and telescopic pole put back in storage."},
+    {id:"E2", when:"end", label:"Skimmer control valve opened", hint:"Close-up of the skimmer control valve handle in the open position."},
+    {id:"E3", when:"end", label:"Vacuum valve closed", hint:"Close-up of the valve handle in the closed position."},
+    {id:"E4", when:"end", label:"Vacuum port closed", hint:"Close-up of the port with the cover on."}
+  ]},
+  // DR -- hose goes on the skimmer port; no vacuum valve here.
+  DR: {card:"DR", normalMin:null, list:[
+    {id:"P1", when:"start", label:"Set-up", hint:"Hose, vacuum head and telescopic pole connected at the skimmer port. Stand at the start and look up at the port."},
+    {id:"P2", when:"start", label:"Corner 1 – right side, deep half", hint:"Stand on the right deck. Look left along the deep half of the pool."},
+    {id:"P3", when:"start", label:"Corner 2 – top left, shallow half", hint:"Stand at the left end of the top deck. Look right across the shallow half."},
+    {id:"E1", when:"end", label:"Skimmer cover put back", hint:"Close-up of the skimmer with its cover back on."},
+    {id:"E2", when:"end", label:"Vacuum head, pipe and telescopic pole kept", hint:"Vacuum head, pipe and telescopic pole put back in storage."}
+  ]},
+  // JE Indoor Pool 2 -- start on the bottom deck by the vacuum port, clockwise.
+  JEIP2: {card:"JEIP2", normalMin:null, list:[
+    {id:"S1", when:"prep", label:"Vacuum port opened", hint:"Close-up of the vacuum port open, before connecting the hose."},
+    {id:"S2", when:"prep", label:"Vacuum valve opened", hint:"Close-up of the vacuum valve handle in the open position."},
+    {id:"S3", when:"prep", label:"Skimmer control valve half open", hint:"Close-up of the skimmer control valve set to half open."},
+    {id:"S4", when:"prep", label:"Pump cover – no bubbles", hint:"Photo through the pump cover showing no air bubbles."},
+    {id:"P1", when:"start", label:"Set-up", hint:"Hose, vacuum head and telescopic pole connected at the vacuum port, bottom left. Stand on the bottom deck and look back at the port."},
+    {id:"P2", when:"start", label:"Corner 1 – top, left half", hint:"Stand on the top deck. Look down the left half of the pool."},
+    {id:"P3", when:"start", label:"Corner 2 – bottom, right half", hint:"Stand on the bottom deck. Look up the right half of the pool."},
+    {id:"E1", when:"end", label:"Vacuum head, pipe and telescopic pole kept", hint:"Vacuum head, pipe and telescopic pole put back in storage."},
+    {id:"E2", when:"end", label:"Skimmer control valve opened", hint:"Close-up of the skimmer control valve handle in the open position."},
+    {id:"E3", when:"end", label:"Vacuum valve closed", hint:"Close-up of the valve handle in the closed position."},
+    {id:"E4", when:"end", label:"Vacuum port closed", hint:"Close-up of the port with the cover on."}
+  ]},
+  // JE Outdoor Pool 2 -- start at the bottom left corner by the lower stairs, clockwise.
+  JEOP2: {card:"JEOP2", normalMin:null, list:[
+    {id:"S1", when:"prep", label:"Vacuum port opened", hint:"Close-up of the vacuum port open, before connecting the hose."},
+    {id:"S2", when:"prep", label:"Vacuum valve opened", hint:"Close-up of the vacuum valve handle in the open position."},
+    {id:"S3", when:"prep", label:"Skimmer control valve half open", hint:"Close-up of the skimmer control valve set to half open."},
+    {id:"S4", when:"prep", label:"Pump cover – no bubbles", hint:"Photo through the pump cover showing no air bubbles."},
+    {id:"P1", when:"start", label:"Set-up", hint:"Hose, vacuum head and telescopic pole connected at the vacuum port, lower left. Stand on the left deck just above it."},
+    {id:"P2", when:"start", label:"Corner 1 – top, left half", hint:"Stand on the top deck. Look down the left half of the pool."},
+    {id:"P3", when:"start", label:"Corner 2 – bottom, right half", hint:"Stand on the bottom deck. Look up the right half of the pool."},
+    {id:"E1", when:"end", label:"Vacuum head, pipe and telescopic pole kept", hint:"Vacuum head, pipe and telescopic pole put back in storage."},
+    {id:"E2", when:"end", label:"Skimmer control valve opened", hint:"Close-up of the skimmer control valve handle in the open position."},
+    {id:"E3", when:"end", label:"Vacuum valve closed", hint:"Close-up of the valve handle in the closed position."},
+    {id:"E4", when:"end", label:"Vacuum port closed", hint:"Close-up of the port with the cover on."}
+  ]},
+  // TPY -- vacuum port bottom left; two pillars stand in the pool.
+  TPY: {card:"TPY", normalMin:null, list:[
+    {id:"S1", when:"prep", label:"Vacuum port opened", hint:"Close-up of the vacuum port open, before connecting the hose."},
+    {id:"S2", when:"prep", label:"Vacuum valve opened", hint:"Close-up of the vacuum valve handle in the open position."},
+    {id:"S3", when:"prep", label:"Skimmer control valve half open", hint:"Close-up of the skimmer control valve set to half open."},
+    {id:"S4", when:"prep", label:"Pump cover – no bubbles", hint:"Photo through the pump cover showing no air bubbles."},
+    {id:"P1", when:"start", label:"Set-up", hint:"Hose, vacuum head and telescopic pole connected at the vacuum port, bottom left. Stand on the bottom deck and look back at the port."},
+    {id:"P2", when:"start", label:"Corner 1 – top left, by the ladder", hint:"Stand at the top by the stairs. Look down the left end of the pool."},
+    {id:"P3", when:"start", label:"Corner 2 – bottom right", hint:"Stand at the right end of the bottom deck. Look up the right end of the pool."},
+    {id:"P4", when:"start", label:"Pillar 1", hint:"The floor around and behind the first pillar, towards the top right."},
+    {id:"P5", when:"start", label:"Pillar 2", hint:"The floor around and behind the second pillar, towards the top right."},
+    {id:"E1", when:"end", label:"Vacuum head, pipe and telescopic pole kept", hint:"Vacuum head, pipe and telescopic pole put back in storage."},
+    {id:"E2", when:"end", label:"Skimmer control valve opened", hint:"Close-up of the skimmer control valve handle in the open position."},
+    {id:"E3", when:"end", label:"Vacuum valve closed", hint:"Close-up of the valve handle in the closed position."},
+    {id:"E4", when:"end", label:"Vacuum port closed", hint:"Close-up of the port with the cover on."}
+  ]},
+  // HB -- two vacuum ports, two routes: green A from port 1 (right and top),
+  // blue B from port 2 (left leg and top left).
+  HB: {card:"HB", normalMin:null, list:[
+    {id:"S1", when:"prep", label:"Vacuum port 2 opened", hint:"Close-up of vacuum port 2 open, before connecting the hose."},
+    {id:"S2", when:"prep", label:"Vacuum valve opened", hint:"Close-up of the vacuum valve handle in the open position."},
+    {id:"S3", when:"prep", label:"Balancing tank control valve half open", hint:"Close-up of the balancing tank control valve set to half open."},
+    {id:"S4", when:"prep", label:"Pump cover – no bubbles", hint:"Photo through the pump cover showing no air bubbles."},
+    {id:"P1", when:"start", label:"Route B – Set-up at vacuum port 2", hint:"Hose, vacuum head and telescopic pole connected at vacuum port 2. Stand beside the port and look up-left over the top of the left leg."},
+    {id:"P2", when:"start", label:"Route B – Shallow ledge – left half", hint:"Stand in the ledge at the middle. Look left along the left half of the ledge."},
+    {id:"P3", when:"start", label:"Route B – Deep strip – top of the left leg", hint:"Stand on the left deck. Look right across the top of the left leg."},
+    {id:"P4", when:"start", label:"Route B – Left leg – outer half", hint:"Stand on the bottom deck at the left. Look up the outer half of the left leg."},
+    {id:"P5", when:"start", label:"Route B – Left leg – inner half", hint:"Stand by vacuum port 2. Look down the inner half of the left leg, past the pillar."},
+    {id:"P6", when:"start", label:"Route A – Set-up at vacuum port 1", hint:"Hose, vacuum head and telescopic pole connected at vacuum port 1, on the bottom side to the right of the stairs."},
+    {id:"P7", when:"start", label:"Route A – Right side – far side of the deep part", hint:"Stand on the right deck. Look left along the far side of the deep part, past vacuum port 1."},
+    {id:"P8", when:"start", label:"Route A – Middle – across the deep part", hint:"Stand in the ledge at the middle. Look diagonally across the deep part towards the right."},
+    {id:"P9", when:"start", label:"Route A – Right end – along the ledge", hint:"Stand at the right end of the ledge. Look left along the top of the ledge back to the middle."},
+    {id:"E1", when:"end", label:"Vacuum head, pipe and telescopic pole kept", hint:"Vacuum head, pipe and telescopic pole put back in storage."},
+    {id:"E2", when:"end", label:"Balancing tank control valve opened", hint:"Close-up of the balancing tank control valve handle in the open position."},
+    {id:"E3", when:"end", label:"Vacuum valve closed", hint:"Close-up of the vacuum valve handle in the closed position."},
+    {id:"E4", when:"end", label:"Vacuum port 1 closed", hint:"Close-up of port 1 with the cover on."},
+    {id:"E5", when:"end", label:"Vacuum port 2 closed", hint:"Close-up of port 2 with the cover on."}
+  ]},
+  // JE Outdoor Pool 1 -- vacuum port upper left, one clockwise lap.
+  JEOP1: {card:"JEOP1", normalMin:null, list:[
+    {id:"S1", when:"prep", label:"Vacuum port opened", hint:"Close-up of the vacuum port open, before connecting the hose."},
+    {id:"S2", when:"prep", label:"Vacuum valve opened", hint:"Close-up of the vacuum valve handle in the open position."},
+    {id:"P1", when:"start", label:"Set-up", hint:"Hose, vacuum head and telescopic pole connected at the vacuum port, upper left."},
+    {id:"P2", when:"start", label:"Corner 1 – top, left half", hint:"Stand on the top deck. Look down the left half of the pool."},
+    {id:"P3", when:"start", label:"Corner 2 – bottom, right half", hint:"Stand on the bottom deck. Look up the right half of the pool."},
+    {id:"P4", when:"start", label:"Corner 3 – back at the end", hint:"Stand at the end by the T-staircase. Look across the lower left to the bottom right."},
+    {id:"E1", when:"end", label:"Vacuum head, pipe and telescopic pole kept", hint:"Vacuum head, pipe and telescopic pole put back in storage."},
+    {id:"E2", when:"end", label:"Vacuum port closed", hint:"Close-up of the port with the cover on."},
+    {id:"E3", when:"end", label:"Vacuum valve closed", hint:"Close-up of the valve handle in the closed position."}
+  ]},
+  // JE Indoor Pool 1 -- hose goes on the skimmer port, not a vacuum port.
+  JEIP1: {card:"JEIP1", normalMin:null, list:[
+    {id:"S1", when:"prep", label:"Skimmer cover and basket opened", hint:"Close-up of the skimmer with the cover and basket open."},
+    {id:"S2", when:"prep", label:"Vacuum valve opened", hint:"Close-up of the vacuum valve handle in the open position."},
+    {id:"S3", when:"prep", label:"Skimmer control valve closed", hint:"Close-up of the skimmer control valve closed. The other skimmer valves are left as they are."},
+    {id:"P1", when:"start", label:"Set-up", hint:"Hose, vacuum head and telescopic pole connected at the skimmer port, left side."},
+    {id:"P2", when:"start", label:"Corner 1 – top end", hint:"Stand on the top deck. Look down the left half of the pool."},
+    {id:"P3", when:"start", label:"Corner 2 – bottom end", hint:"Stand on the bottom deck. Look up the right half of the pool."},
+    {id:"E1", when:"end", label:"Vacuum head, pipe and telescopic pole kept", hint:"Vacuum head, pipe and telescopic pole put back in storage."},
+    {id:"E2", when:"end", label:"Skimmer cover lid closed", hint:"Close-up of the skimmer with its cover lid back on."},
+    {id:"E3", when:"end", label:"Skimmer control valve opened", hint:"Close-up of the skimmer control valve handle in the open position."},
+    {id:"E4", when:"end", label:"Vacuum valve closed", hint:"Close-up of the valve handle in the closed position."}
+  ]}
+};
+
+function vacSectionSummary(spec, doneIds, skipped){
+  const skipIds = Object.keys(skipped || {});
+  const secs = spec.card ? vacSecPhotos(spec.card) : {}, titles = ((vacMap.secTitles || {})[spec.card] || {});
+  const out = {total:0, done:[], skipped:[], notDone:[]};
+  const keys = Object.keys(secs);
+  if(keys.length){
+    keys.forEach(n => { const ids = secs[n], title = titles[n] || ("Section " + n);
+      const sk = ids.every(id => skipIds.includes(id)), dn = !sk && ids.every(id => doneIds.includes(id) || skipIds.includes(id));
+      out.total++; if(sk) out.skipped.push({title, reason:(skipped[ids[0]] || {}).reason || ""}); else if(dn) out.done.push(title); else out.notDone.push(title); });
+  } else {
+    spec.list.filter(x => x.when === "start" && /^P\d+$/.test(x.id)).forEach(x => { out.total++;
+      if(skipIds.includes(x.id)) out.skipped.push({title:x.label, reason:(skipped[x.id] || {}).reason || ""}); else if(doneIds.includes(x.id)) out.done.push(x.label); else out.notDone.push(x.label); });
+  }
+  return out;
+}
+async function main(){
+  const q = new URLSearchParams(location.search), rid = q.get("r"), tid = q.get("t"), app = document.getElementById("app");
+  const fail = m => { app.innerHTML = `<div class="card"><div class="err">${esc(m)}</div></div>`; };
+  if(!rid || !tid) return fail("This link is missing the round or job reference.");
+  let r; try{ const d = await db.doc("dosing_rounds/" + rid).get(); if(!d.exists) return fail("That round can't be found any more."); r = d.data(); }catch(e){ return fail("Couldn't load the record: " + e.message); }
+  let stop = null, t = null; (r.stops || []).forEach(s => (s.tasks || []).forEach(x => { if(x.id === tid){ stop = s; t = x; } }));
+  if(!t) return fail("That job can't be found in the round.");
+  const v = t.vac || {}, outlet = stop.outlet || "", poolKey = v.poolKey || dosingKeyFor(outlet, t.pool || null);
+  const spec = VAC_PHOTOS[poolKey] || null;
+  const photos = v.photos || {}, doneIds = Object.keys(photos).filter(id => photos[id] && (photos[id].url || photos[id].fileId || photos[id].takenAt));
+  const skipped = v.skipped || t.vacSkipped || {}, skipIds = Object.keys(skipped);
+  const first = v.firstAt || t.startedAt, last = v.lastAt || t.doneAt;
+  const mins = v.minutes != null ? v.minutes : (first && last ? Math.max(0, (new Date(last) - new Date(first)) / 60000) : null);
+  const who = v.by || t.claimedBy || r.person || "";
+  // route card for the map
+  try{ const res = await fetch(VAC_ROUTE_URL + "?v=" + Math.floor(Date.now() / 3600e3), {cache:"no-cache"}); if(res.ok){ vacMap.html = await res.text(); vacMap.svgs = {}; vacMap.marked = {}; } }catch(e){}
+  const sec = v.sections || (spec ? vacSectionSummary(spec, doneIds, skipped) : null);
+  const partly = !!(sec && (sec.skipped.length + sec.notDone.length));
+  const status = !t.doneAt ? `<span class="tag run">In progress</span>` : partly ? `<span class="tag warn">Partly done</span>` : `<span class="tag ok">Done</span>`;
+  let mapHtml = "";
+  if(spec && spec.card && vacMap.html){ try{ mapHtml = vacMapHtml(spec.card, null, doneIds, skipIds, !!t.doneAt) || ""; }catch(e){ mapHtml = ""; } }
+  const labelOf = id => (spec && (spec.list.find(x => x.id === id) || {}).label) || id;
+  const order = spec ? spec.list.map(x => x.id) : Object.keys(photos);
+  const photoHtml = order.filter(id => photos[id] && photos[id].url).map(id => { const p = photos[id];
+    return `<a href="${esc(p.url)}" target="_blank" rel="noopener"><img src="${esc(p.thumb || p.url)}" alt="${esc(id)}" loading="lazy"><span><b>${esc(id)}</b> ${esc(labelOf(id))}${p.takenAt ? " · " + esc(clock(p.takenAt)) : ""}</span></a>`; }).join("");
+  app.innerHTML = `
+    <h1>Manual vacuum <small style="color:var(--accent)">${esc(poolKey)}${t.pool && t.pool !== poolKey ? " · " + esc(t.pool) : ""}</small></h1>
+    <div class="meta">${status} <b>${esc(who)}</b> · ${esc(day(t.doneAt || t.startedAt))}${first ? ` · ${esc(clock(first))}${last ? "–" + esc(clock(last)) : ""}` : ""}${mins != null ? ` · ${esc(dur(mins))}` : ""}${v.breakMin ? ` (${esc(dur(v.breakMin))} break)` : ""}</div>
+    ${mapHtml ? `<div class="card"><h2>Area covered</h2><div class="map">${mapHtml}</div><div class="legend"><span><i style="background:#16A34A;opacity:.6"></i>vacuumed</span><span><i style="background:#6B7280;opacity:.8"></i>skipped / not done</span><span>P = photo point · S = before starting · E = after vacuuming</span></div></div>`
+      : `<div class="card"><div class="note">${spec ? "The route map couldn't be loaded right now." : "No route map is set up for this pool yet."}</div></div>`}
+    ${sec && sec.total ? `<div class="card"><h2>Sections</h2>
+      ${sec.done.length ? `<div><b style="color:var(--ok)">Vacuumed (${sec.done.length} of ${sec.total})</b><ul>${sec.done.map(x => `<li>${esc(x)}</li>`).join("")}</ul></div>` : ""}
+      ${sec.skipped.length ? `<div style="margin-top:8px"><b style="color:var(--urgent)">Skipped</b><ul>${sec.skipped.map(x => `<li>${esc(x.title)}${x.reason ? ` — ${esc(x.reason)}` : ""}</li>`).join("")}</ul></div>` : ""}
+      ${sec.notDone.length ? `<div style="margin-top:8px"><b style="color:var(--warn)">Not done</b><ul>${sec.notDone.map(x => `<li>${esc(x)}</li>`).join("")}</ul></div>` : ""}
+      ${!sec.done.length && !sec.skipped.length && !sec.notDone.length ? `<div class="note">All ${sec.total} sections vacuumed.</div>` : ""}</div>` : ""}
+    ${photoHtml ? `<div class="card"><h2>Photos <small style="font:400 12px 'IBM Plex Sans';text-transform:none;letter-spacing:0;color:var(--ink-3)">${doneIds.length} taken</small></h2><div class="photos">${photoHtml}</div></div>` : `<div class="card"><div class="note">No photos on this job.</div></div>`}
+    <div class="note">From the HF Pools tracker · ${esc(outlet)}</div>`;
+}
+main();
+</script></body></html>
