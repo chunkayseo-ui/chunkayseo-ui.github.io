@@ -601,16 +601,18 @@ async function main(){
   const partly = !!(sec && (sec.skipped.length + sec.notDone.length));
   const status = !t.doneAt ? `<span class="tag run">In progress</span>` : partly ? `<span class="tag warn">Partly done</span>` : `<span class="tag ok">Done</span>`;
   let mapHtml = "";
-  if(spec && spec.card && vacMap.html){ try{ mapHtml = vacMapHtml(spec.card, null, doneIds, skipIds, !!t.doneAt) || ""; }catch(e){ mapHtml = ""; } }
-  const labelOf = id => (spec && (spec.list.find(x => x.id === id) || {}).label) || id;
-  const order = spec ? spec.list.map(x => x.id) : Object.keys(photos);
+  const spot = !!v.spot;   // operations-team spot vacuum (9 Oct 2026): visible dirt only, no route sections
+  if(!spot && spec && spec.card && vacMap.html){ try{ mapHtml = vacMapHtml(spec.card, null, doneIds, skipIds, !!t.doneAt) || ""; }catch(e){ mapHtml = ""; } }
+  const SPOT_LABELS = {V1:"Set up — hose full of water, connected at the port", V2:"Vacuum done — the floor that was cleaned"};
+  const labelOf = id => SPOT_LABELS[id] || (spec && (spec.list.find(x => x.id === id) || {}).label) || id;
+  const order = (spec ? spec.list.map(x => x.id) : []).concat(Object.keys(photos).filter(id => !spec || !spec.list.some(x => x.id === id)));
   const photoHtml = order.filter(id => photos[id] && photos[id].url).map(id => { const p = photos[id];
     return `<a href="${esc(p.url)}" target="_blank" rel="noopener"><img src="${esc(p.thumb || p.url)}" alt="${esc(id)}" loading="lazy"><span><b>${esc(id)}</b> ${esc(labelOf(id))}${p.takenAt ? " · " + esc(clock(p.takenAt)) : ""}</span></a>`; }).join("");
   app.innerHTML = `
-    <h1>Manual vacuum <small style="color:var(--accent)">${esc(poolKey)}${t.pool && t.pool !== poolKey ? " · " + esc(t.pool) : ""}</small></h1>
+    <h1>${spot ? "Spot vacuum" : "Manual vacuum"} <small style="color:var(--accent)">${esc(poolKey)}${t.pool && t.pool !== poolKey ? " · " + esc(t.pool) : ""}</small></h1>
     <div class="meta">${status} <b>${esc(who)}</b> · ${esc(day(t.doneAt || t.startedAt))}${first ? ` · ${esc(clock(first))}${last ? "–" + esc(clock(last)) : ""}` : ""}${mins != null ? ` · ${esc(dur(mins))}` : ""}${v.breakMin ? ` (${esc(dur(v.breakMin))} break)` : ""}</div>
     ${mapHtml ? `<div class="card"><h2>Area covered</h2><div class="map">${mapHtml}</div><div class="legend"><span><i style="background:#16A34A;opacity:.6"></i>vacuumed</span><span><i style="background:#6B7280;opacity:.8"></i>skipped / not done</span><span>P = photo point · S = before starting · E = after vacuuming</span></div></div>`
-      : `<div class="card"><div class="note">${spec ? "The route map couldn't be loaded right now." : "No route map is set up for this pool yet."}</div></div>`}
+      : `<div class="card"><div class="note">${spot ? "Spot vacuum by the operations team — visible dirt only, no route sections. Same before/after steps as the facility team." : spec ? "The route map couldn't be loaded right now." : "No route map is set up for this pool yet."}</div></div>`}
     ${sec && sec.total ? `<div class="card"><h2>Sections</h2>
       ${sec.done.length ? `<div><b style="color:var(--ok)">Vacuumed (${sec.done.length} of ${sec.total})</b><ul>${sec.done.map(x => `<li>${esc(x)}</li>`).join("")}</ul></div>` : ""}
       ${sec.skipped.length ? `<div style="margin-top:8px"><b style="color:var(--urgent)">Skipped</b><ul>${sec.skipped.map(x => `<li>${esc(x.title)}${x.reason ? ` — ${esc(x.reason)}` : ""}</li>`).join("")}</ul></div>` : ""}
