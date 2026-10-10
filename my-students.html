@@ -37,7 +37,7 @@ h2 small{margin-left:auto;font:400 12px "IBM Plex Sans";text-transform:none;lett
 .kids li{display:flex;gap:6px;align-items:center;font-size:14px;padding:3px 0}
 .kids li.off{color:var(--ink-3);text-decoration:line-through}
 .tag{font:700 10.5px "Barlow Condensed",sans-serif;letter-spacing:.06em;text-transform:uppercase;padding:2px 6px;border-radius:5px;flex:none}
-.tag.new{background:var(--new-soft);color:var(--new)} .tag.left{background:var(--urgent-soft);color:var(--urgent)} .tag.paused{background:var(--warn-soft);color:var(--warn)}
+.tag.new{background:var(--new-soft);color:var(--new)} .tag.visit{background:var(--line);color:var(--ink-3)} .tag.left{background:var(--urgent-soft);color:var(--urgent)} .tag.paused{background:var(--warn-soft);color:var(--warn)}
 .tag.cancelled{background:var(--urgent-soft);color:var(--urgent)} .tag.credited{background:var(--warn-soft);color:var(--warn)} .tag.ok{background:var(--ok-soft);color:var(--ok)}
 .today{margin-top:8px;padding:8px 10px;border-radius:8px;background:var(--surface-2);font-size:13px}
 .today b{color:var(--ink)}
@@ -94,7 +94,7 @@ function classCard(c){
   const kids = (c.students || []).slice().sort((a, b) => (a.status === "left") - (b.status === "left") || String(a.name).localeCompare(String(b.name)));
   const active = kids.filter(k => k.status !== "left");
   const t = c.today && c.today.date === todayKey() ? c.today : null;
-  const tagOf = k => k.status === "new" ? `<span class="tag new">New${k.since ? " · " + esc(fmtDay(k.since)) : ""}</span>` : k.status === "left" ? `<span class="tag left">Left${k.lastSeen ? " · last " + esc(fmtDay(k.lastSeen)) : ""}</span>` : k.status === "paused" ? `<span class="tag paused">Paused</span>` : "";
+  const tagOf = k => k.status === "new" ? `<span class="tag new">New${k.since ? " · " + esc(fmtDay(k.since)) : ""}</span>` : k.status === "left" ? `<span class="tag left">Left${k.lastSeen ? " · last " + esc(fmtDay(k.lastSeen)) : ""}</span>` : k.status === "paused" ? `<span class="tag paused">Paused</span>` : k.status === "visit" ? `<span class="tag visit">Make-up / trial${k.next ? " · " + esc(fmtDay(k.next)) : ""}</span>` : "";
   const tToday = k => { if(!t) return ""; const st = (t.status || {})[k.id]; return st && st !== "Confirmed" ? `<span class="tag ${esc(st.toLowerCase())}">${esc(st)}</span>` : ""; };
   return `<div class="cls"><div class="cls-top"><span class="t">${esc(c.time)}</span><span class="lv">${esc(c.level)}</span>
       <span class="cnt ${active.length >= (c.max || 6) ? "full" : ""}">${active.length}/${c.max || "?"}</span></div>
@@ -106,7 +106,7 @@ function view(){
   const d = S.data, day = (d && d.days && d.days[S.day]) || null;
   const classes = (day ? day.classes : []).filter(c => (c.students || []).length || c.max > 4).sort((a, b) => a.time.localeCompare(b.time));
   const all = classes.flatMap(c => c.students || []);
-  const n = all.filter(k => k.status === "new").length, l = all.filter(k => k.status === "left").length, p = all.filter(k => k.status === "paused").length, act = all.filter(k => k.status !== "left").length;
+  const n = all.filter(k => k.status === "new").length, l = all.filter(k => k.status === "left").length, p = all.filter(k => k.status === "paused").length, act = all.filter(k => k.status !== "left" && k.status !== "visit").length;
   const dayChanges = S.changes.filter(c => c.day === S.day).slice(0, 40);
   return `<header><h1>HF Pools <small>My students</small></h1><span class="me">${esc(S.me)} · <button id="out">Sign out</button></span></header>
     <div class="tabs">${DAYS.map(([k, name, outlet]) => `<button class="tab ${S.day === k ? "on" : ""}" data-day="${k}">${name}<small>${outlet}</small></button>`).join("")}</div>
@@ -114,7 +114,7 @@ function view(){
     <div class="sum"><div><b>${act}</b><span>students</span></div><div class="n"><b>${n}</b><span>new (4 wks)</span></div><div class="l"><b>${l}</b><span>left</span></div><div class="p"><b>${p}</b><span>paused</span></div></div>
     <div class="card"><h2>${esc(DAYS.find(x => x[0] === S.day)[1])} · ${esc(DAYS.find(x => x[0] === S.day)[2])} <small>updated ${esc(fmtAt(d.at))}</small></h2>
       ${classes.length ? classes.map(classCard).join("") : `<div class="empty">No classes with students on this day.</div>`}
-      <div class="note" style="margin-top:6px">New = first booked in the last 4 weeks · Left = no lesson booked in the next 4 weeks · Paused = booking system says paused. Intro classes with nobody booked are hidden.</div></div>
+      <div class="note" style="margin-top:6px">New = first lesson in the last 4 weeks · Left = no lesson booked in the next 4 weeks · Paused = booking system says paused · Make-up / trial = one booking only, not counted as a student yet. Intro classes with nobody booked are hidden.</div></div>
     <div class="card"><h2>Changes <small>last 30 days</small></h2>
       ${dayChanges.length ? `<div class="feed">${dayChanges.map(c => `<div><span class="d">${esc(fmtDay(c.date))}</span><span><span class="tag ${esc(c.type)}">${esc(c.type)}</span> <b>${esc(c.student)}</b> · ${esc(c.time)} ${esc(c.level)}</span></div>`).join("")}</div>` : `<div class="empty">No changes recorded yet.</div>`}</div>`}
     ${S.err ? `<div class="msg err">${esc(S.err)}</div>` : ""}`;
