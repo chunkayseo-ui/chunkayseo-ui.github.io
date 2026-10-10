@@ -447,10 +447,11 @@ function rtHtml(p){
   if(!x && !days.length) return `<div class="rt note">⚡ <b>Run time</b> — starts showing after the timer's next check (every 5 min).</div>`;
   const g = x && x.gph ? ` · <b>~${x.g || 0} g</b> chlorine <span class="note">(rated ${x.gph} g/h)</span>` : ` <span class="note">· rated output not set, so no grams</span>`;
   return `<div class="rt">⚡ <b>Run time today</b> — producing <b>${rtHm(x && x.prodMin)}</b> of <b>${rtHm(x && x.onMin)}</b> switched ON${x && x.sbMin ? ` · standby ${rtHm(x.sbMin)}` : ""}${x ? g : ""}<br><span class="note">${rtNowTxt(x)}</span>
+    ${x && x.wh && x.peak ? `<div class="note">🔌 Energy meter: <b>${(x.wh / 1000).toFixed(2)} kWh</b> today ≈ <b>${rtHm(x.wh / x.peak * 60)}</b> at full power (${x.peak} W) — the plug counts every second, so this also catches short stops between the 5-minute checks.</div>` : ""}
     ${rtBar(x)}
     <div class="lg"><i style="background:${RT_PROD}"></i>producing <i style="background:${RT_SB}"></i>ON but not producing <i style="background:var(--surface-2);border:1px solid var(--line)"></i>OFF</div>
     ${x && x.alerted ? `<div class="warnline">🟠 Alert sent — ON but not producing for over ${rtHm(stuck)}.</div>` : ""}
-    ${days.length ? `<table><tr><th>Day</th><th>Producing</th><th>ON</th><th>Chlorine</th></tr>${days.map(d => `<tr><td>${esc(new Date(d.d + "T00:00:00").toLocaleDateString("en-SG", {weekday:"short", day:"numeric", month:"short"}))}</td><td>${rtHm(d.prod)}</td><td>${rtHm(d.on)}</td><td>${d.g ? "~" + d.g + " g" : "–"}</td></tr>`).join("")}</table>` : ""}
+    ${days.length ? `<table><tr><th>Day</th><th>Producing</th><th>ON</th><th>Chlorine</th><th>Energy</th></tr>${days.map(d => `<tr><td>${esc(new Date(d.d + "T00:00:00").toLocaleDateString("en-SG", {weekday:"short", day:"numeric", month:"short"}))}</td><td>${rtHm(d.prod)}</td><td>${rtHm(d.on)}</td><td>${d.g ? "~" + d.g + " g" : "–"}</td><td>${d.wh ? (d.wh / 1000).toFixed(2) + " kWh" : "–"}</td></tr>`).join("")}</table>` : ""}
     <div class="note" style="margin-top:4px">Producing = the plug sees real power draw. A Laswim set to 4 h run / 1 h rest shows 1 h amber gaps; amber for over ${rtHm(stuck)} sends an alert to Smartplug Check.</div></div>`;
 }
 function rtTileLine(plugs){
