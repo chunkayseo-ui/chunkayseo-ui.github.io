@@ -470,7 +470,7 @@ function rtWeekCard(){
   return `<div class="note">Hours each salt chlorinator was really <b>producing</b> (not just switched ON). Today is so far.</div>
   <div style="overflow-x:auto"><table class="rtt"><tr><th>Plug</th>${dates.map(d => `<th>${esc(new Date(d + "T00:00:00").toLocaleDateString("en-SG", {weekday:"short", day:"numeric"}))}</th>`).join("")}</tr>
   ${plugs.map(p => `<tr><td><b>${esc(p.pool)}</b> ${plugs.filter(q => q.pool === p.pool).length > 1 ? esc(shortPlugName(p)) : ""}</td>${dates.map(d => { const v = cell(p, d); return v == null ? `<td class="z">·</td>` : `<td${v ? "" : ` class="z"`}>${rtHm(v)}</td>`; }).join("")}</tr>`).join("")}</table></div>
-  <div class="note" style="margin-top:6px">Tap an outlet tile for today's run/rest bar and estimated grams. Run time started being recorded on 11 Oct 2026.</div>`;
+  <div class="note" style="margin-top:6px">Tap an outlet tile for today's run/rest bar and estimated grams. Run time recording started 10 Oct 2026, 11:45 pm.</div>`;
 }
 function ago(iso){ if(!iso) return ""; const m = Math.round((Date.now() - new Date(iso)) / 60000); return m < 1 ? "just now" : m < 60 ? m + " min ago" : Math.round(m / 60) + " h ago"; }
 /* ---------- at-a-glance board (Kay, 8 Oct 2026) ---------- */
