@@ -281,6 +281,15 @@ function dosingLock(pool, d, nowMs, t) {                        // t = today's w
   var x = new Date(at + 8 * 3600000);
   return { on: false, key: 'dosed', lock: true, why: 'night dosing done at ' + pool + ' at ' + hr(x.getUTCHours() + x.getUTCMinutes() / 60) + (d.by ? ' by ' + d.by : '') + ' — locked OFF until the next water test comes in' };
 }
+/* High-FC lock (Kay, 10 Oct 2026): when the latest water test today (afternoon, else morning) is HIGH_FC or more, every
+ * outlet's salt chlorinator is closed (OFF, Switch ON locked) until a lower test comes in. Beats the schedule and the
+ * today-only override; the night-dosing lock is checked first. Same code in the script (highFc_). */
+var HIGH_FC = 4;
+function highFc(pool, t){
+  t = t || {}; var L = t.afternoon !== null && t.afternoon !== undefined ? t.afternoon : (t.morning !== null && t.morning !== undefined ? t.morning : null);
+  if(L === null || !(L >= HIGH_FC)) return null;
+  return { on: false, tests: true, lock: true, key: 'high:' + L, why: 'FC ' + L + ' is ' + HIGH_FC + ' or more — closed (locked OFF) until a lower water test comes in' };
+}
 function prevTests(pool){ const a = S.cfg.autoState || {}, x = (a.prevTests || {})[pool], y = dayKey(new Date(sgNow().getTime() - 864e5));
   return x && x.date === y ? x : {}; }
 const hr = h => { const x = Math.floor(h), m = Math.round((h - x) * 60), ap = x >= 12 ? "pm" : "am", h12 = x % 12 || 12; return h12 + (m ? ":" + String(m).padStart(2, "0") : "") + " " + ap; };
@@ -314,6 +323,7 @@ function ruleFor(pool, pw, id){
   if(!pool) return null;
   const RULES = poolRules(allRules(), pool);
   const lk = dosingLock(pool, ((S.cfg.autoState || {}).dosed || {})[pool], Date.now(), S.fc[pool]); if(lk) return lk;
+  { const hf = highFc(pool, S.fc[pool]); if(hf) return hf; }
   { const n0 = sgNow(), ov = id ? todayOverride((S.cfg.overrides || {})[id], n0.getHours() + n0.getMinutes() / 60, dayKey(n0)) : null; if(ov) return ov; }
   const W = cleanWeek(pw) || RULES.week;
   if(!W) return {on:null, key:"manual", why:"no schedule — switched by hand only (the night-dosing lock still applies)"};
@@ -490,6 +500,7 @@ function rulesCard(){
       <div class="row" style="margin-top:10px"><button class="b sm main">Save ${esc(pool)}</button><button type="button" class="b sm" id="p-cancel">Cancel</button>${own[pool] ? `<button type="button" class="link" id="p-std" style="margin-left:auto">Remove the schedule (hand only)</button>` : ""}</div></form>`; }
   return `<div class="card"><h2>Rules</h2>
     <div style="font-size:14px;line-height:1.5;padding:8px 10px;border:1px solid var(--line);border-radius:10px;margin-bottom:10px">🔒 <b>Night-dosing lock — every outlet:</b> once the night dose is recorded in the tracker (Manual Dosing), that outlet's salt chlorinator is switched <b>OFF</b> and kept OFF until <b>the next water test comes in</b> (normally the next morning's report; at the latest midnight at the end of the next day). Switched ON by hand during the lock → OFF again within 5 minutes.</div>
+    <div style="font-size:14px;line-height:1.5;padding:8px 10px;border:1px solid var(--line);border-radius:10px;margin-bottom:10px">🔒 <b>High-FC lock — every outlet:</b> when the latest water test today (afternoon, else morning) is <b>4 or more</b>, the salt chlorinator is closed — <b>OFF</b> and locked — until a lower test comes in. It beats the weekly schedule and a Today-only setting.</div>
     <div class="note">Each outlet below follows its own weekly schedule. An outlet without one is only switched by hand (plus the lock). Switched by hand against the schedule → back to the schedule after 1 hour.</div>
     <table class="dtab">${poolRows}</table>${poolEdit}</div>`;
 }
