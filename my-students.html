@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>HF Pools · My students</title>
+<meta name="robots" content="noindex">
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700&family=IBM+Plex+Mono:wght@400;600&family=IBM+Plex+Sans:wght@400;600&display=swap" rel="stylesheet">
+<style>
+:root{--ground:#EEF3F3;--surface:#fff;--surface-2:#F6F9F9;--line:#C7D6D6;--line-soft:#DCE6E6;--ink:#0A1417;--ink-2:#33474D;--ink-3:#5B7378;
+--accent:#00676F;--accent-soft:#DCEEEE;--ok:#256B4C;--ok-soft:#DDEEE5;--warn:#8A590D;--warn-soft:#F6EAD4;--urgent:#B23A2E;--urgent-soft:#F8DEDA;--new:#1D4ED8;--new-soft:#DBEAFE}
+*{box-sizing:border-box}
+body{margin:0;background:var(--ground);color:var(--ink);font:15px/1.45 "IBM Plex Sans",system-ui,sans-serif}
+.wrap{max-width:760px;margin:0 auto;padding:14px 16px 40px}
+header{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:12px}
+h1{font:700 26px/1 "Barlow Condensed",sans-serif;text-transform:uppercase;letter-spacing:.02em;margin:0}
+h1 small{font-size:15px;color:var(--accent);margin-left:6px}
+h2{font:700 15px/1 "Barlow Condensed",sans-serif;text-transform:uppercase;letter-spacing:.06em;color:var(--ink-2);margin:0 0 10px;display:flex;gap:8px;align-items:center}
+h2 small{margin-left:auto;font:400 12px "IBM Plex Sans";text-transform:none;letter-spacing:0;color:var(--ink-3)}
+.me{margin-left:auto;font-size:13px;color:var(--ink-3)}
+.me button,.link{border:0;background:none;color:var(--accent);text-decoration:underline;font:inherit;cursor:pointer;padding:0}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:14px;margin-bottom:12px}
+.note{font-size:13px;color:var(--ink-3)}
+.tabs{display:flex;gap:6px;margin-bottom:12px}
+.tab{flex:1;padding:10px;border-radius:10px;border:1px solid var(--line);background:var(--surface);font:600 14px "IBM Plex Sans";color:var(--ink-2);cursor:pointer;text-align:center}
+.tab.on{background:var(--accent);border-color:var(--accent);color:#fff}
+.tab small{display:block;font-weight:400;font-size:12px;opacity:.85}
+.sum{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:12px}
+.sum div{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:10px;text-align:center}
+.sum b{display:block;font:700 24px/1 "Barlow Condensed",sans-serif}
+.sum span{font-size:12px;color:var(--ink-3)}
+.sum .n b{color:var(--new)} .sum .l b{color:var(--urgent)} .sum .p b{color:var(--warn)}
+.cls{border:1px solid var(--line);border-radius:12px;padding:12px;margin-bottom:10px;background:var(--surface)}
+.cls-top{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap}
+.cls-top .t{font:700 20px/1 "Barlow Condensed",sans-serif}
+.cls-top .lv{color:var(--ink-2)}
+.cls-top .cnt{margin-left:auto;font-family:"IBM Plex Mono",monospace;font-size:13px;color:var(--ink-3)}
+.cls-top .cnt.full{color:var(--ok)}
+.kids{margin:8px 0 0;padding:0;list-style:none;display:grid;grid-template-columns:1fr 1fr;gap:4px 10px}
+.kids li{display:flex;gap:6px;align-items:center;font-size:14px;padding:3px 0}
+.kids li.off{color:var(--ink-3);text-decoration:line-through}
+.tag{font:700 10.5px "Barlow Condensed",sans-serif;letter-spacing:.06em;text-transform:uppercase;padding:2px 6px;border-radius:5px;flex:none}
+.tag.new{background:var(--new-soft);color:var(--new)} .tag.left{background:var(--urgent-soft);color:var(--urgent)} .tag.paused{background:var(--warn-soft);color:var(--warn)}
+.tag.cancelled{background:var(--urgent-soft);color:var(--urgent)} .tag.credited{background:var(--warn-soft);color:var(--warn)} .tag.ok{background:var(--ok-soft);color:var(--ok)}
+.today{margin-top:8px;padding:8px 10px;border-radius:8px;background:var(--surface-2);font-size:13px}
+.today b{color:var(--ink)}
+.feed div{display:flex;gap:10px;padding:7px 0;border-top:1px solid var(--line-soft);font-size:14px}
+.feed div:first-child{border-top:0}
+.feed .d{font-family:"IBM Plex Mono",monospace;color:var(--ink-3);flex:none;width:52px;font-size:13px}
+.login{max-width:380px;margin:12vh auto 0}
+.login input{width:100%;margin-top:4px;font:inherit;padding:8px 10px;border:1px solid var(--line);border-radius:7px}
+.login label{display:block;font-size:13px;color:var(--ink-3);margin-top:12px}
+.b{padding:10px 14px;border-radius:9px;border:2px solid var(--accent);background:var(--surface);color:var(--accent);font:600 14px "IBM Plex Sans";cursor:pointer}
+.b.main{background:var(--accent);color:#fff}
+.msg{font-size:13px;margin-top:8px;min-height:18px}.msg.err{color:var(--urgent)}
+.empty{font-size:13.5px;color:var(--ink-3);padding:6px 0}
+@media (max-width:480px){.kids{grid-template-columns:1fr}.sum{grid-template-columns:repeat(2,1fr)}}
+</style></head><body>
+<div class="wrap" id="app"><p class="note">Loading…</p></div>
+<script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore-compat.js"></script>
+<script>
+/* HF Pools — My students (Kay, 10 Oct 2026).
+ * Kay coaches on Saturdays at Buangkok and Wednesdays at Tengah. Students pause or stop without telling
+ * him, so this page lists every student in each of his classes and flags who is NEW, who has LEFT
+ * (no lesson booked in the next 4 weeks) and who is PAUSED. On a class day it also shows today's
+ * confirmed / cancelled / credited per class.
+ * Data: the attendance Apps Script ("old log data show on dosing apps", coachRosterDaily) reads the Happy
+ * Fish booking system every morning and writes Firestore coach_roster/latest (+ coach_roster_changes/{date}).
+ * Only names, levels and class times are stored — no contact details or birthdates. Kay/William only. */
+firebase.initializeApp({
+  apiKey: "AIzaSyANFCZbvRGO9aMRtG9MF_qONO3FL85CzSo", authDomain: "maintenance-board-f931a.firebaseapp.com",
+  projectId: "maintenance-board-f931a", storageBucket: "maintenance-board-f931a.firebasestorage.app",
+  messagingSenderId: "169864970579", appId: "1:169864970579:web:bfb7490d0aebcfed17e1a6"
+});
+const auth = firebase.auth(), db = firebase.firestore();
+const BOSSES = {"d05dba20d3700faa4e379cb3efaf38d69ea2e16a6eb31ddbf8166facafde882d":"Kay", "6ba3ddae7dbb119b31d474b6551b38f271c6df9613b44889fd8cfff6e8c47edf":"William"};
+const $ = s => document.querySelector(s);
+const esc = s => String(s == null ? "" : s).replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const DAYS = [["SAT", "Saturday", "Buangkok"], ["WED", "Wednesday", "Tengah"]];
+const S = {user:null, me:null, data:null, changes:[], day:"", err:""};
+try{ S.day = localStorage.getItem("hf-stu-day") || ""; }catch(e){}
+const fmtDay = iso => iso ? new Date(iso).toLocaleDateString("en-SG", {day:"numeric", month:"short"}) : "";
+const fmtAt = iso => iso ? new Date(iso).toLocaleString("en-SG", {day:"numeric", month:"short", hour:"2-digit", minute:"2-digit", hour12:false}) : "";
+async function bossName(email){
+  try{ const h = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(String(email || "").trim().toLowerCase()));
+    return BOSSES[Array.from(new Uint8Array(h)).map(b => b.toString(16).padStart(2, "0")).join("")] || null; }catch(e){ return null; }
+}
+async function load(){
+  try{ const d = await db.doc("coach_roster/latest").get(); S.data = d.exists ? d.data() : null; }catch(e){ S.err = "Couldn't read the roster: " + e.message; }
+  try{ const q = await db.collection("coach_roster_changes").orderBy("date", "desc").limit(30).get(); S.changes = []; q.forEach(x => (x.data().changes || []).forEach(c => S.changes.push(Object.assign({date:x.data().date}, c)))); }catch(e){}
+  if(!S.day){ const wd = new Date().getDay(); S.day = wd === 3 ? "WED" : "SAT"; }
+}
+function todayKey(){ const d = new Date(); return d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0"); }
+function classCard(c){
+  const kids = (c.students || []).slice().sort((a, b) => (a.status === "left") - (b.status === "left") || String(a.name).localeCompare(String(b.name)));
+  const active = kids.filter(k => k.status !== "left");
+  const t = c.today && c.today.date === todayKey() ? c.today : null;
+  const tagOf = k => k.status === "new" ? `<span class="tag new">New${k.since ? " · " + esc(fmtDay(k.since)) : ""}</span>` : k.status === "left" ? `<span class="tag left">Left${k.lastSeen ? " · last " + esc(fmtDay(k.lastSeen)) : ""}</span>` : k.status === "paused" ? `<span class="tag paused">Paused</span>` : "";
+  const tToday = k => { if(!t) return ""; const st = (t.status || {})[k.id]; return st && st !== "Confirmed" ? `<span class="tag ${esc(st.toLowerCase())}">${esc(st)}</span>` : ""; };
+  return `<div class="cls"><div class="cls-top"><span class="t">${esc(c.time)}</span><span class="lv">${esc(c.level)}</span>
+      <span class="cnt ${active.length >= (c.max || 6) ? "full" : ""}">${active.length}/${c.max || "?"}</span></div>
+    ${kids.length ? `<ul class="kids">${kids.map(k => `<li class="${k.status === "left" ? "off" : ""}">${esc(k.name)} ${tagOf(k)}${tToday(k)}</li>`).join("")}</ul>` : `<div class="empty">No students booked.</div>`}
+    ${t ? `<div class="today"><b>Today:</b> ${t.confirmed} confirmed${t.cancelled ? ` · <span style="color:var(--urgent)">${t.cancelled} cancelled</span>` : ""}${t.credited ? ` · <span style="color:var(--warn)">${t.credited} credited</span>` : ""}</div>` : ""}
+  </div>`;
+}
+function view(){
+  const d = S.data, day = (d && d.days && d.days[S.day]) || null;
+  const classes = (day ? day.classes : []).filter(c => (c.students || []).length || c.max > 4).sort((a, b) => a.time.localeCompare(b.time));
+  const all = classes.flatMap(c => c.students || []);
+  const n = all.filter(k => k.status === "new").length, l = all.filter(k => k.status === "left").length, p = all.filter(k => k.status === "paused").length, act = all.filter(k => k.status !== "left").length;
+  const dayChanges = S.changes.filter(c => c.day === S.day).slice(0, 40);
+  return `<header><h1>HF Pools <small>My students</small></h1><span class="me">${esc(S.me)} · <button id="out">Sign out</button></span></header>
+    <div class="tabs">${DAYS.map(([k, name, outlet]) => `<button class="tab ${S.day === k ? "on" : ""}" data-day="${k}">${name}<small>${outlet}</small></button>`).join("")}</div>
+    ${!d ? `<div class="card"><div class="note">No roster yet. The booking system is read every morning at 6:30 am; the first list appears after the first run.</div></div>` : `
+    <div class="sum"><div><b>${act}</b><span>students</span></div><div class="n"><b>${n}</b><span>new (4 wks)</span></div><div class="l"><b>${l}</b><span>left</span></div><div class="p"><b>${p}</b><span>paused</span></div></div>
+    <div class="card"><h2>${esc(DAYS.find(x => x[0] === S.day)[1])} · ${esc(DAYS.find(x => x[0] === S.day)[2])} <small>updated ${esc(fmtAt(d.at))}</small></h2>
+      ${classes.length ? classes.map(classCard).join("") : `<div class="empty">No classes with students on this day.</div>`}
+      <div class="note" style="margin-top:6px">New = first booked in the last 4 weeks · Left = no lesson booked in the next 4 weeks · Paused = booking system says paused. Intro classes with nobody booked are hidden.</div></div>
+    <div class="card"><h2>Changes <small>last 30 days</small></h2>
+      ${dayChanges.length ? `<div class="feed">${dayChanges.map(c => `<div><span class="d">${esc(fmtDay(c.date))}</span><span><span class="tag ${esc(c.type)}">${esc(c.type)}</span> <b>${esc(c.student)}</b> · ${esc(c.time)} ${esc(c.level)}</span></div>`).join("")}</div>` : `<div class="empty">No changes recorded yet.</div>`}</div>`}
+    ${S.err ? `<div class="msg err">${esc(S.err)}</div>` : ""}`;
+}
+function render(){
+  $("#app").innerHTML = view();
+  $("#out").onclick = () => auth.signOut();
+  document.querySelectorAll("[data-day]").forEach(b => b.onclick = () => { S.day = b.dataset.day; try{ localStorage.setItem("hf-stu-day", S.day); }catch(e){} render(); });
+}
+function loginView(msg){
+  $("#app").innerHTML = `<div class="card login"><h1 style="font-size:24px">HF Pools <small>My students</small></h1>
+    <form id="lf"><label>Email<input id="em" type="email" required autocomplete="username"></label><label>Password<input id="pw" type="password" required autocomplete="current-password"></label>
+    <button class="b main" style="width:100%;margin-top:16px">Sign in</button></form><div class="msg err">${esc(msg || "")}</div></div>`;
+  $("#lf").onsubmit = async e => { e.preventDefault(); try{ await auth.signInWithEmailAndPassword($("#em").value.trim(), $("#pw").value); }catch(err){ loginView("Email or password is not right."); } };
+}
+auth.onAuthStateChanged(async u => {
+  S.user = u; if(!u){ loginView(); return; }
+  S.me = await bossName(u.email);
+  if(!S.me){ $("#app").innerHTML = `<div class="card"><h2>My students</h2><div class="note">This page is for Kay only.</div><p><button class="link" id="out">Sign out</button></p></div>`; $("#out").onclick = () => auth.signOut(); return; }
+  await load(); render();
+});
+</script>
+<script src="https://hfpools.com/nav.js" defer></script>
+</body></html>
