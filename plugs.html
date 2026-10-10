@@ -119,6 +119,18 @@ details.fold>summary .chev{margin-left:auto;font:400 12px "IBM Plex Sans";text-t
 details.fold[open]>summary{margin-bottom:10px}
 .folds-h{font:700 13px "Barlow Condensed",sans-serif;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-3);margin:18px 0 8px}
 @media (max-width:560px){.board{grid-template-columns:1fr 1fr;gap:8px}.tile{padding:10px 10px 9px;min-height:104px}.tile .tp{font-size:18px}.tile .ts{font-size:20px}}
+/* Salt chlorinator run time (Kay, 11 Oct 2026): producing vs standby, from the plug's watts every 5 min */
+.tile .trt{font-size:12px;color:var(--ok);font-weight:600}.tile .trt.sb{color:var(--warn)}
+.rt{margin-top:10px;padding:9px 11px;border:1px solid var(--line-soft);border-radius:8px;font-size:13px;background:var(--surface)}
+.rt .bar{width:100%;height:16px;display:block;border-radius:4px;background:var(--surface-2);border:1px solid var(--line-soft)}
+.rt .ax{display:flex;justify-content:space-between;font:11px "IBM Plex Mono",monospace;color:var(--ink-3);margin-top:2px}
+.rt .lg{font-size:12px;color:var(--ink-2);margin-top:4px}.rt .lg i{display:inline-block;width:10px;height:10px;border-radius:2px;margin:0 4px 0 10px;vertical-align:-1px}
+.rt .lg i:first-child{margin-left:0}
+.rt table,.rtt{border-collapse:collapse;font-size:12.5px;margin-top:8px}
+.rt th,.rt td,.rtt th,.rtt td{padding:3px 9px 3px 0;text-align:left;font-variant-numeric:tabular-nums}
+.rt th,.rtt th{font-weight:600;color:var(--ink-3);font-size:11.5px}
+.rtt td.z{color:var(--ink-3)}
+.rt .warnline{color:var(--warn);font-weight:600;margin-top:4px}
 </style></head><body>
 <div class="wrap" id="app"><p class="note">Loading…</p></div>
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
@@ -404,8 +416,61 @@ function plugHtml(p){
         if(!x || !x.at || x.want == null || new Date(x.at).toDateString() !== new Date().toDateString()) return "";
         return `<div class="note" style="margin-top:4px">⏱ The timer switched it <b>${x.want ? "ON" : "OFF"}</b> at <b>${hhmm(x.at)}</b> today${x.done === false ? " (not done yet — plug didn't answer)" : ""}.</div>`; })()}
       ${(() => { const mo = ((S.cfg.autoState || {}).manual || {})[p.id]; return mo && mo.until ? `<div class="note" style="margin-top:4px">✋ Switched ${mo.on ? "ON" : "OFF"} by hand — the timer puts the rule back at ${hhmm(mo.until)}, unless the rule changes first.</div>` : ""; })()}
-      ${differs ? `<div style="margin-top:6px"><button class="b sm main" data-apply="${esc(p.id)}">Apply: switch ${rule.on ? "ON" : "OFF"}</button></div>` : ""}</div>` : `<div class="note" style="margin-top:8px">Not linked to a pool — manual only.</div>`}
+      ${differs ? `<div style="margin-top:6px"><button class="b sm main" data-apply="${esc(p.id)}">Apply: switch ${rule.on ? "ON" : "OFF"}</button></div>` : ""}</div>${rtHtml(p)}` : `<div class="note" style="margin-top:8px">Not linked to a pool — manual only.</div>`}
   </div>`;
+}
+/* ---------- salt chlorinator run time (Kay, 11 Oct 2026) ----------
+ * The timer reads each plug's watts every 5 min: drawing real power = producing chlorine; switched ON but drawing
+ * little = standby (resting, hot, no flow, low salt or a fault). Kept in dosing_config/plugs.runtime. */
+const RT_PROD = "#2FA35A", RT_SB = "#E0A030";
+function rtToday(id){ const r = S.cfg.runtime || {}; return r.date === dayKey(sgNow()) ? (r.plugs || {})[id] || null : null; }
+function rtDays(id){ return ((S.cfg.runtime || {}).days || {})[id] || []; }
+function rtHm(m){ m = Math.round(m || 0); const h = Math.floor(m / 60); return h ? h + "h" + (m % 60 ? " " + pad(m % 60) + "m" : "") : (m % 60) + "m"; }
+function rtSince(iso){ return iso ? rtHm((Date.now() - new Date(iso)) / 60000) : ""; }
+function rtBar(x){
+  const n = sgNow(), nowMin = n.getHours() * 60 + n.getMinutes();
+  const rects = (x && x.blocks || []).map(b => `<rect x="${b.s}" y="0" width="${Math.max(2, b.e - b.s)}" height="16" fill="${b.k === "p" ? RT_PROD : RT_SB}"/>`).join("");
+  return `<svg class="bar" viewBox="0 0 1440 16" preserveAspectRatio="none" role="img" aria-label="Today's producing and standby times">${rects}
+    ${[360, 720, 1080].map(t => `<line x1="${t}" x2="${t}" y1="0" y2="16" stroke="currentColor" stroke-opacity=".15" stroke-width="2"/>`).join("")}
+    <line x1="${nowMin}" x2="${nowMin}" y1="0" y2="16" stroke="var(--ink)" stroke-width="3"/></svg>
+    <div class="ax"><span>12am</span><span>6am</span><span>12pm</span><span>6pm</span><span>12am</span></div>`;
+}
+function rtNowTxt(x){
+  if(!x) return "";
+  return x.st === "p" ? `now <b style="color:var(--ok)">producing</b>${x.w != null ? ` (${x.w} W)` : ""}`
+    : x.st === "s" ? `now <b style="color:var(--warn)">ON but not producing</b>${x.w != null ? ` (${x.w} W)` : ""} for ${rtSince(x.sbSince)}`
+    : x.st === "o" ? "now OFF" : "plug not answering";
+}
+function rtHtml(p){
+  const x = rtToday(p.id), days = rtDays(p.id).slice(-7).reverse();
+  const stuck = ((S.cfg.runtime || {}).stuckMin) || 120;
+  if(!x && !days.length) return `<div class="rt note">⚡ <b>Run time</b> — starts showing after the timer's next check (every 5 min).</div>`;
+  const g = x && x.gph ? ` · <b>~${x.g || 0} g</b> chlorine <span class="note">(rated ${x.gph} g/h)</span>` : ` <span class="note">· rated output not set, so no grams</span>`;
+  return `<div class="rt">⚡ <b>Run time today</b> — producing <b>${rtHm(x && x.prodMin)}</b> of <b>${rtHm(x && x.onMin)}</b> switched ON${x && x.sbMin ? ` · standby ${rtHm(x.sbMin)}` : ""}${x ? g : ""}<br><span class="note">${rtNowTxt(x)}</span>
+    ${rtBar(x)}
+    <div class="lg"><i style="background:${RT_PROD}"></i>producing <i style="background:${RT_SB}"></i>ON but not producing <i style="background:var(--surface-2);border:1px solid var(--line)"></i>OFF</div>
+    ${x && x.alerted ? `<div class="warnline">🟠 Alert sent — ON but not producing for over ${rtHm(stuck)}.</div>` : ""}
+    ${days.length ? `<table><tr><th>Day</th><th>Producing</th><th>ON</th><th>Chlorine</th></tr>${days.map(d => `<tr><td>${esc(new Date(d.d + "T00:00:00").toLocaleDateString("en-SG", {weekday:"short", day:"numeric", month:"short"}))}</td><td>${rtHm(d.prod)}</td><td>${rtHm(d.on)}</td><td>${d.g ? "~" + d.g + " g" : "–"}</td></tr>`).join("")}</table>` : ""}
+    <div class="note" style="margin-top:4px">Producing = the plug sees real power draw. A Laswim set to 4 h run / 1 h rest shows 1 h amber gaps; amber for over ${rtHm(stuck)} sends an alert to Smartplug Check.</div></div>`;
+}
+function rtTileLine(plugs){
+  const xs = plugs.map(p => rtToday(p.id)).filter(Boolean);
+  if(!xs.length) return "";
+  const sb = xs.find(x => x.st === "s"), prod = xs.reduce((a, x) => a + (x.prodMin || 0), 0);
+  if(sb) return `<div class="trt sb">⚡ ON, not producing ${rtSince(sb.sbSince)}</div>`;
+  const live = xs.some(x => x.st === "p");
+  return `<div class="trt">⚡ ${live ? "producing · " : ""}${rtHm(prod)} today</div>`;
+}
+function rtWeekCard(){
+  const plugs = (S.cfg.plugs || []).filter(p => p.pool);
+  if(!plugs.length) return `<div class="note">No plugs yet.</div>`;
+  const today = dayKey(sgNow()), dates = [];
+  for(let i = 6; i >= 0; i--) dates.push(dayKey(new Date(sgNow().getTime() - i * 864e5)));
+  const cell = (p, d) => { if(d === today){ const x = rtToday(p.id); return x ? x.prodMin : null; } const r = rtDays(p.id).find(z => z.d === d); return r ? r.prod : null; };
+  return `<div class="note">Hours each salt chlorinator was really <b>producing</b> (not just switched ON). Today is so far.</div>
+  <div style="overflow-x:auto"><table class="rtt"><tr><th>Plug</th>${dates.map(d => `<th>${esc(new Date(d + "T00:00:00").toLocaleDateString("en-SG", {weekday:"short", day:"numeric"}))}</th>`).join("")}</tr>
+  ${plugs.map(p => `<tr><td><b>${esc(p.pool)}</b> ${plugs.filter(q => q.pool === p.pool).length > 1 ? esc(shortPlugName(p)) : ""}</td>${dates.map(d => { const v = cell(p, d); return v == null ? `<td class="z">·</td>` : `<td${v ? "" : ` class="z"`}>${rtHm(v)}</td>`; }).join("")}</tr>`).join("")}</table></div>
+  <div class="note" style="margin-top:6px">Tap an outlet tile for today's run/rest bar and estimated grams. Run time started being recorded on 11 Oct 2026.</div>`;
 }
 function ago(iso){ if(!iso) return ""; const m = Math.round((Date.now() - new Date(iso)) / 60000); return m < 1 ? "just now" : m < 60 ? m + " min ago" : Math.round(m / 60) + " h ago"; }
 /* ---------- at-a-glance board (Kay, 8 Oct 2026) ---------- */
@@ -431,6 +496,7 @@ function tileHtml(pool){
     <div class="tp">${esc(pool)}${plugs.length === 1 ? `<span class="dot ${cls}"></span>` : ""}</div>
     ${plugs.length === 1 ? `<div class="ts">${stateWord(states[0])}</div>` : sub}
     <div class="tfc">${fc}</div>
+    ${rtTileLine(plugs)}
     <div class="tw">${esc(why)}</div></button>`;
 }
 function boardHtml(){
@@ -590,6 +656,7 @@ function render(){
     ${openPlugs.length ? openPlugs.map(plugHtml).join("") : `<div class="note">No plug at ${esc(S.openPool)} yet.</div>`}</div>` : `<div class="note" style="margin:-4px 0 14px">Tap an outlet to switch its plug by hand or see today's rule. FC = morning / afternoon / night test. 🔒 = Switch ON is locked (night dosing done, or no water test yet).</div>`}
   ${unlinked.length ? `<div class="card"><h2>Plugs not linked to a pool</h2>${unlinked.map(plugHtml).join("")}</div>` : ""}
   <div class="folds-h">More — tap to open</div>
+  ${fold("runtime", "⚡ Run time — last 7 days", rtWeekCard(), false)}
   ${fold("timer", "🤖 Timer &amp; what it did today", autoCard(), false)}
   ${guardCard()}
   ${fold("rules", "📅 Rules &amp; weekly schedules", rulesCard().replace(/^<div class="card"><h2>Rules<\/h2>/, "<div>"), !!(S.editPool || S.editRules))}
