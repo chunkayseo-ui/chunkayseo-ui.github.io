@@ -131,6 +131,17 @@ details.fold[open]>summary{margin-bottom:10px}
 .rt th,.rtt th{font-weight:600;color:var(--ink-3);font-size:11.5px}
 .rtt td.z{color:var(--ink-3)}
 .rt .warnline{color:var(--warn);font-weight:600;margin-top:4px}
+/* Recent switches: FC at the time + a day bar when one plug is picked (Kay, 12 Oct 2026) */
+.log .fct{flex:none;align-self:flex-start;font:600 11.5px/1 "IBM Plex Mono",monospace;padding:4px 6px;border-radius:5px;margin-top:1px;background:var(--surface-2);border:1px solid var(--line);color:var(--ink-2);white-space:nowrap}
+.log .fct.hi{background:var(--warn-soft);color:var(--warn);border-color:#E3C48C}
+.log .fct.lo{background:var(--urgent-soft);color:var(--urgent);border-color:#E9B4AC}
+.log .fct.none{color:var(--ink-3);font-weight:400}
+.log .daybar{display:block;border-top:0;padding:2px 0 8px}
+.log .daybar div{border-top:0;padding:0}
+.log .daybar svg{width:100%;height:16px;display:block;border-radius:4px;background:var(--surface-2);border:1px solid var(--line-soft)}
+.log .daybar .ax{display:flex;justify-content:space-between;font:10.5px "IBM Plex Mono",monospace;color:var(--ink-3);margin-top:1px}
+.log .daybar .sum{display:block;font-size:12px;color:var(--ink-2);margin-bottom:3px}
+@media (max-width:560px){.log div{flex-wrap:wrap}.log .fct{order:3}}
 </style></head><body>
 <div class="wrap" id="app"><p class="note">Loading…</p></div>
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
@@ -383,7 +394,8 @@ async function switchPlug(p, on, reason){
   try{
     await relay({action:"switch", id:p.id, on});
     S.status[p.id] = Object.assign({}, S.status[p.id] || {}, {on, online:true});
-    const entry = {at:new Date().toISOString(), by:S.user.email, id:p.id, name:p.name, pool:p.pool || null, on, reason:reason || "manual"};
+    const t0 = p.pool ? S.fc[p.pool] : null, fc = t0 && !t0.err ? {m: t0.morning ?? null, a: t0.afternoon ?? null, n: t0.night ?? null} : null;
+    const entry = {at:new Date().toISOString(), by:S.user.email, id:p.id, name:p.name, pool:p.pool || null, on, reason:reason || "manual", fc};
     S.log.unshift(entry);
     db.collection("plug_log").add(entry).catch(() => {});
     setTimeout(refreshStatus, 2500);   // Shelly allows 1 request a second
@@ -614,6 +626,36 @@ function guardCard(){
   </details>`;
 }
 function logDur(ms){ const m = Math.round(ms / 60000); if(m < 60) return m + " min"; const h = Math.floor(m / 60); return h + " h" + (m % 60 ? " " + (m % 60) + " min" : ""); }
+/* FC tag for a switch: the latest water test of that day known when it switched (night > afternoon > morning) */
+function fcTag(l){
+  if(!("fc" in l) || !l.pool) return "";
+  const f = l.fc;
+  if(!f || (f.m == null && f.a == null && f.n == null)) return `<span class="fct none" title="No water test in yet that day">no test yet</span>`;
+  const k = f.n != null ? ["n", "night"] : f.a != null ? ["a", "aft"] : ["m", "morn"], v = Number(f[k[0]]);
+  const cls = v >= 4 ? " hi" : v < 1.5 ? " lo" : "";
+  const all = `FC that day when it switched — morning ${f.m ?? "–"} · afternoon ${f.a ?? "–"} · night ${f.n ?? "–"}`;
+  return `<span class="fct${cls}" title="${esc(all)}">FC ${esc(v)} · ${k[1]}</span>`;
+}
+/* One plug picked: a 24 h bar per day, green while switched ON (built from the switches themselves) */
+function logDayBar(rows, dayStart){
+  const dayEnd = dayStart + 864e5, end = Math.min(dayEnd, Date.now());
+  const evs = rows.filter(l => { const t = +new Date(l.at); return t >= dayStart && t < dayEnd; }).slice().reverse();   // oldest first
+  const before = rows.find(l => +new Date(l.at) < dayStart);
+  let cur = before ? !!before.on : null, from = dayStart, onMs = 0;
+  const segs = [];
+  const add = (a, b) => { if(b > a){ segs.push([a, b]); onMs += b - a; } };
+  evs.forEach(l => { const t = +new Date(l.at); if(cur) add(from, t); cur = !!l.on; from = t; });
+  if(cur) add(from, end);
+  const x = t => ((t - dayStart) / 60000).toFixed(1);
+  const today = Date.now() < dayEnd;
+  return `<div class="daybar"><span class="sum">Switched ON <b style="color:var(--ok)">${onMs ? logDur(onMs) : "0 min"}</b>${today ? " so far today" : " this day"}${before ? "" : " <span class=\"note\">(state before the first switch unknown)</span>"}</span>
+    <svg viewBox="0 0 1440 16" preserveAspectRatio="none" role="img" aria-label="When the plug was ON this day">
+      ${segs.map(([a, b]) => `<rect x="${x(a)}" y="0" width="${Math.max(2, (b - a) / 60000).toFixed(1)}" height="16" fill="#2FA35A"/>`).join("")}
+      ${[360, 720, 1080].map(t => `<line x1="${t}" x2="${t}" y1="0" y2="16" stroke="currentColor" stroke-opacity=".15" stroke-width="2"/>`).join("")}
+      ${evs.map(l => `<line x1="${x(+new Date(l.at))}" x2="${x(+new Date(l.at))}" y1="0" y2="16" stroke="${l.by === "auto" ? "#0A1417" : "#B23A2E"}" stroke-width="3"/>`).join("")}
+      ${today ? `<line x1="${x(Date.now())}" x2="${x(Date.now())}" y1="0" y2="16" stroke="#00676F" stroke-width="2" stroke-dasharray="3 2"/>` : ""}
+    </svg><div class="ax"><span>12am</span><span>6am</span><span>12pm</span><span>6pm</span><span>12am</span></div></div>`;
+}
 function logHtml(plugs){
   const one = S.logPlug;
   const rows = one ? S.log.filter(l => l.id === one) : S.log;
@@ -625,16 +667,17 @@ function logHtml(plugs){
   let lastDay = "", out = "";
   rows.forEach((l, i) => {
     const d = new Date(l.at), day = d.toLocaleDateString("en-SG", {weekday:"short", day:"numeric", month:"short"});
-    if(day !== lastDay){ out += `<div class="day">${day}</div>`; lastDay = day; }
+    if(day !== lastDay){ out += `<div class="day">${day}</div>`; lastDay = day; if(one) out += logDayBar(rows, new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime()); }
     let dur = "";
     if(one){   // how long the plug stayed in this state: until the next switch of the same plug, or until now
       const next = i > 0 ? rows[i - 1] : null;
       const ms = (next ? new Date(next.at) : new Date()) - d;
       if(ms >= 0) dur = ` <span class="dur">· ${l.on ? "ON" : "OFF"} for ${logDur(ms)}${next ? "" : " so far"}</span>`;
     }
-    out += `<div><span class="t">${d.toLocaleTimeString("en-SG", {hour:"2-digit", minute:"2-digit", hour12:false})}</span><span class="pill ${l.on ? "on" : "off"}">${l.on ? "ON" : "OFF"}</span><span>${one ? "" : `<b>${esc(l.name)}</b> · `}${esc(l.reason)} · ${esc(String(l.by || "").split("@")[0])}${dur}</span></div>`;
+    out += `<div><span class="t">${d.toLocaleTimeString("en-SG", {hour:"2-digit", minute:"2-digit", hour12:false})}</span><span class="pill ${l.on ? "on" : "off"}">${l.on ? "ON" : "OFF"}</span>${fcTag(l)}<span>${one ? "" : `<b>${esc(l.name)}</b> · `}${esc(l.reason)} · ${esc(String(l.by || "").split("@")[0])}${dur}</span></div>`;
   });
-  return bar + `<div class="log">${out}</div>`;
+  const key = one ? `<div class="note" style="margin:-4px 0 8px">Bar per day: <b style="color:#2FA35A">green</b> = switched ON · black tick = timer switch · <b style="color:#B23A2E">red</b> tick = switched by hand. FC tag = that day's latest water test when it switched (hover or long-press for all three).</div>` : `<div class="note" style="margin:-4px 0 8px">FC tag = that day's latest water test when it switched. Pick one plug to see a day-by-day ON bar.</div>`;
+  return bar + key + `<div class="log">${out}</div>`;
 }
 function render(){
   if(!S.user) return;
