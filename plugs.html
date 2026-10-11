@@ -142,6 +142,11 @@ details.fold[open]>summary{margin-bottom:10px}
 .log .daybar .ax{display:flex;justify-content:space-between;font:10.5px "IBM Plex Mono",monospace;color:var(--ink-3);margin-top:1px}
 .log .daybar .sum{display:block;font-size:12px;color:var(--ink-2);margin-bottom:3px}
 @media (max-width:560px){.log div{flex-wrap:wrap}.log .fct{order:3}}
+/* Recent switches: producing strip + salt cell health from the watts (Kay, 12 Oct 2026) */
+.log .daybar .lbl{display:block;font:600 10.5px "IBM Plex Sans",sans-serif;letter-spacing:.04em;text-transform:uppercase;color:var(--ink-3);margin:4px 0 1px}
+.log .daybar .sum2{display:block;font-size:12px;color:var(--ink-2);margin-top:4px;line-height:1.6}
+.hb{display:inline-block;padding:1px 8px;border-radius:999px;font-size:11.5px;font-weight:600;white-space:nowrap}
+.hb.ok{background:var(--ok-soft);color:var(--ok)}.hb.watch{background:var(--warn-soft);color:var(--warn)}.hb.low{background:var(--urgent-soft);color:var(--urgent)}.hb.learn{background:var(--surface-2);color:var(--ink-3);font-weight:400}
 </style></head><body>
 <div class="wrap" id="app"><p class="note">Loading…</p></div>
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
@@ -636,6 +641,24 @@ function guardCard(){
   </details>`;
 }
 function logDur(ms){ const m = Math.round(ms / 60000); if(m < 60) return m + " min"; const h = Math.floor(m / 60); return h + " h" + (m % 60 ? " " + (m % 60) + " min" : ""); }
+/* Salt cell health: average watts while producing, against this chlorinator's own normal (median of recorded days).
+ * A cell that is scaling up with calcium, or water low on salt, draws less power — so the watts drop before FC does. */
+function rtDayData(id, dk){
+  if(dk === dayKey(sgNow())){ const x = rtToday(id); return x ? {bl: x.blocks || [], prod: x.prodMin || 0, on: x.onMin || 0, aw: x.pwN ? Math.round(x.pwSum / x.pwN) : null, g: x.g || 0, gph: x.gph} : null; }
+  const d = rtDays(id).find(z => z.d === dk); return d ? {bl: d.bl || null, prod: d.prod || 0, on: d.on || 0, aw: d.aw || null, g: d.g || 0} : null;
+}
+function rtNormalW(id){ const a = rtDays(id).map(d => d.aw).filter(v => v > 0).slice(-14).sort((p, q) => p - q); return a.length >= 3 ? a[Math.floor(a.length / 2)] : null; }
+function healthBadge(aw, normal){
+  if(!aw) return "";
+  if(!normal) return `<span class="hb learn" title="Health compares today's watts with this chlorinator's normal — it needs 3 recorded days first">🩺 learning its normal level</span>`;
+  const r = aw / normal, [c, t] = r >= 0.9 ? ["ok", "healthy"] : r >= 0.75 ? ["watch", "lower than normal — check salt, clean cell soon"] : ["low", "low — check salt level and clean the cell"];
+  return `<span class="hb ${c}" title="Average watts while producing (${aw} W) against its normal (${normal} W)">🩺 ${Math.round(r * 100)}% · ${t}</span>`;
+}
+function rtStrip(bl){
+  return `<svg viewBox="0 0 1440 16" preserveAspectRatio="none" role="img" aria-label="When it was producing chlorine">
+    ${(bl || []).map(b => `<rect x="${b.s}" y="0" width="${Math.max(2, b.e - b.s)}" height="16" fill="${b.k === "p" ? RT_PROD : RT_SB}"/>`).join("")}
+    ${[360, 720, 1080].map(t => `<line x1="${t}" x2="${t}" y1="0" y2="16" stroke="currentColor" stroke-opacity=".15" stroke-width="2"/>`).join("")}</svg>`;
+}
 /* FC tag for a switch: the latest water test of that day known when it switched (night > afternoon > morning) */
 function fcTag(l){
   if(!("fc" in l) || !l.pool) return "";
@@ -647,7 +670,7 @@ function fcTag(l){
   return `<span class="fct${cls}" title="${esc(all)}">FC ${esc(v)} · ${k[1]}</span>`;
 }
 /* One plug picked: a 24 h bar per day, green while switched ON (built from the switches themselves) */
-function logDayBar(rows, dayStart){
+function logDayBar(rows, dayStart, id){
   const dayEnd = dayStart + 864e5, end = Math.min(dayEnd, Date.now());
   const evs = rows.filter(l => { const t = +new Date(l.at); return t >= dayStart && t < dayEnd; }).slice().reverse();   // oldest first
   const before = rows.find(l => +new Date(l.at) < dayStart);
@@ -664,7 +687,14 @@ function logDayBar(rows, dayStart){
       ${[360, 720, 1080].map(t => `<line x1="${t}" x2="${t}" y1="0" y2="16" stroke="currentColor" stroke-opacity=".15" stroke-width="2"/>`).join("")}
       ${evs.map(l => `<line x1="${x(+new Date(l.at))}" x2="${x(+new Date(l.at))}" y1="0" y2="16" stroke="${l.by === "auto" ? "#0A1417" : "#B23A2E"}" stroke-width="3"/>`).join("")}
       ${today ? `<line x1="${x(Date.now())}" x2="${x(Date.now())}" y1="0" y2="16" stroke="#00676F" stroke-width="2" stroke-dasharray="3 2"/>` : ""}
-    </svg><div class="ax"><span>12am</span><span>6am</span><span>12pm</span><span>6pm</span><span>12am</span></div></div>`;
+    </svg>${(() => {
+      const rd = id ? rtDayData(id, dayKey(new Date(dayStart))) : null;
+      if(!rd) return "";
+      const strip = rd.bl ? `<span class="lbl">Producing chlorine <span style="text-transform:none;letter-spacing:0;font-weight:400">— <b style="color:#2FA35A">green</b> producing · <b style="color:#B7791F">amber</b> ON but resting / standby</span></span>${rtStrip(rd.bl)}` : "";
+      const normal = rtNormalW(id);
+      return strip + `<div class="ax"><span>12am</span><span>6am</span><span>12pm</span><span>6pm</span><span>12am</span></div>
+        <span class="sum2">⚡ Producing <b>${rtHm(rd.prod)}</b> of ${rtHm(rd.on)} ON${rd.aw ? ` · avg <b>${rd.aw} W</b> while producing${normal ? ` (normal ${normal} W)` : ""}` : ""}${rd.g ? ` · ~${rd.g} g chlorine` : ""} ${healthBadge(rd.aw, normal)}${rd.bl ? "" : ` <span class="note">(hour-by-hour detail kept from 12 Oct)</span>`}</span>`;
+    })() || `<div class="ax"><span>12am</span><span>6am</span><span>12pm</span><span>6pm</span><span>12am</span></div>`}</div>`;
 }
 function logHtml(plugs){
   const one = S.logPlug;
@@ -677,7 +707,7 @@ function logHtml(plugs){
   let lastDay = "", out = "";
   rows.forEach((l, i) => {
     const d = new Date(l.at), day = d.toLocaleDateString("en-SG", {weekday:"short", day:"numeric", month:"short"});
-    if(day !== lastDay){ out += `<div class="day">${day}</div>`; lastDay = day; if(one) out += logDayBar(rows, new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime()); }
+    if(day !== lastDay){ out += `<div class="day">${day}</div>`; lastDay = day; if(one) out += logDayBar(rows, new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime(), one); }
     let dur = "";
     if(one){   // how long the plug stayed in this state: until the next switch of the same plug, or until now
       const next = i > 0 ? rows[i - 1] : null;
@@ -686,7 +716,7 @@ function logHtml(plugs){
     }
     out += `<div><span class="t">${d.toLocaleTimeString("en-SG", {hour:"2-digit", minute:"2-digit", hour12:false})}</span><span class="pill ${l.on ? "on" : "off"}">${l.on ? "ON" : "OFF"}</span>${fcTag(l)}<span>${one ? "" : `<b>${esc(l.name)}</b> · `}${esc(l.reason)} · ${esc(String(l.by || "").split("@")[0])}${dur}</span></div>`;
   });
-  const key = one ? `<div class="note" style="margin:-4px 0 8px">Bar per day: <b style="color:#2FA35A">green</b> = switched ON · black tick = timer switch · <b style="color:#B23A2E">red</b> tick = switched by hand. FC tag = that day's latest water test when it switched (hover or long-press for all three).</div>` : `<div class="note" style="margin:-4px 0 8px">FC tag = that day's latest water test when it switched. Pick one plug to see a day-by-day ON bar.</div>`;
+  const key = one ? `<div class="note" style="margin:-4px 0 8px">Top bar per day: <b style="color:#2FA35A">green</b> = switched ON · black tick = timer switch · <b style="color:#B23A2E">red</b> tick = switched by hand. Second bar = when it was really producing (from the plug's watts). 🩺 health = average watts while producing against its normal — a scaling cell or low salt draws less. FC tag = that day's latest water test when it switched (hover or long-press for all three).</div>` : `<div class="note" style="margin:-4px 0 8px">FC tag = that day's latest water test when it switched. Pick one plug to see a day-by-day ON bar.</div>`;
   return bar + key + `<div class="log">${out}</div>`;
 }
 function render(){
