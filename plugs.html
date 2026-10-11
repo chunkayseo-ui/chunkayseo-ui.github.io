@@ -147,6 +147,11 @@ details.fold[open]>summary{margin-bottom:10px}
 .log .daybar .sum2{display:block;font-size:12px;color:var(--ink-2);margin-top:4px;line-height:1.6}
 .hb{display:inline-block;padding:1px 8px;border-radius:999px;font-size:11.5px;font-weight:600;white-space:nowrap}
 .hb.ok{background:var(--ok-soft);color:var(--ok)}.hb.watch{background:var(--warn-soft);color:var(--warn)}.hb.low{background:var(--urgent-soft);color:var(--urgent)}.hb.learn{background:var(--surface-2);color:var(--ink-3);font-weight:400}
+.rt .rthead{font-size:13px}
+.rt .rtday{margin-top:8px;padding-top:6px;border-top:1px solid var(--line-soft)}
+.rt .rtday .dl{display:block;font:700 12px "Barlow Condensed",sans-serif;letter-spacing:.06em;text-transform:uppercase;color:var(--ink-3)}
+.rt .mini svg{width:100%;height:10px;display:block;border-radius:3px;background:var(--surface-2);border:1px solid var(--line-soft);margin:3px 0 1px}
+.rt .sum2{display:block;font-size:12.5px;color:var(--ink-2);line-height:1.6}
 </style></head><body>
 <div class="wrap" id="app"><p class="note">Loading…</p></div>
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
@@ -459,17 +464,21 @@ function rtNowTxt(x){
     : x.st === "o" ? "now OFF" : "plug not answering";
 }
 function rtHtml(p){
+  // Same layout as the day bars in Recent switches (Kay, 12 Oct 2026): one summary line per day + its producing strip
   const x = rtToday(p.id), days = rtDays(p.id).slice(-7).reverse();
   const stuck = ((S.cfg.runtime || {}).stuckMin) || 120;
   if(!x && !days.length) return `<div class="rt note">⚡ <b>Run time</b> — starts showing after the timer's next check (every 5 min).</div>`;
-  const g = x && x.gph ? ` · <b>~${x.g || 0} g</b> chlorine <span class="note">(rated ${x.gph} g/h)</span>` : ` <span class="note">· rated output not set, so no grams</span>`;
-  return `<div class="rt">⚡ <b>Run time today</b> — producing <b>${rtHm(x && x.prodMin)}</b> of <b>${rtHm(x && x.onMin)}</b> switched ON${x && x.sbMin ? ` · standby ${rtHm(x.sbMin)}` : ""}${x ? g : ""}<br><span class="note">${rtNowTxt(x)}</span>
-    ${x && x.wh && x.peak ? `<div class="note">🔌 Energy meter: <b>${(x.wh / 1000).toFixed(2)} kWh</b> today ≈ <b>${rtHm(x.wh / x.peak * 60)}</b> at full power (${x.peak} W) — the plug counts every second, so this also catches short stops between the 5-minute checks.</div>` : ""}
+  const normal = rtNormalW(p.id), awT = x && x.pwN ? Math.round(x.pwSum / x.pwN) : null;
+  const sumLine = (prod, on, aw, g, wh) => `⚡ Producing <b>${rtHm(prod)}</b> of ${rtHm(on)} ON${aw ? ` · avg <b>${aw} W</b> while producing${normal ? ` (normal ${normal} W)` : ""}` : ""}${g ? ` · ~${g} g chlorine` : ""}${wh ? ` · ${(wh / 1000).toFixed(2)} kWh` : ""} ${healthBadge(aw, normal)}`;
+  const dayRow = d => `<div class="rtday"><span class="dl">${esc(new Date(d.d + "T00:00:00").toLocaleDateString("en-SG", {weekday:"short", day:"numeric", month:"short"}))}</span>
+    ${d.bl ? `<div class="mini">${rtStrip(d.bl)}</div>` : ""}<span class="sum2">${sumLine(d.prod, d.on, d.aw, d.g, d.wh)}${d.bl ? "" : ` <span class="note">(hour-by-hour detail kept from 12 Oct)</span>`}</span></div>`;
+  return `<div class="rt"><div class="rthead"><b>Today</b> <span class="note">· ${rtNowTxt(x) || "no reading yet"}${x && x.gph ? ` · rated ${x.gph} g/h` : " · rated output not set, so no grams"}</span></div>
+    <span class="sum2" style="margin-top:2px">${sumLine(x && x.prodMin, x && x.onMin, awT, x && x.g, x && x.wh)}${x && x.sbMin ? ` · standby ${rtHm(x.sbMin)}` : ""}</span>
     ${rtBar(x)}
     <div class="lg"><i style="background:${RT_PROD}"></i>producing <i style="background:${RT_SB}"></i>ON but not producing <i style="background:var(--surface-2);border:1px solid var(--line)"></i>OFF</div>
     ${x && x.alerted ? `<div class="warnline">🟠 Alert sent — ON but not producing for over ${rtHm(stuck)}.</div>` : ""}
-    ${days.length ? `<table><tr><th>Day</th><th>Producing</th><th>ON</th><th>Chlorine</th><th>Energy</th></tr>${days.map(d => `<tr><td>${esc(new Date(d.d + "T00:00:00").toLocaleDateString("en-SG", {weekday:"short", day:"numeric", month:"short"}))}</td><td>${rtHm(d.prod)}</td><td>${rtHm(d.on)}</td><td>${d.g ? "~" + d.g + " g" : "–"}</td><td>${d.wh ? (d.wh / 1000).toFixed(2) + " kWh" : "–"}</td></tr>`).join("")}</table>` : ""}
-    <div class="note" style="margin-top:4px">Producing = the plug sees real power draw. A Laswim set to 4 h run / 1 h rest shows 1 h amber gaps; amber for over ${rtHm(stuck)} sends an alert to Smartplug Check.</div></div>`;
+    ${days.length ? `<div class="rthead" style="margin-top:10px"><b>Last 7 days</b></div>${days.map(dayRow).join("")}` : ""}
+    <div class="note" style="margin-top:6px">Producing = the plug sees real power draw. A Laswim set to 4 h run / 1 h rest shows 1 h amber gaps; amber for over ${rtHm(stuck)} sends an alert to Smartplug Check. 🩺 = average watts while producing against this chlorinator's normal — a scaling cell or low salt draws less.</div></div>`;
 }
 function rtTileLine(plugs){
   const xs = plugs.map(p => rtToday(p.id)).filter(Boolean);
