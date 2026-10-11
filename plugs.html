@@ -547,14 +547,24 @@ function autoCard(){
   const win = {start: 8, end: 20};   // same as DAY_START / DAY_END in plugs.gs
   const stale = !last || (!night && Date.now() - new Date(last) > 20 * 60000);
   const plugs = (S.cfg.plugs || []).filter(p => p.pool);
-  const rows = plugs.map(p => { const x = (a.plugs || {})[p.id]; if(!x) return "";
-    return `<div><b>${esc(p.name)}</b>: ${x.want === true ? "ON" : x.want === false ? "OFF" : "—"}${x.why ? ` · <span class="why">${esc(x.why)}</span>` : ""}${x.err ? ` · <span style="color:var(--urgent)">${esc(x.err)}</span>` : ""}${x.at ? ` <span class="note">(${hhmm(x.at)})</span>` : ""}</div>`; }).join("");
-  return `<div class="${on ? "okbox" : "warnbox"}" id="autobox">
+  // one row per plug, laid out like Recent switches: time · ON/OFF · branch · why (Kay, 12 Oct 2026)
+  const todayStr = new Date().toDateString();
+  const list = plugs.map(p => ({p, x: (a.plugs || {})[p.id]})).filter(o => o.x)
+    .sort((u, v) => String(v.x.at || "").localeCompare(String(u.x.at || "")));
+  const rows = list.map(({p, x}) => {
+    const many = plugs.filter(q => q.pool === p.pool).length > 1;
+    const when = x.at ? (new Date(x.at).toDateString() === todayStr ? hhmm(x.at) : new Date(x.at).toLocaleDateString("en-SG", {weekday:"short"}) + " " + hhmm(x.at)) : "—";
+    const pill = x.want === true ? `<span class="pill on">ON</span>` : x.want === false ? `<span class="pill off">OFF</span>` : `<span class="pill off">—</span>`;
+    const lock = /lock/i.test(x.why || "") ? "🔒 " : "";
+    return `<div><span class="t" style="width:${when.length > 5 ? 78 : 48}px">${when}</span>${pill}<span><b>${esc(p.pool)}</b>${many ? ` <span class="note">${esc(shortPlugName(p))}</span>` : ""} · ${lock}${esc(x.why || "")}${x.done === false ? ` · <span style="color:var(--urgent)">not done yet — plug didn't answer</span>` : ""}${x.err ? ` · <span style="color:var(--urgent)">${esc(x.err)}</span>` : ""}</span></div>`;
+  }).join("");
+  const table = on && rows ? `<div class="folds-h" style="margin:0 0 4px">Last decision per plug — newest first</div><div class="log" style="margin-bottom:12px">${rows}</div>` : "";
+  return table + `<div class="${on ? "okbox" : "warnbox"}" id="autobox">
     <div class="row"><span>${on ? "" : ""}${on ? `🤖 <b>Automatic switching is ON.</b> Every ${a.every === 1 ? "minute" : "5 minutes"} from ${hr(win.start)} to ${hr(win.end)} the timer reads the water test sheet and switches the plugs that follow a pool. At night it keeps checking every 5 minutes for the night-dosing lock, night runs and hand switches.${a.every === 1 && a.testUntil ? ` <b>Test mode</b> until ${hhmm(a.testUntil)}, then back to every 5 minutes.` : ""}` : "✋ <b>Automatic switching is OFF.</b> Nothing switches by itself — \"Rule says\" shows what it <i>would</i> do; press Apply to do it by hand."}</span>
 </div>
     <div class="note" style="margin-top:6px">${last ? (night ? `Timer is asleep for the night — next check at ${hr(win.start)}.` : `Timer last checked ${ago(last)}${stale ? ` — <b style="color:var(--urgent)">the timer doesn't seem to be running</b>` : ""}.`) : "The timer hasn't run yet (run setupTimer in the Apps Script once)."}${a.tg && a.tg !== "ok" ? ` · Telegram: ${esc(a.tg)}` : ""}
     A plug switched by hand sends a Telegram alert and goes back to its schedule after 1 hour; while a plug is locked (🔒 night-dosing lock, or before the day's first water test) it goes OFF again within 5 minutes. This page updates by itself.</div>
-    ${on && rows ? `<div style="margin-top:6px;font-size:13px">${rows}</div>` : ""}</div>`;
+    </div>`;
 }
 function rulesCard(){
   const R = RULES, own = R.pools || {}, dosed = (S.cfg.autoState || {}).dosed || {};
