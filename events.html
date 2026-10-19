@@ -193,7 +193,7 @@ function row(s){
     else acts = `<button class="b sm" data-editonce="${esc(s.id)}">Change</button><button class="b sm danger" data-delonce="${esc(s.id)}">Cancel event</button>`;
   }
   const sub = s.off ? `Cancelled${s.cancel.name ? " by " + esc(s.cancel.name) : ""}${s.cancel.reason ? " — " + esc(s.cancel.reason) : ""}`
-    : [s.note ? esc(s.note) : "", "added by " + esc(s.name || "?")].filter(Boolean).join(" · ");
+    : [s.note ? esc(s.note) : "", s.organizer ? "👤 Organiser: <b>" + esc(s.organizer) + "</b>" : "", "added by " + esc(s.name || "?")].filter(Boolean).join(" · ");
   return `<div class="ses${s.off ? " off" : ""}"><div class="t">${span(s)}</div><div class="w"><b>${esc(s.title || "Event")}</b>${tag}${s.off ? `<span class="tag x">cancelled</span>` : ""}<div class="n">${sub}</div></div><div class="a">${acts}</div></div>`;
 }
 
@@ -213,6 +213,7 @@ function oneOffCard(){
       <label>Start<input id="ostart" type="time" step="900" value="${esc(v.start)}" required></label>
       <label>End<input id="oend" type="time" step="900" value="${esc(v.end)}" required></label>
       <label class="full">Note (optional)<input id="onote" maxlength="80" value="${esc(v.note || "")}" placeholder="e.g. Whole pool, lanes 1–2 only"></label>
+      <label class="full">Organiser (optional)<input id="oorg" maxlength="60" value="${esc(v.organizer || "")}" placeholder="Who is in charge on the day, e.g. Jaslyn · 9123 4567"></label>
       <div class="acts"><button class="b main" type="submit">${x ? "Save changes" : "Block this time"}</button><button class="b" type="button" id="ocancel">Close</button></div></form>`
     : `<button class="b main" id="oadd">+ Block time for an event</button>`;
   return `<div class="card"><h2>One-off event</h2>${form}<div class="msg ${S.msg.o ? S.msg.o[0] : ""}">${esc(S.msg.o ? S.msg.o[1] : "")}</div></div>`;
@@ -223,7 +224,7 @@ function weeklyCard(){
   const list = S.sessions.filter(s => s.type === "weekly" && (!s.until || s.until >= t));
   const e = S.edit && S.edit.kind === "weekly" ? S.edit : null, x = e && e.id ? S.sessions.find(s => s.id === e.id) : null;
   const rows = list.map(s => `<div class="slot"><div class="w"><b>${esc(s.title || "Event")}</b> · every ${DOW[s.dow]} ${span(s)}
-      <div class="note">from ${dayTxt(s.from)}${s.until ? " until " + dayTxt(s.until) : ""}${s.note ? " · " + esc(s.note) : ""}</div></div>
+      <div class="note">from ${dayTxt(s.from)}${s.until ? " until " + dayTxt(s.until) : ""}${s.note ? " · " + esc(s.note) : ""}${s.organizer ? " · 👤 " + esc(s.organizer) : ""}</div></div>
       ${canEdit() ? `<button class="b sm" data-editw="${esc(s.id)}">Change</button><button class="b sm danger" data-stopw="${esc(s.id)}">Stop</button>` : ""}</div>`).join("");
   const v = x || {dow: dowOf(t), start:"14:00", end:"17:00", title:"", note:"", from: t, until:""};
   const form = e ? `<form class="form" id="wf">
@@ -235,6 +236,7 @@ function weeklyCard(){
       <label>From<input id="wfrom" type="date" value="${esc(v.from)}" required></label>
       <label>Until (optional)<input id="wuntil" type="date" value="${esc(v.until || "")}"></label>
       <label class="full">Note (optional)<input id="wnote" maxlength="80" value="${esc(v.note || "")}"></label>
+      <label class="full">Organiser (optional)<input id="worg" maxlength="60" value="${esc(v.organizer || "")}" placeholder="Who is in charge, e.g. Jaslyn · 9123 4567"></label>
       <div class="acts"><button class="b main" type="submit">${x ? "Save changes" : "Block every week"}</button><button class="b" type="button" id="wcancel">Close</button></div></form>`
     : (canEdit() ? `<button class="b" id="wadd" style="margin-top:6px">+ Add a weekly block</button>` : "");
   return `<div class="card"><h2>Weekly blocks</h2>${rows || `<p class="empty">None.</p>`}${form}<div class="msg ${S.msg.w ? S.msg.w[0] : ""}">${esc(S.msg.w ? S.msg.w[1] : "")}</div></div>`;
@@ -306,7 +308,7 @@ function wire(){
   });
   if($("#of")) $("#of").onsubmit = async ev => {
     ev.preventDefault();
-    const v = {title: $("#otitle").value.trim(), date: $("#odate").value, start: $("#ostart").value, end: $("#oend").value, note: $("#onote").value.trim()};
+    const v = {title: $("#otitle").value.trim(), date: $("#odate").value, start: $("#ostart").value, end: $("#oend").value, note: $("#onote").value.trim(), organizer: $("#oorg").value.trim()};
     if(!v.title) return say("o", "err", "Type the event name.");
     const bad = checkTimes(v.start, v.end); if(bad) return say("o", "err", bad);
     if(!v.date) return say("o", "err", "Pick the date.");
@@ -317,24 +319,24 @@ function wire(){
     try{
       if(id && moved){ await col().doc(id).update({...v, pool: np, movedFrom: S.pool, changedBy: whoName(), changedAt: nowIso()});
         await tell(`❌ ${S.pool} event moved to ${np}: ${old ? desc(old) : line} — ${S.pool} pool free again.\nBy ${whoName()}`);
-        await tell(`📅 ${np} pool blocked for an event: ${line}${v.note ? " (" + v.note + ")" : ""} (moved from ${S.pool})\nPlease don't plan cleaning in this time. By ${whoName()}`, np); }
+        await tell(`📅 ${np} pool blocked for an event: ${line}${v.note ? " (" + v.note + ")" : ""} (moved from ${S.pool})${v.organizer ? "\nOrganiser: " + v.organizer : ""}\nPlease don't plan cleaning in this time. By ${whoName()}`, np); }
       else if(id){ await col().doc(id).update({...v, changedBy: whoName(), changedAt: nowIso()});
-        await tell(`✏️ ${S.pool} event changed: ${line}` + (old ? ` (was ${desc(old)})` : "") + `\nBy ${whoName()}`); }
+        await tell(`✏️ ${S.pool} event changed: ${line}${v.organizer ? " · Organiser: " + v.organizer : ""}` + (old ? ` (was ${desc(old)})` : "") + `\nBy ${whoName()}`); }
       else { await col().add({type:"once", kind:"event", pool:np, ...v, ...who(), at: nowIso()});
-        await tell(`📅 ${np} pool blocked for an event: ${line}${v.note ? " (" + v.note + ")" : ""}\nPlease don't plan cleaning in this time. Added by ${whoName()}`, np); }
+        await tell(`📅 ${np} pool blocked for an event: ${line}${v.note ? " (" + v.note + ")" : ""}${v.organizer ? "\nOrganiser: " + v.organizer : ""}\nPlease don't plan cleaning in this time. Added by ${whoName()}`, np); }
       S.edit = null; say("o", "ok", moved ? `Moved to ${BRANCHES[np]} — ${dayTxt(v.date)} ${t12(v.start)}–${t12(v.end)}.` : `Saved — ${dayTxt(v.date)} ${t12(v.start)}–${t12(v.end)} blocked.`);
     }catch(e){ say("o", "err", "Couldn't save: " + e.message); }
   };
   if($("#wf")) $("#wf").onsubmit = async ev => {
     ev.preventDefault();
-    const v = {title: $("#wtitle").value.trim(), dow: +$("#wdow").value, start: $("#wstart").value, end: $("#wend").value, from: $("#wfrom").value, until: $("#wuntil").value || null, note: $("#wnote").value.trim()};
+    const v = {title: $("#wtitle").value.trim(), dow: +$("#wdow").value, start: $("#wstart").value, end: $("#wend").value, from: $("#wfrom").value, until: $("#wuntil").value || null, note: $("#wnote").value.trim(), organizer: $("#worg").value.trim()};
     if(!v.title) return say("w", "err", "Type the event name.");
     const bad = checkTimes(v.start, v.end); if(bad) return say("w", "err", bad);
     if(!v.from) return say("w", "err", "Pick the first date.");
     if(dowOf(v.from) !== v.dow){ let k = v.from; while(dowOf(k) !== v.dow) k = addDays(k, 1); v.from = k; }
     if(v.until && v.until < v.from) return say("w", "err", "'Until' is before the first " + DOW[v.dow] + ".");
     const id = S.edit && S.edit.id, np = pickedPool("wpool"), moved = np !== S.pool;
-    const txt = `every ${DOW[v.dow]} ${t12(v.start)}–${t12(v.end)} from ${dayTxt(v.from)}${v.until ? " until " + dayTxt(v.until) : ""} · ${v.title}`;
+    const txt = `every ${DOW[v.dow]} ${t12(v.start)}–${t12(v.end)} from ${dayTxt(v.from)}${v.until ? " until " + dayTxt(v.until) : ""} · ${v.title}${v.organizer ? " · Organiser: " + v.organizer : ""}`;
     try{
       if(id && moved){
         await col().doc(id).update({...v, pool: np, movedFrom: S.pool, changedBy: whoName(), changedAt: nowIso()});
