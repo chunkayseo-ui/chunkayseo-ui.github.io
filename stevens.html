@@ -306,10 +306,10 @@ auth.onAuthStateChanged(async u => {
   if(!u){ loginView(); return; }
   $("#app").innerHTML = `<p class="note">Loading…</p>`;
   S.boss = await bossName(u.email);
+  if(S.boss && !window.__hfNav){ const n = document.createElement("script"); n.src = "https://hfpools.com/nav.js"; document.body.appendChild(n); }   // ☰ menu only for Kay / William — coaches only need this page
   await loadCoaches();
   render();
   if(S.boss || S.me) listen();
 });
 </script>
-<script src="https://hfpools.com/nav.js" defer></script>
 </body></html>

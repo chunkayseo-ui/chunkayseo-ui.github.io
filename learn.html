@@ -1341,7 +1341,21 @@ function loginView(msg, cls){
     $("#msg").className = "msg ok"; $("#msg").textContent = "If that email has an account, a reset link is on its way.";
   });
 }
+// Coach logins (dosing_config/coaches, Kay 19 Oct 2026) may only use hfpools.com/stevens: anywhere else they get a link back.
+async function hfCoachOnly(u){
+  try{
+    const d = await firebase.firestore().doc("dosing_config/coaches").get(), p = (d.exists && d.data().people) || {};
+    if(!p[String(u.email || "").trim().toLowerCase().replace(/[^a-z0-9]/g, "_")]) return false;
+  }catch(e){ return false; }
+  document.body.innerHTML = '<div style="max-width:420px;margin:15vh auto;padding:20px;font:16px/1.5 system-ui,sans-serif;text-align:center;color:#0A1417">' +
+    '<h2 style="margin:0 0 10px">This login is for the Stevens training page</h2>' +
+    '<p><a href="https://hfpools.com/stevens" style="display:inline-block;padding:12px 18px;border-radius:10px;background:#00676F;color:#fff;text-decoration:none;font-weight:600">Open Stevens coach training</a></p>' +
+    '<p><button type="button" id="hfco" style="border:0;background:none;color:#00676F;text-decoration:underline;font:inherit;cursor:pointer">Sign out</button></p></div>';
+  document.getElementById("hfco").onclick = () => firebase.auth().signOut().then(() => location.reload());
+  return true;
+}
 auth.onAuthStateChanged(async u => {
+  if(u && await hfCoachOnly(u)) return;
   S.user = u; stopSpeak();
   if(!u){ loginView(); return; }
   S.me = await whoIs(u.email);
