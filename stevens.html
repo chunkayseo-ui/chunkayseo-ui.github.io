@@ -1,0 +1,315 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>HF Pools · Stevens coach training</title>
+<meta name="robots" content="noindex">
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700&family=IBM+Plex+Mono:wght@400;600&family=IBM+Plex+Sans:wght@400;600&display=swap" rel="stylesheet">
+<style>
+:root{--ground:#EEF3F3;--surface:#fff;--surface-2:#F6F9F9;--line:#C7D6D6;--line-soft:#DCE6E6;--ink:#0A1417;--ink-2:#33474D;--ink-3:#5B7378;
+--accent:#00676F;--accent-soft:#DCEEEE;--ok:#256B4C;--ok-soft:#DDEEE5;--warn:#8A590D;--warn-soft:#F6EAD4;--urgent:#B23A2E;--urgent-soft:#F8DEDA;--coach:#6B4FA0;--coach-soft:#ECE6F6}
+*{box-sizing:border-box}
+body{margin:0;background:var(--ground);color:var(--ink);font:16px/1.45 "IBM Plex Sans",system-ui,sans-serif}
+.wrap{max-width:600px;margin:0 auto;padding:14px 16px 40px}
+header{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:12px}
+h1{font:700 26px/1 "Barlow Condensed",sans-serif;text-transform:uppercase;letter-spacing:.02em;margin:0}
+h1 small{font-size:15px;color:var(--coach);margin-left:6px}
+h2{font:700 15px/1 "Barlow Condensed",sans-serif;text-transform:uppercase;letter-spacing:.06em;color:var(--ink-2);margin:0 0 10px}
+.me{margin-left:auto;font-size:13px;color:var(--ink-3)}
+.link{border:0;background:none;color:var(--accent);text-decoration:underline;font:inherit;cursor:pointer;padding:0}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:14px;margin-bottom:12px}
+.note{font-size:13.5px;color:var(--ink-3)}
+.b{display:inline-block;padding:10px 14px;border-radius:9px;border:1px solid var(--accent);background:var(--surface);color:var(--accent);font:600 15px "IBM Plex Sans",system-ui,sans-serif;cursor:pointer}
+.b.main{background:var(--accent);color:#fff}
+.b.sm{padding:5px 10px;font-size:13px}
+.b.danger{border-color:var(--urgent);color:var(--urgent)}
+.b:disabled{opacity:.45;cursor:default}
+.form{display:grid;grid-template-columns:1fr 1fr;gap:8px 10px;margin-top:6px}
+.form label{display:block;font-size:12.5px;color:var(--ink-3)}
+.form label.full{grid-column:1/-1}
+.form input,.form select{display:block;width:100%;margin-top:3px;font:inherit;font-size:15px;padding:8px;border:1px solid var(--line);border-radius:7px;background:#fff;color:var(--ink)}
+.form .acts{grid-column:1/-1;display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.msg{font-size:13px;min-height:18px;margin-top:6px}.msg.err{color:var(--urgent)}.msg.ok{color:var(--ok)}
+.day{border-top:1px solid var(--line-soft);padding:9px 0}.day:first-child{border-top:0;padding-top:0}
+.dh{font:700 14px "Barlow Condensed",sans-serif;letter-spacing:.05em;text-transform:uppercase;color:var(--ink-2);margin-bottom:4px}
+.dh.today{color:var(--accent)}
+.ses{display:flex;gap:10px;align-items:flex-start;padding:6px 8px;border-radius:8px;background:var(--coach-soft);margin-top:5px}
+.ses.off{background:var(--surface-2);color:var(--ink-3)}
+.ses .t{font:600 14px "IBM Plex Mono",monospace;white-space:nowrap;flex:none;min-width:112px}
+.ses.off .t{text-decoration:line-through}
+.ses .w{flex:1;font-size:14px;min-width:0}
+.ses .w .n{font-size:12.5px;color:var(--ink-3)}
+.ses .a{flex:none;display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end}
+.tag{display:inline-block;font:700 11px "Barlow Condensed",sans-serif;letter-spacing:.06em;text-transform:uppercase;padding:2px 6px;border-radius:5px;background:#fff;color:var(--coach);margin-left:4px;vertical-align:1px}
+.tag.one{color:var(--accent)} .tag.x{color:var(--urgent)}
+.empty{font-size:14px;color:var(--ink-3)}
+.slot{display:flex;gap:10px;align-items:center;flex-wrap:wrap;padding:8px 0;border-top:1px solid var(--line-soft)}.slot:first-of-type{border-top:0}
+.slot .w{flex:1;min-width:180px;font-size:14.5px}
+.warn{background:var(--warn-soft);color:var(--warn);border-radius:8px;padding:8px 10px;font-size:13.5px;margin-top:8px}
+.login{max-width:380px;margin:12vh auto 0}
+.login input{width:100%;margin-top:4px;font:inherit;padding:10px;border:1px solid var(--line);border-radius:7px}
+.login label{display:block;font-size:13px;color:var(--ink-3);margin-top:12px}
+table.co{width:100%;border-collapse:collapse;font-size:14px}table.co td{padding:6px 4px;border-top:1px solid var(--line-soft)}
+.motto{text-align:center;font:600 13px "IBM Plex Sans";color:var(--ink-3);margin-top:18px}
+@media (max-width:420px){.ses{flex-wrap:wrap}.ses .a{width:100%;justify-content:flex-start}}
+</style></head><body>
+<div class="wrap" id="app"><p class="note">Loading…</p></div>
+<script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore-compat.js"></script>
+<script>
+/* HF Pools — Stevens (HS) coach training schedule (Kay, 19 Oct 2026).
+ * Two coaches use the Stevens pool for training, usually on Thursdays. Each coach signs in with their own email login
+ * (Kay creates it in Firebase Authentication and lists the email in the Coaches card below) and keeps their sessions here:
+ *   - a usual weekly slot (e.g. every Thursday 7–9 pm), plus
+ *   - single changes: cancel one date of a weekly slot, or add a one-off session.
+ * Everyone listed sees the whole Stevens schedule; a coach can change only their own sessions; Kay / William can change any.
+ * The sessions show on the Maintenance Gaps page and the Class Calendar (HS) as busy time, so the facility team doesn't
+ * plan vacuuming in them.
+ * Data: Firestore coach_sessions/{id} = {type: "weekly"|"once"|"cancel", pool: "HS", uid, email, name, at,
+ *   weekly: dow (0=Sun), start "HH:MM", end, note, from "YYYY-MM-DD", until (or null)
+ *   once:   date, start, end, note
+ *   cancel: weeklyId, date, reason }
+ * Coaches list: dosing_config/coaches → {people: {<emailkey>: {email, name, addedBy, addedAt}}}. */
+firebase.initializeApp({
+  apiKey: "AIzaSyANFCZbvRGO9aMRtG9MF_qONO3FL85CzSo", authDomain: "maintenance-board-f931a.firebaseapp.com",
+  projectId: "maintenance-board-f931a", storageBucket: "maintenance-board-f931a.firebasestorage.app",
+  messagingSenderId: "169864970579", appId: "1:169864970579:web:bfb7490d0aebcfed17e1a6"
+});
+const auth = firebase.auth(), db = firebase.firestore();
+const POOL = "HS", POOL_NAME = "Stevens", WEEKS_AHEAD = 8, DEFAULT_DOW = 4;   // Thursday
+const DOW = ["Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"];
+const $ = s => document.querySelector(s);
+const esc = s => String(s == null ? "" : s).replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const pad = n => String(n).padStart(2, "0");
+const ymd = d => d.getFullYear() + "-" + pad(d.getMonth() + 1) + "-" + pad(d.getDate());
+const addDays = (key, n) => { const d = new Date(key + "T00:00:00"); d.setDate(d.getDate() + n); return ymd(d); };
+const dowOf = key => new Date(key + "T00:00:00").getDay();
+const toMin = s => { const p = String(s || "").split(":").map(Number); return p[0] * 60 + (p[1] || 0); };
+function t12(s){ const m = toMin(s), h = Math.floor(m / 60), mm = m % 60, h12 = h % 12 === 0 ? 12 : h % 12; return h12 + (mm ? ":" + pad(mm) : "") + (h >= 12 ? "pm" : "am"); }
+const span = x => t12(x.start) + "–" + t12(x.end);
+const dayTxt = key => new Date(key + "T00:00:00").toLocaleDateString("en-SG", {weekday:"short", day:"numeric", month:"short"});
+const emailKey = e => String(e || "").trim().toLowerCase().replace(/[^a-z0-9]/g, "_");
+const BOSSES = {"d05dba20d3700faa4e379cb3efaf38d69ea2e16a6eb31ddbf8166facafde882d":"Kay", "6ba3ddae7dbb119b31d474b6551b38f271c6df9613b44889fd8cfff6e8c47edf":"William"};
+async function bossName(email){
+  try{ const h = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(String(email || "").trim().toLowerCase()));
+    return BOSSES[Array.from(new Uint8Array(h)).map(b => b.toString(16).padStart(2, "0")).join("")] || null; }catch(e){ return null; }
+}
+
+const S = { user:null, boss:null, me:null, coaches:{}, sessions:[], unsub:null, edit:null, msg:{} };
+const TODAY = () => ymd(new Date());
+
+/* ---------- the schedule ---------- */
+// Every session on one date (weekly slots that apply + one-offs), with cancelled weekly dates kept (off: true).
+function sessionsOn(key){
+  const out = [], dow = dowOf(key);
+  S.sessions.forEach(s => {
+    if(s.pool !== POOL) return;
+    if(s.type === "weekly" && s.dow === dow && s.from <= key && (!s.until || key <= s.until)){
+      const c = S.sessions.find(x => x.type === "cancel" && x.weeklyId === s.id && x.date === key);
+      out.push({...s, date:key, off: !!c, cancel: c || null});
+    } else if(s.type === "once" && s.date === key) out.push({...s});
+  });
+  return out.sort((a, b) => toMin(a.start) - toMin(b.start));
+}
+const mine = s => S.user && (s.uid === S.user.uid);
+const canEdit = s => !!S.boss || mine(s);
+function nameOf(s){ return s.name || (S.coaches[emailKey(s.email)] || {}).name || s.email || "Coach"; }
+
+function clash(date, start, end, skipId){
+  return sessionsOn(date).filter(s => !s.off && s.id !== skipId && toMin(s.start) < toMin(end) && toMin(start) < toMin(s.end));
+}
+
+/* ---------- views ---------- */
+function loginView(msg, cls){
+  $("#app").innerHTML = `<div class="card login"><h1 style="font-size:24px">HF Pools <small>Stevens training</small></h1>
+    <form id="lf"><label>Email<input id="em" type="email" required autocomplete="username"></label><label>Password<input id="pw" type="password" required autocomplete="current-password"></label>
+    <button class="b main" id="go" style="width:100%;margin-top:16px">Sign in</button></form><div class="msg ${cls || "err"}" id="msg">${esc(msg || "")}</div>
+    <p class="note" style="margin-top:8px">Stays signed in on this phone. First time, or forgot it? Type your email and tap <button class="link" id="forgot" type="button">Forgot password?</button></p></div>`;
+  $("#lf").onsubmit = async e => { e.preventDefault(); $("#go").disabled = true;
+    try{ await auth.signInWithEmailAndPassword($("#em").value.trim(), $("#pw").value); }
+    catch(err){ loginView(/too-many/.test(err.code || "") ? "Too many tries — wait a few minutes." : "Email or password is not right."); } };
+  $("#forgot").onclick = async () => { const em = $("#em").value.trim(); if(!em){ $("#msg").textContent = "Type your email first, then tap Forgot password."; return; }
+    try{ await auth.sendPasswordResetEmail(em); }catch(err){} loginView("If that email has an account, a link to set the password is on its way.", "ok"); };
+}
+
+function render(){
+  if(!S.user) return loginView();
+  const head = `<header><h1>Stevens <small>coach training</small></h1><div class="me">${esc(S.boss || (S.me && S.me.name) || S.user.email)} · <button class="link" id="out">Sign out</button></div></header>`;
+  if(!S.boss && !S.me){
+    $("#app").innerHTML = head + `<div class="card"><b>This login isn't set up for the Stevens schedule yet.</b><p class="note">Ask Kay to add <b>${esc(S.user.email)}</b> as a coach.</p></div>`;
+    $("#out").onclick = () => auth.signOut(); return;
+  }
+  $("#app").innerHTML = head + scheduleCard() + myWeeklyCard() + oneOffCard() + (S.boss ? coachesCard() : "") +
+    `<p class="note" style="text-align:center">Your sessions show on the Maintenance Gaps page and the Class Calendar (HS), so the facility team won't plan cleaning in them.</p>
+     <div class="motto">Test right, dose right, let little swimmers thrive.</div>`;
+  wire();
+}
+
+function scheduleCard(){
+  const t = TODAY(); let html = "";
+  for(let i = 0; i < WEEKS_AHEAD * 7; i++){
+    const key = addDays(t, i), list = sessionsOn(key);
+    if(!list.length) continue;
+    html += `<div class="day"><div class="dh${i === 0 ? " today" : ""}">${i === 0 ? "Today · " : ""}${dayTxt(key)}</div>` + list.map(s => sesRow(s)).join("") + `</div>`;
+  }
+  return `<div class="card"><h2>Next ${WEEKS_AHEAD} weeks at ${POOL_NAME}</h2>${html || `<p class="empty">No training booked yet. Add your usual weekly slot below.</p>`}</div>`;
+}
+function sesRow(s){
+  const tag = s.type === "weekly" ? `<span class="tag">weekly</span>` : `<span class="tag one">one-off</span>`;
+  let acts = "";
+  if(canEdit(s)){
+    if(s.type === "weekly") acts = s.off ? `<button class="b sm" data-undo="${esc(s.cancel.id)}">Undo cancel</button>`
+      : `<button class="b sm danger" data-cancel="${esc(s.id)}|${s.date}">Cancel this date</button>`;
+    else acts = `<button class="b sm" data-editonce="${esc(s.id)}">Change</button><button class="b sm danger" data-delonce="${esc(s.id)}">Delete</button>`;
+  }
+  const why = s.off ? `<div class="n">Cancelled${s.cancel.name ? " by " + esc(s.cancel.name) : ""}${s.cancel.reason ? " — " + esc(s.cancel.reason) : ""}</div>` : (s.note ? `<div class="n">${esc(s.note)}</div>` : "");
+  return `<div class="ses${s.off ? " off" : ""}"><div class="t">${span(s)}</div><div class="w"><b>${esc(nameOf(s))}</b>${tag}${s.off ? `<span class="tag x">cancelled</span>` : ""}${why}</div><div class="a">${acts}</div></div>`;
+}
+
+function myWeeklyCard(){
+  const t = TODAY();
+  const list = S.sessions.filter(s => s.pool === POOL && s.type === "weekly" && (!s.until || s.until >= t) && (S.boss || mine(s)));
+  const e = S.edit && S.edit.kind === "weekly" ? S.edit : null, x = e && e.id ? S.sessions.find(s => s.id === e.id) : null;
+  const rows = list.map(s => `<div class="slot"><div class="w"><b>Every ${DOW[s.dow]}</b> · ${span(s)}${S.boss && !mine(s) ? " · " + esc(nameOf(s)) : ""}
+      ${s.note ? `<div class="note">${esc(s.note)}</div>` : ""}<div class="note">from ${dayTxt(s.from)}${s.until ? " until " + dayTxt(s.until) : ""}</div></div>
+      <button class="b sm" data-editw="${esc(s.id)}">Change</button><button class="b sm danger" data-stopw="${esc(s.id)}">Stop</button></div>`).join("");
+  const nextDow = d => { let k = t; for(let i = 0; i < 7; i++){ if(dowOf(k) === d) return k; k = addDays(k, 1); } return t; };
+  const v = x || {dow:DEFAULT_DOW, start:"18:00", end:"20:00", note:"", from: nextDow(DEFAULT_DOW)};
+  const form = e ? `<form class="form" id="wf">
+      <label>Day<select id="wdow">${DOW.map((d, i) => `<option value="${i}"${i === v.dow ? " selected" : ""}>${d}</option>`).join("")}</select></label>
+      <label>Starting from<input id="wfrom" type="date" value="${esc(v.from)}" required></label>
+      <label>Start<input id="wstart" type="time" step="900" value="${esc(v.start)}" required></label>
+      <label>End<input id="wend" type="time" step="900" value="${esc(v.end)}" required></label>
+      <label class="full">Note (optional)<input id="wnote" maxlength="80" value="${esc(v.note || "")}" placeholder="e.g. Squad training, lanes 1–3"></label>
+      <div class="acts"><button class="b main" type="submit">${x ? "Save changes" : "Save weekly slot"}</button><button class="b" type="button" id="wcancel">Close</button></div></form>
+      ${x ? `<p class="note">Changing a weekly slot changes every week, past and future. To change just one week, cancel that date and add a one-off instead.</p>` : ""}`
+    : `<button class="b" id="wadd" style="margin-top:6px">+ Add a weekly slot</button>`;
+  return `<div class="card"><h2>${S.boss ? "Weekly slots" : "My usual weekly training"}</h2>${rows || `<p class="empty">None yet.</p>`}${form}<div class="msg ${S.msg.w ? S.msg.w[0] : ""}">${esc(S.msg.w ? S.msg.w[1] : "")}</div></div>`;
+}
+
+function oneOffCard(){
+  const e = S.edit && S.edit.kind === "once" ? S.edit : null, x = e && e.id ? S.sessions.find(s => s.id === e.id) : null;
+  const v = x || {date: e && e.date || TODAY(), start:"18:00", end:"20:00", note:""};
+  const form = e ? `<form class="form" id="of">
+      <label class="full">Date<input id="odate" type="date" min="${TODAY()}" value="${esc(v.date)}" required></label>
+      <label>Start<input id="ostart" type="time" step="900" value="${esc(v.start)}" required></label>
+      <label>End<input id="oend" type="time" step="900" value="${esc(v.end)}" required></label>
+      <label class="full">Note (optional)<input id="onote" maxlength="80" value="${esc(v.note || "")}" placeholder="e.g. Extra session before the meet"></label>
+      <div class="acts"><button class="b main" type="submit">${x ? "Save changes" : "Add session"}</button><button class="b" type="button" id="ocancel">Close</button></div></form>`
+    : `<button class="b" id="oadd">+ Add a one-off session</button>`;
+  return `<div class="card"><h2>One-off session</h2><p class="note" style="margin:0 0 6px">An extra day, or a different time for one week (cancel the weekly date first).</p>${form}<div class="msg ${S.msg.o ? S.msg.o[0] : ""}">${esc(S.msg.o ? S.msg.o[1] : "")}</div></div>`;
+}
+
+function coachesCard(){
+  const ppl = Object.entries(S.coaches).sort((a, b) => String(a[1].name).localeCompare(String(b[1].name)));
+  return `<div class="card"><h2>Coaches (only Kay / William see this)</h2>
+    ${ppl.length ? `<table class="co">${ppl.map(([k, p]) => `<tr><td><b>${esc(p.name)}</b><div class="note">${esc(p.email)}</div></td><td style="text-align:right"><button class="b sm danger" data-rmcoach="${esc(k)}">Remove</button></td></tr>`).join("")}</table>` : `<p class="empty">No coaches yet.</p>`}
+    <form class="form" id="cf"><label>Name<input id="cname" required maxlength="40" placeholder="Coach name"></label><label>Login email<input id="cemail" type="email" required placeholder="name@email.com"></label>
+    <div class="acts"><button class="b main" type="submit">Add coach</button></div></form>
+    <p class="note">First create the login in Firebase (Authentication → Add user) with the same email. The coach then opens hfpools.com/stevens, types the email and taps <b>Forgot password?</b> to set their own password.</p>
+    <div class="msg ${S.msg.c ? S.msg.c[0] : ""}">${esc(S.msg.c ? S.msg.c[1] : "")}</div></div>`;
+}
+
+/* ---------- actions ---------- */
+function who(){ return { uid: S.user.uid, email: S.user.email, name: S.boss || (S.me && S.me.name) || S.user.email }; }
+function stamp(){ return { at: new Date().toISOString() }; }
+function say(k, cls, text){ S.msg[k] = [cls, text]; render(); if(cls === "ok") setTimeout(() => { if(S.msg[k] && S.msg[k][1] === text){ delete S.msg[k]; render(); } }, 5000); }
+function checkTimes(start, end){ if(!start || !end) return "Fill in the start and end time."; if(toMin(end) <= toMin(start)) return "The end time must be after the start time."; return ""; }
+
+function wire(){
+  $("#out").onclick = () => auth.signOut();
+  const on = (sel, fn) => document.querySelectorAll(sel).forEach(b => b.onclick = () => fn(b));
+  if($("#wadd")) $("#wadd").onclick = () => { S.edit = {kind:"weekly"}; delete S.msg.w; render(); };
+  if($("#oadd")) $("#oadd").onclick = () => { S.edit = {kind:"once"}; delete S.msg.o; render(); };
+  if($("#wcancel")) $("#wcancel").onclick = () => { S.edit = null; render(); };
+  if($("#ocancel")) $("#ocancel").onclick = () => { S.edit = null; render(); };
+  on("[data-editw]", b => { S.edit = {kind:"weekly", id:b.dataset.editw}; render(); });
+  on("[data-editonce]", b => { S.edit = {kind:"once", id:b.dataset.editonce}; render(); });
+  on("[data-stopw]", async b => {
+    const s = S.sessions.find(x => x.id === b.dataset.stopw); if(!s) return;
+    if(!confirm(`Stop the weekly ${DOW[s.dow]} ${span(s)} slot from today? Past weeks stay in the record.`)) return;
+    try{
+      if(s.from >= TODAY()){ await db.collection("coach_sessions").doc(s.id).delete(); }
+      else await db.collection("coach_sessions").doc(s.id).update({until: addDays(TODAY(), -1), stoppedBy: who().name, stoppedAt: stamp().at});
+      say("w", "ok", "Weekly slot stopped.");
+    }catch(e){ say("w", "err", "Couldn't save: " + e.message); }
+  });
+  on("[data-cancel]", async b => {
+    const [id, date] = b.dataset.cancel.split("|");
+    const reason = prompt(`Cancel training on ${dayTxt(date)}? Reason (optional):`, "");
+    if(reason === null) return;
+    try{ await db.collection("coach_sessions").add({type:"cancel", pool:POOL, weeklyId:id, date, reason:reason.trim().slice(0, 80), ...who(), ...stamp()}); }
+    catch(e){ alert("Couldn't save: " + e.message); }
+  });
+  on("[data-undo]", async b => { try{ await db.collection("coach_sessions").doc(b.dataset.undo).delete(); }catch(e){ alert("Couldn't save: " + e.message); } });
+  on("[data-delonce]", async b => {
+    const s = S.sessions.find(x => x.id === b.dataset.delonce); if(!s) return;
+    if(!confirm(`Delete the session on ${dayTxt(s.date)} ${span(s)}?`)) return;
+    try{ await db.collection("coach_sessions").doc(s.id).delete(); }catch(e){ alert("Couldn't save: " + e.message); }
+  });
+  on("[data-rmcoach]", async b => {
+    const p = S.coaches[b.dataset.rmcoach]; if(!p || !confirm(`Remove ${p.name} as a coach? Their sessions stay on the schedule.`)) return;
+    try{ await db.collection("dosing_config").doc("coaches").update({["people." + b.dataset.rmcoach]: firebase.firestore.FieldValue.delete()}); await loadCoaches(); render(); }
+    catch(e){ say("c", "err", "Couldn't save: " + e.message); }
+  });
+  if($("#wf")) $("#wf").onsubmit = async ev => {
+    ev.preventDefault();
+    const v = {dow: +$("#wdow").value, start: $("#wstart").value, end: $("#wend").value, note: $("#wnote").value.trim(), from: $("#wfrom").value};
+    const bad = checkTimes(v.start, v.end); if(bad) return say("w", "err", bad);
+    if(!v.from) return say("w", "err", "Pick the first date.");
+    if(dowOf(v.from) !== v.dow){ let k = v.from; while(dowOf(k) !== v.dow) k = addDays(k, 1); v.from = k; }   // start on the first matching day
+    const id = S.edit && S.edit.id;
+    try{
+      if(id) await db.collection("coach_sessions").doc(id).update({...v, changedBy: who().name, changedAt: stamp().at});
+      else await db.collection("coach_sessions").add({type:"weekly", pool:POOL, until:null, ...v, ...who(), ...stamp()});
+      S.edit = null; say("w", "ok", id ? "Saved." : `Saved — every ${DOW[v.dow]} ${t12(v.start)}–${t12(v.end)} from ${dayTxt(v.from)}.`);
+    }catch(e){ say("w", "err", "Couldn't save: " + e.message); }
+  };
+  if($("#of")) $("#of").onsubmit = async ev => {
+    ev.preventDefault();
+    const v = {date: $("#odate").value, start: $("#ostart").value, end: $("#oend").value, note: $("#onote").value.trim()};
+    const bad = checkTimes(v.start, v.end); if(bad) return say("o", "err", bad);
+    if(!v.date) return say("o", "err", "Pick the date.");
+    const id = S.edit && S.edit.id, c = clash(v.date, v.start, v.end, id);
+    if(c.length && !confirm(`${nameOf(c[0])} already has ${span(c[0])} on ${dayTxt(v.date)}. Add yours anyway?`)) return;
+    try{
+      if(id) await db.collection("coach_sessions").doc(id).update({...v, changedBy: who().name, changedAt: stamp().at});
+      else await db.collection("coach_sessions").add({type:"once", pool:POOL, ...v, ...who(), ...stamp()});
+      S.edit = null; say("o", "ok", `Saved — ${dayTxt(v.date)} ${t12(v.start)}–${t12(v.end)}.`);
+    }catch(e){ say("o", "err", "Couldn't save: " + e.message); }
+  };
+  if($("#cf")) $("#cf").onsubmit = async ev => {
+    ev.preventDefault();
+    const name = $("#cname").value.trim(), email = $("#cemail").value.trim().toLowerCase();
+    if(!name || !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) return say("c", "err", "Type a name and a full email.");
+    try{
+      await db.collection("dosing_config").doc("coaches").set({people: {[emailKey(email)]: {email, name, addedBy: S.boss, addedAt: stamp().at}}}, {merge:true});
+      await loadCoaches(); say("c", "ok", `${name} added. Create the same login in Firebase if you haven't yet.`);
+    }catch(e){ say("c", "err", "Couldn't save: " + e.message); }
+  };
+}
+
+/* ---------- loading ---------- */
+async function loadCoaches(){
+  try{ const d = await db.collection("dosing_config").doc("coaches").get(); S.coaches = (d.exists && d.data().people) || {}; }catch(e){ S.coaches = {}; }
+  S.me = S.user ? S.coaches[emailKey(S.user.email)] || null : null;
+}
+function listen(){
+  if(S.unsub) S.unsub();
+  S.unsub = db.collection("coach_sessions").where("pool", "==", POOL).onSnapshot(q => {
+    S.sessions = q.docs.map(d => ({id: d.id, ...d.data()}));
+    if(!S.edit) render();          // don't wipe a half-filled form; it redraws when the form closes
+  }, err => { S.msg.w = ["err", "Couldn't load the schedule: " + err.message]; render(); });
+}
+auth.onAuthStateChanged(async u => {
+  S.user = u; S.edit = null; S.msg = {};
+  if(S.unsub){ S.unsub(); S.unsub = null; }
+  if(!u){ loginView(); return; }
+  $("#app").innerHTML = `<p class="note">Loading…</p>`;
+  S.boss = await bossName(u.email);
+  await loadCoaches();
+  render();
+  if(S.boss || S.me) listen();
+});
+</script>
+<script src="https://hfpools.com/nav.js" defer></script>
+</body></html>

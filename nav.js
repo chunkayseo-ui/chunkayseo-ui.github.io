@@ -28,6 +28,7 @@
       {i:"🧹", t:"Vacuum Route Maps", u:"/dosing-app/vacuum-route-maps.html"},
       {i:"📅", t:"Class Calendar", u:"/dosing-app/class-calendar.html"},
       {i:"⏳", t:"Maintenance Gaps", u:"/dosing-app/maintenance-gaps.html"},
+      {i:"🏊", t:"Stevens Coach Training", u:"/stevens", m:["/stevens.html"]},
       {i:"🙋", t:"Expected vs Came", u:"/attendance", m:["/attendance.html"]}
     ]},
     {h:"Facility", items:[
