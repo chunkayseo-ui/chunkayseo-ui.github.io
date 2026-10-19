@@ -135,10 +135,10 @@ function clash(date, start, end, skipId){
 }
 
 /* ---------- Telegram (posted by the Pool Telegram Logger within a minute) ---------- */
-async function tell(text){
+async function tell(text, pool){
   try{
     const id = "e" + Date.now().toString(36) + Math.random().toString(36).slice(2, 5);
-    const upd = {["q." + id]: {pool: S.pool, text, at: new Date().toISOString()}};
+    const upd = {["q." + id]: {pool: pool || S.pool, text, at: new Date().toISOString()}};
     const cur = await db.collection("dosing_config").doc("event_q").get();
     const q = (cur.exists && cur.data().q) || {}, cut = Date.now() - 864e5;
     Object.keys(q).forEach(k => { if(!(Date.parse(q[k].at) > cut)) upd["q." + k] = firebase.firestore.FieldValue.delete(); });
@@ -197,10 +197,17 @@ function row(s){
   return `<div class="ses${s.off ? " off" : ""}"><div class="t">${span(s)}</div><div class="w"><b>${esc(s.title || "Event")}</b>${tag}${s.off ? `<span class="tag x">cancelled</span>` : ""}<div class="n">${sub}</div></div><div class="a">${acts}</div></div>`;
 }
 
+// Kay / William can put an event at either branch, or move one that was added to the wrong pool (Kay, 19 Oct 2026).
+function branchPick(id){
+  if(!S.boss) return "";
+  return `<label class="full">Branch<select id="${id}">${Object.keys(BRANCHES).map(p => `<option value="${p}"${p === S.pool ? " selected" : ""}>${esc(BRANCHES[p])}</option>`).join("")}</select></label>`;
+}
+const pickedPool = id => (S.boss && $("#" + id) && BRANCHES[$("#" + id).value]) ? $("#" + id).value : S.pool;
 function oneOffCard(){
   const e = S.edit && S.edit.kind === "once" ? S.edit : null, x = e && e.id ? S.sessions.find(s => s.id === e.id) : null;
   const v = x || {date: TODAY(), start:"14:00", end:"17:00", title:"", note:""};
   const form = e ? `<form class="form" id="of">
+      ${branchPick("opool")}
       <label class="full">Event<input id="otitle" required maxlength="60" value="${esc(v.title)}" placeholder="e.g. Birthday party, Swim meet"></label>
       <label class="full">Date<input id="odate" type="date" min="${TODAY()}" value="${esc(v.date)}" required></label>
       <label>Start<input id="ostart" type="time" step="900" value="${esc(v.start)}" required></label>
@@ -220,6 +227,7 @@ function weeklyCard(){
       ${canEdit() ? `<button class="b sm" data-editw="${esc(s.id)}">Change</button><button class="b sm danger" data-stopw="${esc(s.id)}">Stop</button>` : ""}</div>`).join("");
   const v = x || {dow: dowOf(t), start:"14:00", end:"17:00", title:"", note:"", from: t, until:""};
   const form = e ? `<form class="form" id="wf">
+      ${branchPick("wpool")}
       <label class="full">Event<input id="wtitle" required maxlength="60" value="${esc(v.title)}" placeholder="e.g. School swim programme"></label>
       <label>Day<select id="wdow">${DOW.map((d, i) => `<option value="${i}"${i === v.dow ? " selected" : ""}>${d}</option>`).join("")}</select></label>
       <label>Start<input id="wstart" type="time" step="900" value="${esc(v.start)}" required></label>
@@ -302,14 +310,19 @@ function wire(){
     if(!v.title) return say("o", "err", "Type the event name.");
     const bad = checkTimes(v.start, v.end); if(bad) return say("o", "err", bad);
     if(!v.date) return say("o", "err", "Pick the date.");
-    const id = S.edit && S.edit.id, old = id && S.sessions.find(s => s.id === id), c = clash(v.date, v.start, v.end, id);
+    const np = pickedPool("opool"), moved = np !== S.pool;
+    const id = S.edit && S.edit.id, old = id && S.sessions.find(s => s.id === id), c = moved ? [] : clash(v.date, v.start, v.end, id);
     if(c.length && !confirm(`"${c[0].title}" is already blocked ${span(c[0])} on ${dayTxt(v.date)}. Add this anyway?`)) return;
+    const line = `${dayTxt(v.date)} · ${t12(v.start)}–${t12(v.end)} · ${v.title}`;
     try{
-      if(id){ await col().doc(id).update({...v, changedBy: whoName(), changedAt: nowIso()});
-        await tell(`✏️ ${S.pool} event changed: ${dayTxt(v.date)} · ${t12(v.start)}–${t12(v.end)} · ${v.title}` + (old ? ` (was ${desc(old)})` : "") + `\nBy ${whoName()}`); }
-      else { await col().add({type:"once", kind:"event", pool:S.pool, ...v, ...who(), at: nowIso()});
-        await tell(`📅 ${S.pool} pool blocked for an event: ${dayTxt(v.date)} · ${t12(v.start)}–${t12(v.end)} · ${v.title}${v.note ? " (" + v.note + ")" : ""}\nPlease don't plan cleaning in this time. Added by ${whoName()}`); }
-      S.edit = null; say("o", "ok", `Saved — ${dayTxt(v.date)} ${t12(v.start)}–${t12(v.end)} blocked.`);
+      if(id && moved){ await col().doc(id).update({...v, pool: np, movedFrom: S.pool, changedBy: whoName(), changedAt: nowIso()});
+        await tell(`❌ ${S.pool} event moved to ${np}: ${old ? desc(old) : line} — ${S.pool} pool free again.\nBy ${whoName()}`);
+        await tell(`📅 ${np} pool blocked for an event: ${line}${v.note ? " (" + v.note + ")" : ""} (moved from ${S.pool})\nPlease don't plan cleaning in this time. By ${whoName()}`, np); }
+      else if(id){ await col().doc(id).update({...v, changedBy: whoName(), changedAt: nowIso()});
+        await tell(`✏️ ${S.pool} event changed: ${line}` + (old ? ` (was ${desc(old)})` : "") + `\nBy ${whoName()}`); }
+      else { await col().add({type:"once", kind:"event", pool:np, ...v, ...who(), at: nowIso()});
+        await tell(`📅 ${np} pool blocked for an event: ${line}${v.note ? " (" + v.note + ")" : ""}\nPlease don't plan cleaning in this time. Added by ${whoName()}`, np); }
+      S.edit = null; say("o", "ok", moved ? `Moved to ${BRANCHES[np]} — ${dayTxt(v.date)} ${t12(v.start)}–${t12(v.end)}.` : `Saved — ${dayTxt(v.date)} ${t12(v.start)}–${t12(v.end)} blocked.`);
     }catch(e){ say("o", "err", "Couldn't save: " + e.message); }
   };
   if($("#wf")) $("#wf").onsubmit = async ev => {
@@ -320,12 +333,17 @@ function wire(){
     if(!v.from) return say("w", "err", "Pick the first date.");
     if(dowOf(v.from) !== v.dow){ let k = v.from; while(dowOf(k) !== v.dow) k = addDays(k, 1); v.from = k; }
     if(v.until && v.until < v.from) return say("w", "err", "'Until' is before the first " + DOW[v.dow] + ".");
-    const id = S.edit && S.edit.id;
+    const id = S.edit && S.edit.id, np = pickedPool("wpool"), moved = np !== S.pool;
     const txt = `every ${DOW[v.dow]} ${t12(v.start)}–${t12(v.end)} from ${dayTxt(v.from)}${v.until ? " until " + dayTxt(v.until) : ""} · ${v.title}`;
     try{
-      if(id){ await col().doc(id).update({...v, changedBy: whoName(), changedAt: nowIso()}); await tell(`✏️ ${S.pool} weekly event changed: ${txt}\nBy ${whoName()}`); }
-      else { await col().add({type:"weekly", kind:"event", pool:S.pool, ...v, ...who(), at: nowIso()}); await tell(`📅 ${S.pool} pool blocked ${txt}\nPlease don't plan cleaning in this time. Added by ${whoName()}`); }
-      S.edit = null; say("w", "ok", `Saved — ${txt}.`);
+      if(id && moved){
+        await col().doc(id).update({...v, pool: np, movedFrom: S.pool, changedBy: whoName(), changedAt: nowIso()});
+        for(const c of S.sessions.filter(x => x.type === "cancel" && x.weeklyId === id)) await col().doc(c.id).update({pool: np});   // its cancelled dates move with it
+        await tell(`❌ ${S.pool} weekly event moved to ${np}: ${txt} — ${S.pool} pool free again.\nBy ${whoName()}`);
+        await tell(`📅 ${np} pool blocked ${txt} (moved from ${S.pool})\nPlease don't plan cleaning in this time. By ${whoName()}`, np); }
+      else if(id){ await col().doc(id).update({...v, changedBy: whoName(), changedAt: nowIso()}); await tell(`✏️ ${S.pool} weekly event changed: ${txt}\nBy ${whoName()}`); }
+      else { await col().add({type:"weekly", kind:"event", pool:np, ...v, ...who(), at: nowIso()}); await tell(`📅 ${np} pool blocked ${txt}\nPlease don't plan cleaning in this time. Added by ${whoName()}`, np); }
+      S.edit = null; say("w", "ok", moved ? `Moved to ${BRANCHES[np]} — ${txt}.` : `Saved — ${txt}.`);
     }catch(e){ say("w", "err", "Couldn't save: " + e.message); }
   };
   if($("#lgf")) $("#lgf").onsubmit = async ev => {
