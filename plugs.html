@@ -892,15 +892,20 @@ function loginView(msg){
     <button class="b main" style="width:100%;margin-top:16px">Sign in</button></form><div class="msg err">${esc(msg || "")}</div></div>`;
   $("#lf").onsubmit = async e => { e.preventDefault(); try{ await auth.signInWithEmailAndPassword($("#em").value.trim(), $("#pw").value); }catch(err){ loginView("Email or password is not right."); } };
 }
-// Coach logins (dosing_config/coaches, Kay 19 Oct 2026) may only use hfpools.com/stevens: anywhere else they get a link back.
-async function hfCoachOnly(u){
+// Limited logins (Kay, 19 Oct 2026) only open their own page: coaches (dosing_config/coaches) -> hfpools.com/stevens,
+// HB / CC branch team logins (dosing_config/branch_logins) -> hfpools.com/events. Anywhere else they get a link back.
+async function hfCoachOnly(u, here){
+  let to = null;
   try{
-    const d = await firebase.firestore().doc("dosing_config/coaches").get(), p = (d.exists && d.data().people) || {};
-    if(!p[String(u.email || "").trim().toLowerCase().replace(/[^a-z0-9]/g, "_")]) return false;
+    const k = String(u.email || "").trim().toLowerCase().replace(/[^a-z0-9]/g, "_"), fs = firebase.firestore();
+    const [c, b] = await Promise.all([fs.doc("dosing_config/coaches").get(), fs.doc("dosing_config/branch_logins").get()]);
+    if(here !== "stevens" && c.exists && (c.data().people || {})[k]) to = {u:"https://hfpools.com/stevens", t:"Stevens training page", b:"Open Stevens coach training"};
+    else if(here !== "events" && b.exists && (b.data().people || {})[k]) to = {u:"https://hfpools.com/events", t:"branch events page", b:"Open branch events"};
   }catch(e){ return false; }
+  if(!to) return false;
   document.body.innerHTML = '<div style="max-width:420px;margin:15vh auto;padding:20px;font:16px/1.5 system-ui,sans-serif;text-align:center;color:#0A1417">' +
-    '<h2 style="margin:0 0 10px">This login is for the Stevens training page</h2>' +
-    '<p><a href="https://hfpools.com/stevens" style="display:inline-block;padding:12px 18px;border-radius:10px;background:#00676F;color:#fff;text-decoration:none;font-weight:600">Open Stevens coach training</a></p>' +
+    '<h2 style="margin:0 0 10px">This login is for the ' + to.t + '</h2>' +
+    '<p><a href="' + to.u + '" style="display:inline-block;padding:12px 18px;border-radius:10px;background:#00676F;color:#fff;text-decoration:none;font-weight:600">' + to.b + '</a></p>' +
     '<p><button type="button" id="hfco" style="border:0;background:none;color:#00676F;text-decoration:underline;font:inherit;cursor:pointer">Sign out</button></p></div>';
   document.getElementById("hfco").onclick = () => firebase.auth().signOut().then(() => location.reload());
   return true;
