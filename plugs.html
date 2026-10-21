@@ -357,9 +357,16 @@ S.openPool = null;   // outlet tile tapped open
 /* Today-only override (Kay, 8 Oct 2026): dosing_config/plugs.overrides[plugId] = {date:"YYYY-MM-DD", on, until (hour), by, at}.
  * Keeps a plug ON (or OFF) until a time TODAY whatever its schedule says - e.g. DR ON till 9 pm on a short-staffed day.
  * The night-dosing lock still wins. Same code in the script (todayOverride_). */
+// Kay, 21 Oct 2026: "until" can run into the next morning (24 = midnight … 36 = noon tomorrow), e.g. keep a salt
+// chlorinator ON overnight until 9 am when nobody can do night dosing. Same in todayOverride_ (script).
+function ovNextDay(k){ const d = new Date(k + "T00:00:00"); d.setDate(d.getDate() + 1); return dayKey(d); }
+function ovUntilTxt(o, dateKey){ const u = Number(o.until); return u < 24 ? hr(u) : hr(u - 24) + (o.date === dateKey ? " tomorrow" : ""); }
 function todayOverride(o, h, dateKey){
-  if(!o || o.date !== dateKey || !(h < Number(o.until))) return null;
-  return {on: o.on === true, key: "today-" + (o.on ? "on" : "off") + "-" + o.until, today: true, why: "today only — keep " + (o.on ? "ON" : "OFF") + " until " + hr(Number(o.until)) + (o.by ? " (set by " + String(o.by).split("@")[0] + ")" : "")};
+  if(!o) return null;
+  const u = Number(o.until);
+  const live = (o.date === dateKey && h < u) || (u > 24 && ovNextDay(o.date) === dateKey && h < u - 24);
+  if(!live) return null;
+  return {on: o.on === true, key: "today-" + (o.on ? "on" : "off") + "-" + o.until, today: true, why: "keep " + (o.on ? "ON" : "OFF") + " until " + ovUntilTxt(o, dateKey) + (o.by ? " (set by " + String(o.by).split("@")[0] + ")" : "")};
 }
 function ruleFor(pool, pw, id){
   // Kay, 7 Oct 2026: a plug can carry its own weekly schedule (plugs[].week, e.g. Tengah Room 2 — its pump stops at 7 pm);
@@ -443,9 +450,11 @@ function plugHtml(p){
       <button class="b ${st && st.on ? "main" : ""}" data-sw="${esc(p.id)}" data-on="0" ${S.busy[p.id] ? "disabled" : ""}>Switch OFF</button></div>
     ${rule && rule.lock ? `<div class="note" style="margin-top:4px">🔒 Switch ON is locked — ${esc(rule.why)}.</div>` : ""}
     ${p.pool ? (() => { const o = (S.cfg.overrides || {})[p.id], n0 = sgNow(), act = o && todayOverride(o, n0.getHours() + n0.getMinutes() / 60, dayKey(n0));
-      if(act) return `<div class="today on">📌 <b>Today only:</b> keep <b>${o.on ? "ON" : "OFF"}</b> until <b>${hr(Number(o.until))}</b>${o.by ? ` · set by ${esc(String(o.by).split("@")[0])}` : ""}. Back to the normal schedule after that. <button class="link" data-ovclear="${esc(p.id)}">Cancel — back to the schedule now</button></div>`;
-      const hNow = n0.getHours(), opts = []; for(let h = 8; h <= 23.5; h += 0.5) if(h > hNow) opts.push(`<option value="${h}" ${h === 21 ? "selected" : ""}>${hr(h)}</option>`);
-      return `<div class="today">📌 <span>Today only:</span> keep <select data-ovon="${esc(p.id)}"><option value="1">ON</option><option value="0">OFF</option></select> until <select data-ovuntil="${esc(p.id)}">${opts.join("")}</select> <button class="b sm main" data-ovset="${esc(p.id)}">Set &amp; switch ON</button> <span class="note">— switches it now, whatever the schedule says (the night-dosing lock still wins)</span></div>`; })() : ""}
+      if(act) return `<div class="today on">📌 <b>Keep</b> <b>${o.on ? "ON" : "OFF"}</b> until <b>${ovUntilTxt(o, dayKey(n0))}</b>${o.by ? ` · set by ${esc(String(o.by).split("@")[0])}` : ""}. Back to the normal schedule after that. <button class="link" data-ovclear="${esc(p.id)}">Cancel — back to the schedule now</button></div>`;
+      const hNow = n0.getHours() + n0.getMinutes() / 60, opts = [];
+      for(let h = 8; h <= 23.5; h += 0.5) if(h > hNow) opts.push(`<option value="${h}" ${h === 21 ? "selected" : ""}>${hr(h)}</option>`);
+      for(let h = 24; h <= 36; h += 0.5) opts.push(`<option value="${h}" ${h === 21 ? "selected" : ""}>${hr(h - 24)} tomorrow</option>`);   // through the night, until noon tomorrow
+      return `<div class="today">📌 <span>Keep</span> <select data-ovon="${esc(p.id)}"><option value="1">ON</option><option value="0">OFF</option></select> until <select data-ovuntil="${esc(p.id)}">${opts.join("")}</select> <button class="b sm main" data-ovset="${esc(p.id)}">Set &amp; switch ON</button> <span class="note">— switches it now, whatever the schedule says (the night-dosing lock still wins)</span></div>`; })() : ""}
     ${p.pool ? `<div class="rule">${fcLine}${ownWk ? ` <span class="note">· <b>own schedule for this plug</b></span><div class="note" style="margin:3px 0 2px;line-height:1.5">${WEEK_ORDER.map(i => `<span style="display:inline-block;width:34px;font-weight:600">${DAY_NAMES[i].slice(0,3)}</span>${esc(weekDayTxt(ownWk[i]))}`).join("<br>")}</div>` : ((RULES.pools || {})[p.pool] || {}).week ? ` <span class="note">· weekly schedule</span>` : ` <span class="note">· no schedule (hand only)</span>`}<br>Rule says now: ${rule.on === null ? "<b>wait</b>" : `<b class="${rule.on ? "on" : "off"}">${rule.on ? "ON" : "OFF"}</b>`} <span class="why">— ${esc(rule.why)}</span>
       ${(() => { const x = ((S.cfg.autoState || {}).plugs || {})[p.id];   // when the timer last switched this plug (Kay, 6 Oct 2026)
         if(!x || !x.at || x.want == null || new Date(x.at).toDateString() !== new Date().toDateString()) return "";
@@ -774,7 +783,7 @@ function render(){
   if($("#closepool")) $("#closepool").onclick = () => { S.openPool = null; render(); };
   document.querySelectorAll("[data-ovset]").forEach(b => b.onclick = async () => { const id = b.dataset.ovset, on = $(`[data-ovon="${id}"]`).value === "1", until = Number($(`[data-ovuntil="${id}"]`).value);
     const p = plugs.find(x => x.id === id); if(!p || !isFinite(until)) return;
-    if(!confirm(`${p.name}: switch ${on ? "ON" : "OFF"} now and keep it ${on ? "ON" : "OFF"} until ${hr(until)} today, whatever the schedule says?`)) return;
+    if(!confirm(`${p.name}: switch ${on ? "ON" : "OFF"} now and keep it ${on ? "ON" : "OFF"} until ${until < 24 ? hr(until) + " today" : hr(until - 24) + " tomorrow"}, whatever the schedule says?`)) return;
     const overrides = Object.assign({}, S.cfg.overrides || {}); overrides[id] = {date: dayKey(sgNow()), on, until, by: S.user.email, at: new Date().toISOString()};
     await saveCfg({overrides}); await applyRuleNow(p); });
   document.querySelectorAll("[data-ovon]").forEach(s => s.onchange = () => { const b = $(`[data-ovset="${s.dataset.ovon}"]`); if(b) b.textContent = "Set & switch " + (s.value === "1" ? "ON" : "OFF"); });
