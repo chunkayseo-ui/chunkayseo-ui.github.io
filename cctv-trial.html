@@ -1,7 +1,7 @@
 <!doctype html>
 <html lang="en"><head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>BK water test CCTV trial</title>
+<title>Water test CCTV trial</title>
 <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700&family=IBM+Plex+Sans:wght@400;600&display=swap" rel="stylesheet">
 <style>
 :root{--ground:#EEF3F3;--surface:#fff;--line:#C7D6D6;--ink:#0A1417;--ink-2:#33474D;--ink-3:#5B7378;--accent:#00676F;--ok:#256B4C;--ok-soft:#DDEEE5;--warn:#8A590D;--warn-soft:#F6EAD4;--urgent:#B23A2E;--urgent-soft:#F8DEDA}
@@ -12,6 +12,7 @@ h2{font:700 15px/1 "Barlow Condensed",sans-serif;text-transform:uppercase;letter
 .card{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:14px;margin-top:14px}
 .note{color:var(--ink-3);font-size:13px}
 label{display:block;font-size:13px;color:var(--ink-2);margin-bottom:4px}
+.seg{display:flex;gap:8px;margin:0 0 12px}.seg button{flex:1;margin:0;padding:10px;border:1px solid var(--line);background:var(--surface);color:var(--ink-2);font-weight:600}.seg button.on{background:var(--accent);border-color:var(--accent);color:#fff}
 input{width:100%;font:inherit;padding:10px 12px;border:1px solid var(--line);border-radius:10px}
 button{font:600 17px "IBM Plex Sans",sans-serif;border:0;border-radius:12px;padding:16px;width:100%;cursor:pointer;margin-top:12px}
 .go{background:var(--accent);color:#fff}.stop{background:var(--urgent);color:#fff}.ghost{background:none;color:var(--ink-3);font-size:14px;padding:8px;margin-top:4px}
@@ -31,14 +32,14 @@ table{width:100%;border-collapse:collapse;font-size:14px;margin-top:8px}td{paddi
 </style></head>
 <body><main>
 <h1>Water test · CCTV trial</h1>
-<div class="note">BK only · Kay's trial. Tap <b>Start</b> before you take the sample, <b>Finish</b> when the report is sent. The BK Pi records the Counter, Pool and Pump-room cameras every second in between, then checks them.</div>
+<div class="note">BK and Tengah · Kay's trial. Pick the outlet, tap <b>Start</b> before you take the sample, <b>Finish</b> when the report is sent. The outlet's Pi records the Counter, Pool and Pump-room cameras every second in between, then checks them.</div>
 <div id="app"><div class="card note">Loading…</div></div>
 <div class="card hist"><h2>Recent trials</h2><div id="hist" class="note">Loading…</div></div>
 </main>
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore-compat.js"></script>
 <script>
-/* BK water-test CCTV trial (Kay, 2 Nov 2026).
+/* Water-test CCTV trial for outlets with a Pi: BK (hfpi-bk) and TENGAH (hfpi-tengah, added 2 Nov 2026).
  * Start writes cctv_jobs/<id> {outlet:"BK", kind:"watertest", by, status:"running", startedAt}. The BK Pi (hfpi-bk,
  * jobwatch.py) polls for running BK jobs every 3 s, saves 1 frame/s from Counter + Pool 1-3 + Pump 1-2, and reports
  * progress in job.pi {frames, lastAt, recording}. Finish sets status "done" + endedAt; the Pi then checks the frames
@@ -49,7 +50,13 @@ firebase.initializeApp({
   projectId: "maintenance-board-f931a", storageBucket: "maintenance-board-f931a.firebasestorage.app",
   messagingSenderId: "169864970579", appId: "1:169864970579:web:bfb7490d0aebcfed17e1a6"
 });
-const db = firebase.firestore(), OUTLET = "BK";
+const db = firebase.firestore();
+// Outlets with a Pi (Tengah added 2 Nov 2026). ?outlet=TENGAH picks one; otherwise the last one used on this phone.
+const OUTLETS = {BK: "BK", TENGAH: "Tengah"};
+let OUTLET = (new URLSearchParams(location.search).get("outlet") || "").toUpperCase();
+if(!OUTLETS[OUTLET]) OUTLET = (() => { try{ return localStorage.getItem("cctvTrialOutlet"); }catch(e){ return null; } })() || "BK";
+if(!OUTLETS[OUTLET]) OUTLET = "BK";
+const OL = () => OUTLETS[OUTLET] || OUTLET;
 const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 const store = { get(k){ try{ return localStorage.getItem(k); }catch(e){ return null; } }, set(k, v){ try{ v == null ? localStorage.removeItem(k) : localStorage.setItem(k, v); }catch(e){} } };
 const pad = n => String(n).padStart(2, "0");
@@ -61,10 +68,12 @@ let unsub = null, tick = null;
 function home(){
   const name = store.get("cctvTrialName") || "";
   app.innerHTML = `<div class="card"><h2>New water test</h2>
+    <label>Outlet</label><div class="seg">${Object.keys(OUTLETS).map(k => `<button type="button" data-o="${k}" class="${k === OUTLET ? "on" : ""}">${OUTLETS[k]}</button>`).join("")}</div>
     <label for="nm">Your name</label><input id="nm" value="${esc(name)}" placeholder="e.g. Kay" autocomplete="name">
     <ol class="steps note"><li>Tap <b>Start</b> at the counter, before taking the sample.</li><li>Take the sample at the pool. At the counter, <b>record the FC test</b> on this page (phone propped up, vial in view, every drop until the colour changes).</li><li>In the pump room, <b>photo the heat pump temperature and the filter gauge</b> on this page.</li><li>Send the report in the BK group, then tap <b>Finish</b>.</li></ol>
     <button class="go" id="start">▶ Start water test</button></div>`;
   document.getElementById("start").onclick = start;
+  app.querySelectorAll(".seg button").forEach(b => b.onclick = () => { OUTLET = b.dataset.o; store.set("cctvTrialOutlet", OUTLET); home(); history(); });
 }
 async function start(){
   const by = document.getElementById("nm").value.trim();
@@ -85,12 +94,13 @@ function watch(id){
 function show(id, j){
   if(tick && !(j.status === "running" && document.getElementById("run-" + id))){ clearInterval(tick); tick = null; }
   const pi = j.pi || {};
+  if(j.outlet && OUTLETS[j.outlet]) OUTLET = j.outlet;
   if(j.status === "running"){
     // Built once per job; snapshots (Pi progress every 10 s, media saved) only update parts, so the camera
     // preview / an upload in progress is never wiped by a re-render.
     if(!document.getElementById("run-" + id)) renderRunning(id, j);
     const fresh = pi.lastAt && (Date.now() - new Date(pi.lastAt)) < 30e3;
-    document.getElementById("pistat").innerHTML = fresh ? `<span class="dot"></span><b>BK Pi is recording</b> · ${esc(pi.frames || 0)} pictures so far` : `<span class="note">Waiting for the BK Pi to start recording… (about 5 seconds)</span>`;
+    document.getElementById("pistat").innerHTML = fresh ? `<span class="dot"></span><b>${esc(OL())} Pi is recording</b> · ${esc(pi.frames || 0)} pictures so far` : `<span class="note">Waiting for the ${esc(OL())} Pi to start recording… (about 5 seconds)</span>`;
     MEDIA.forEach(m => { const v = (j.media || {})[m.key], el = document.getElementById("ms-" + m.key);
       if(v && v.url && el && !busy[m.key]){ el.className = "s ok"; el.innerHTML = `✓ saved ${esc(clock(v.at))} · <a href="${esc(v.url)}" target="_blank" rel="noopener">open</a>`; } });
     curJob = j;
@@ -101,7 +111,7 @@ function show(id, j){
   const r = j.result;
   if(!r){
     app.innerHTML = `<div class="card"><h2>Checking the CCTV…</h2><div class="note">Test ${esc(clock(j.startedAt))}–${esc(clock(j.endedAt))} · ${esc(pi.frames || 0)} pictures recorded.</div>
-      <p>The BK Pi is looking for you at the pool and in the pump room and making the timelapse. This usually takes 1–3 minutes — keep this page open or come back later.</p></div>`;
+      <p>The ${esc(OL())} Pi is looking for you at the pool and in the pump room and making the timelapse. This usually takes 1–3 minutes — keep this page open or come back later.</p></div>`;
     return;
   }
   const z = r.zones || {}, row = (k, l) => `<tr><td>${l}</td><td>${z[k] ? esc(z[k].first) + (z[k].last !== z[k].first ? "–" + esc(z[k].last) : "") : "<span style='color:var(--urgent)'>not seen</span>"}</td></tr>`;
@@ -213,12 +223,12 @@ async function shrink(file, what){
   const img = await createImageBitmap(file, {imageOrientation: "from-image"}).catch(() => new Promise((res, rej) => { const i = new Image(); i.onload = () => res(i); i.onerror = rej; i.src = URL.createObjectURL(file); }));
   const sc = Math.min(1, 1600 / Math.max(img.width, img.height)), w = Math.round(img.width * sc), h = Math.round(img.height * sc);
   const c = document.createElement("canvas"); c.width = w; c.height = h; const g = c.getContext("2d"); g.drawImage(img, 0, 0, w, h);
-  const txt = `BK · ${what} · ${(curJob && curJob.by) || ""} · ${new Date().toLocaleString("en-SG", {timeZone: "Asia/Singapore"})}`;
+  const txt = `${OL()} · ${what} · ${(curJob && curJob.by) || ""} · ${new Date().toLocaleString("en-SG", {timeZone: "Asia/Singapore"})}`;
   g.font = `${Math.round(w / 34)}px sans-serif`; const th = Math.round(w / 34) + 14; g.fillStyle = "rgba(0,0,0,.6)"; g.fillRect(0, h - th, w, th); g.fillStyle = "#fff"; g.fillText(txt, 8, h - 9);
   return await new Promise(res => c.toBlob(res, "image/jpeg", 0.85));
 }
 async function history(){
-  const el = document.getElementById("hist");
+  const el = document.getElementById("hist"), h = document.querySelector(".hist h2"); if(h) h.textContent = "Recent trials · " + OL();
   try{
     const qs = await db.collection("cctv_jobs").where("outlet", "==", OUTLET).get();
     const rows = qs.docs.map(d => Object.assign({id: d.id}, d.data())).filter(x => x.kind === "watertest" && x.status !== "cancelled")
