@@ -120,10 +120,11 @@ function show(id, j){
     <div class="note">Test ${esc(clock(j.startedAt))}–${esc(clock(j.endedAt))} by ${esc(j.by)} · ${esc(pi.frames || 0)} pictures</div>
     <table>${row("pool","Pool (sample)")}${row("pump room","Pump room")}${row("counter","Counter")}
       <tr><td>⏱ Sample → test</td><td>${r.gap ? `<span style="color:${r.gap.min > 3 ? "var(--urgent)" : "inherit"}">${esc(r.gap.min)} min (${esc(r.gap.sampleAt)} → ${esc(r.gap.testAt)})</span>` : "<span style='color:var(--ink-3)'>couldn't tell</span>"}</td></tr>
+      ${footageRow(j, r)}
       <tr><td>🧪 FC drops</td><td>${j.fcDrops != null ? esc(j.fcDrops) + " drops = FC " + esc(j.fcFromDrops) + " ppm" : "<span style='color:var(--urgent)'>missing</span>"}</td></tr>
       ${MEDIA.map(m => { const v = (j.media || {})[m.key]; return `<tr><td>${m.icon} ${esc(m.label)}</td><td>${v && v.url ? `<a href="${esc(v.url)}" target="_blank" rel="noopener">open</a>` : "<span style='color:var(--urgent)'>missing</span>"}</td></tr>`; }).join("")}</table>
     <div class="links">${r.video && r.video.url ? `<a href="${esc(r.video.url)}" target="_blank" rel="noopener">▶ Timelapse</a>` : ""}${r.sheet && r.sheet.url ? `<a href="${esc(r.sheet.url)}" target="_blank" rel="noopener">🖼 Frames</a>` : ""}</div>
-    <div class="note" style="margin-top:6px">Opens in Google Drive (Kay and William). The timelapse plays at 2x — use the player's speed setting for 3x or 4x. Also sent to HF Pools Alerts › Watertest Check.</div>
+    <div class="note" style="margin-top:6px">Opens in Google Drive (Kay and William). The timelapse plays at 2x — use the player's speed setting for 3x or 4x. Real video is kept 30 days; Drive needs a few minutes after upload before it plays. Also sent to HF Pools Alerts › Watertest Check.</div>
     <button class="go" id="again">New water test</button></div>`;
   document.getElementById("again").onclick = () => { store.set("cctvTrialJob", null); if(unsub) unsub(); home(); };
 }
@@ -164,6 +165,16 @@ async function saveMedia(id, key, blob, ext, mime){
 }
 function setFinish(){ const f = document.getElementById("fin"); if(f) f.disabled = Object.values(busy).some(Boolean) || !!recorder; }
 function stopCam(){ if(recTick){ clearInterval(recTick); recTick = null; } if(stream){ stream.getTracks().forEach(t => t.stop()); stream = null; } }
+// Real CCTV video (Kay, 2 Nov 2026): the Pi copies the NVR's own recording stream for these cameras while the
+// test runs, uploads it in 2-minute parts after the result, and Drive keeps it 30 days.
+const FOOT_CAM = {counter: "Counter", pool1: "Pool", pump1: "Pump room 1", pump2: "Pump room 2"};
+function footageRow(j, r){
+  const f = j.footage;
+  if(f && Object.keys(f).length) return `<tr><td>🎞 Real video</td><td>${Object.keys(FOOT_CAM).filter(k => f[k]).concat(Object.keys(f).filter(k => !FOOT_CAM[k])).map(k =>
+    f[k].map(p => `<a href="${esc(p.url)}" target="_blank" rel="noopener">${esc(FOOT_CAM[k] || k)}${f[k].length > 1 ? " " + esc(p.part) : ""}</a>`).join(" ")).join(" · ")}</td></tr>`;
+  const recent = r && r.at && (Date.now() - new Date(r.at)) < 30 * 60e3;
+  return recent ? `<tr><td>🎞 Real video</td><td><span class="note">uploading… (a few minutes)</span></td></tr>` : "";
+}
 function renderRunning(id, j){
   app.innerHTML = `<div class="card" id="run-${esc(id)}"><h2>Water test running</h2>
     <div class="big" id="tm">0:00</div><div class="note">Started ${esc(clock(j.startedAt))} by ${esc(j.by)}</div>
