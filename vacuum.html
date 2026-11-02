@@ -590,6 +590,7 @@ async function cctvCard(rid, tid){
     if(!d.exists) return `<div class="card"><h2>🎥 CCTV check</h2><div class="note">No CCTV check for this job yet. The outlet's Pi checks a vacuum a minute or two after it is finished.</div></div>`;
     const c = d.data(), col = {ok:"var(--ok)", check:"var(--warn)", flag:"var(--urgent)"}[c.verdict] || "var(--ink-3)";
     const links = [c.video && c.video.url ? `<a href="${esc(c.video.url)}" target="_blank" rel="noopener">▶ Play timelapse</a>` : "",
+                   c.video2x && c.video2x.url ? `<a href="${esc(c.video2x.url)}" target="_blank" rel="noopener">▶ 2x speed (recorded)</a>` : "",
                    c.sheet && c.sheet.url ? `<a href="${esc(c.sheet.url)}" target="_blank" rel="noopener">🖼 Frame sheet</a>` : ""].filter(Boolean).join("");
     return `<div class="card"><h2>🎥 CCTV check</h2><div style="font-weight:600;color:${col}">${esc(c.verdictText || c.verdict)}</div>
       ${c.frames ? `<div class="note">${esc(c.framesWithPerson)} of ${esc(c.frames)} snapshots (every 30 s, all pool cameras) show a person. Free person detector on the outlet Pi — it can't tell vacuuming from standing, so play the timelapse if in doubt.</div>` : ""}

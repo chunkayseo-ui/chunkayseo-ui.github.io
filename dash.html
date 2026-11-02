@@ -1059,7 +1059,7 @@ function drawCctv(){
     const job = c.roundId && c.taskId ? `/vacuum?r=${encodeURIComponent(c.roundId)}&t=${encodeURIComponent(c.taskId)}&cctv=1` : "";
     const media = c.type === "watertest" && c.session === "trial" ? [["fcVideo", "🎥 FC video"], ["heatPump", "📷 Heat pump"], ["filter", "📷 Filter gauge"]]
       .map(([k, l]) => m[k] && m[k].url ? link(m[k].url, l) : `<span style="color:var(--urgent)">${l} missing</span>`) : [];
-    const links = [c.video && c.video.url ? link(c.video.url, "▶ Play timelapse") : "", !c.video && c.sheet && c.sheet.url ? link(c.sheet.url, "🖼 Frames") : "",
+    const links = [c.video && c.video.url ? link(c.video.url, "▶ Play timelapse") : "", c.video2x && c.video2x.url ? link(c.video2x.url, "▶ 2x speed (recorded)") : "", !c.video && c.sheet && c.sheet.url ? link(c.sheet.url, "🖼 Frames") : "",
       ...media, job ? `<a href="${job}" target="_blank" rel="noopener" style="color:var(--accent)">Job & photos</a>` : ""].filter(Boolean);
     const rev = c.review ? `<span class="m">✓ looked at by ${esc(c.review.by)} ${esc(clock(c.review.at))}</span>`
       : (c.verdict === "check" || c.verdict === "flag") ? `<button class="cctvok" data-id="${esc(c.id)}" style="border:1px solid var(--line);background:var(--surface-2);border-radius:6px;padding:4px 10px;font:inherit;font-size:13px;cursor:pointer">✓ Looked at</button>` : "";
