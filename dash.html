@@ -187,7 +187,7 @@ const LONG_JOB_MIN = 90, LONG_VAC_MIN = 120, NO_MORNING_TEST_HOUR = 11;
 // Maintenance Board: the day each outlet's weekly list is usually done (same as the board page).
 const BOARD_DAY = {JE:1, Tengah:1, BK:1, CC:2, WWW:2, HB:3, TPY:3, DR:4, HS:4, Lentor:5};
 const DOW = ["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];
-const TABS = [{id:"today", label:"Today", short:"Today"}, {id:"water", label:"Water & Dosing", short:"Water"}, {id:"work", label:"Work & Routes", short:"Work"}, {id:"team", label:"Team & HR", short:"Team"}];
+const TABS = [{id:"today", label:"Today", short:"Today"}, {id:"water", label:"Water & Dosing", short:"Water"}, {id:"work", label:"Work & Routes", short:"Work"}, {id:"team", label:"Team & HR", short:"Team"}, {id:"cctv", label:"CCTV Checks", short:"CCTV"}];
 // Same starting skills list the tracker's Team tab shows until someone edits it.
 const DEFAULT_SKILL_NAMES = ["Water test", "Manual dosing", "Manual vacuum", "Night dosing", "Pressure jet",
   "Pool plumbing", "CCTV", "Wi-Fi", "Repairing", "Fibreglass", "Wallpaper", "Outdoor shades (JEOP1 & JEOP2)",
@@ -557,10 +557,11 @@ function start(){
   docInto("dosing_config/tasks", d => S.cfg = d || {});
   docInto("dosing_config/team", d => S.team = d);
   docInto("dosing_config/dosing_changes", d => S.dchanges = (d && d.entries) || {});
-  loadMonth(); loadHistory(); loadBoard();
+  loadMonth(); loadHistory(); loadBoard(); loadCctv();
   // Firestore reads are limited per day (30 Sep 2026: the free quota ran out) -- refresh the big
   // month queries hourly, and only while the dashboard is actually on screen.
   const whenSeen = fn => () => { if(!document.hidden) fn(); };
+  const t5 = setInterval(whenSeen(loadCctv), 10 * 60e3); S.unsubs.push(() => clearInterval(t5));
   const t1 = setInterval(loadHistory, 10 * 60e3), t2 = setInterval(whenSeen(loadMonth), 60 * 60e3), t3 = setInterval(render, 60e3), t4 = setInterval(whenSeen(loadBoard), 60 * 60e3);
   S.unsubs.push(() => { clearInterval(t1); clearInterval(t2); clearInterval(t3); clearInterval(t4); });
 }
@@ -988,6 +989,8 @@ function attention(){
   const working = [...new Set(todaysRounds().map(x => x.r.person))];
   const old = working.filter(n => { const v = S.versions[slug(n)]; return !v || cmpBuild(v.build, newest) < 0; });
   if(old.length) out.push({lvl:"info", chip:"⟳ Old app", t:`${old.join(", ")} on an old version`, m:"Old pages can undo saved jobs — ask them to reopen the link.", href:"#team"});
+  cctvNeedsLook().slice(0, 3).forEach(c => out.push({lvl:c.verdict === "flag" ? "urg" : "warn", chip:"🎥 CCTV",
+    t:`${c.outlet || ""} ${cctvKind(c)} · ${c.who || "staff"} · ${cctvWhen(c)}`, m:c.verdictText || "", href:"#cctv"}));
   const rank = {urg:0, warn:1, info:2};
   return out.sort((a, b) => rank[a.lvl] - rank[b.lvl]);
 }
@@ -1000,9 +1003,9 @@ function draw(){
   if(!S.person || S.person.role === "staff") return;
   if(S.previewing || S.mine) return;
   const tab = tabNow(), now = new Date(), att = attention();
-  const badges = {today:att.filter(a => a.lvl === "urg").length};
+  const badges = {today:att.filter(a => a.lvl === "urg").length, cctv:cctvNeedsLook().length};
   const prevCal = $("#calscroll"), calLeft = prevCal ? prevCal.scrollLeft : null;
-  const body = tab === "water" ? drawWater() : tab === "work" ? drawWork() : tab === "team" ? drawTeam() : drawToday(att);
+  const body = tab === "water" ? drawWater() : tab === "work" ? drawWork() : tab === "team" ? drawTeam() : tab === "cctv" ? drawCctv() : drawToday(att);
   $("#app").innerHTML = `
   <header><h1>HF Pools · Dashboard</h1><span class="date">${now.toLocaleDateString("en-SG", {weekday:"short", day:"numeric", month:"short"})} · ${pad(now.getHours())}:${pad(now.getMinutes())} · live</span>
     <span class="me">Signed in as ${esc(S.user.email)}<button id="out">Sign out</button></span></header>
@@ -1014,6 +1017,83 @@ function draw(){
   $("#out").onclick = () => auth.signOut();
   const rf = $("#rf"); if(rf) rf.onclick = () => loadHistory();
   bindDosingChanges();
+  bindCctv();
+}
+
+/* ---------------- CCTV checks (2 Nov 2026) ----------------
+ * Every check the outlet Pi made (cctv_checks): vacuum checks (vacwatch) and water-test checks
+ * (trial page / automatic). Kay + William only -- this tab sits behind the dashboard sign-in, so the
+ * technicians never see the verdicts. Videos are private in Kay's Drive; the CCTV folder is shared
+ * with William (view only), so the Play links work for both. "Needs a look" = Check or Flag in the
+ * last 3 days that hasn't been ticked "Looked at" (cctv_checks/<id>.review {by, at}). */
+const CCTV_V = {ok:{chip:"c-ok", t:"✅ OK"}, check:{chip:"c-warn", t:"⚠️ Check"}, flag:{chip:"c-urg", t:"🚩 Flag"}, noframes:{chip:"c-mute", t:"No frames"}};
+const cctvKind = c => c.type === "watertest" ? "Water test" : c.kind === "ops-spot" ? "Spot vacuum" : "Vacuum";
+const cctvWhen = c => { const a = c.start ? new Date(c.start) : new Date(c.at), b = c.end || c.reportAt;
+  return DOW[a.getDay()] + " " + a.getDate() + " " + a.toLocaleDateString("en-SG", {month:"short"}) + " · " + clock(a.toISOString()) + (b ? "–" + clock(b) : ""); };
+function cctvNeedsLook(){
+  const since = Date.now() - 3 * 864e5;
+  return (S.cctv || []).filter(c => (c.verdict === "check" || c.verdict === "flag") && !c.review && new Date(c.at).getTime() > since);
+}
+async function loadCctv(){
+  if(S.cctvLoading) return; S.cctvLoading = true;
+  try{
+    const s = await db.collection("cctv_checks").orderBy("at", "desc").limit(150).get();
+    const rows = []; s.forEach(d => { if(!d.id.startsWith("TEST__")) rows.push(Object.assign({id:d.id}, d.data())); });
+    S.cctv = rows; S.cctvErr = false; S.cctvAt = new Date();
+  }catch(e){ console.warn(e); S.cctvErr = true; }
+  S.cctvLoading = false; render();
+}
+function drawCctv(){
+  if(!S.cctv) return `<div class="card"><h2>🎥 CCTV checks</h2><div class="lead">${S.cctvErr ? "Couldn't load the CCTV checks. <a href='#cctv' id='cctvrf'>Try again</a>" : "Loading…"}</div></div>`;
+  const f = S.cctvF || (S.cctvF = {type:"all", v:"all", outlet:"all"});
+  const outlets = [...new Set(S.cctv.map(c => c.outlet).filter(Boolean))].sort();
+  const rows = S.cctv.filter(c => (f.type === "all" || (f.type === "wt" ? c.type === "watertest" : c.type !== "watertest"))
+    && (f.v === "all" || (f.v === "look" ? (c.verdict === "check" || c.verdict === "flag") : c.verdict === f.v))
+    && (f.outlet === "all" || c.outlet === f.outlet));
+  const wk = Date.now() - 7 * 864e5, last7 = S.cctv.filter(c => new Date(c.at).getTime() > wk);
+  const need = cctvNeedsLook();
+  const sel = (id, cur, opts) => `<select id="${id}" style="font:inherit;padding:6px 8px;border:1px solid var(--line);border-radius:6px;background:var(--surface)">${opts.map(([v, l]) => `<option value="${v}"${v === cur ? " selected" : ""}>${esc(l)}</option>`).join("")}</select>`;
+  const link = (u, l) => u ? `<a href="${esc(u)}" target="_blank" rel="noopener" style="color:var(--accent)">${l}</a>` : "";
+  const item = c => {
+    const v = CCTV_V[c.verdict] || {chip:"c-mute", t:c.verdict || "?"}, m = c.media || {};
+    const job = c.roundId && c.taskId ? `/vacuum?r=${encodeURIComponent(c.roundId)}&t=${encodeURIComponent(c.taskId)}&cctv=1` : "";
+    const media = c.type === "watertest" && c.session === "trial" ? [["fcVideo", "🎥 FC video"], ["heatPump", "📷 Heat pump"], ["filter", "📷 Filter gauge"]]
+      .map(([k, l]) => m[k] && m[k].url ? link(m[k].url, l) : `<span style="color:var(--urgent)">${l} missing</span>`) : [];
+    const links = [c.video && c.video.url ? link(c.video.url, "▶ Play timelapse") : "", !c.video && c.sheet && c.sheet.url ? link(c.sheet.url, "🖼 Frames") : "",
+      ...media, job ? `<a href="${job}" target="_blank" rel="noopener" style="color:var(--accent)">Job & photos</a>` : ""].filter(Boolean);
+    const rev = c.review ? `<span class="m">✓ looked at by ${esc(c.review.by)} ${esc(clock(c.review.at))}</span>`
+      : (c.verdict === "check" || c.verdict === "flag") ? `<button class="cctvok" data-id="${esc(c.id)}" style="border:1px solid var(--line);background:var(--surface-2);border-radius:6px;padding:4px 10px;font:inherit;font-size:13px;cursor:pointer">✓ Looked at</button>` : "";
+    return `<div class="att"><span class="chip ${v.chip}">${v.t}</span><div style="min-width:0;flex:1">
+      <b>${esc(c.outlet || "")} · ${cctvKind(c)} · ${esc(c.who || "staff")}${c.test ? ' <span class="chip c-mute">trial</span>' : ""}</b>
+      <div class="m">${esc(cctvWhen(c))}${c.appMinutes ? " · app " + esc(c.appMinutes) + " min" : ""}</div>
+      <div class="m" style="color:var(--ink-2)">${esc((c.verdictText || "").replace(/^\S+\s(OK|Check|Flag)\s—\s/, ""))}</div>
+      ${links.length ? `<div style="display:flex;gap:14px;flex-wrap:wrap;margin-top:5px;font-size:14px">${links.join("")}</div>` : ""}</div>
+      <div style="margin-left:auto;text-align:right">${rev}</div></div>`;
+  };
+  return `<div class="tiles">
+    <div class="card tile${need.length ? " alert" : ""}"><div class="n">${need.length}</div><div class="l">Needs a look</div><div class="s">Check / Flag, last 3 days, not ticked yet</div></div>
+    <div class="card tile"><div class="n">${last7.length}</div><div class="l">Checks · last 7 days</div><div class="s">${last7.filter(c => c.type !== "watertest").length} vacuum · ${last7.filter(c => c.type === "watertest").length} water test</div></div>
+    <div class="card tile"><div class="n">${last7.filter(c => c.verdict === "ok").length}</div><div class="l">OK · last 7 days</div><div class="s">person seen for most of the job</div></div>
+    <div class="card tile"><div class="n">${outlets.length || 0}</div><div class="l">Outlets with a Pi</div><div class="s">${esc(outlets.join(", ") || "–")}</div></div></div>
+  <div class="card"><h2>🎥 CCTV checks <small>${S.cctvAt ? "updated " + pad(S.cctvAt.getHours()) + ":" + pad(S.cctvAt.getMinutes()) + " · " : ""}<a href="#cctv" id="cctvrf">Refresh</a></small></h2>
+    <div class="lead">The outlet Pi checks every vacuum and water test on CCTV. Videos open in Google Drive (Kay and William only). The detector sees a person, not what they're doing, so play the timelapse when it says Check or Flag.</div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:6px">
+      ${sel("cctvt", f.type, [["all", "All jobs"], ["vac", "Vacuum"], ["wt", "Water test"]])}
+      ${sel("cctvv", f.v, [["all", "All results"], ["look", "Check + Flag"], ["ok", "OK only"], ["noframes", "No frames"]])}
+      ${outlets.length > 1 ? sel("cctvo", f.outlet, [["all", "All outlets"], ...outlets.map(o => [o, o])]) : ""}</div>
+    ${rows.length ? rows.slice(0, 80).map(item).join("") : `<div class="empty" style="color:var(--ink-3)">No checks match.</div>`}
+    ${rows.length > 80 ? `<div class="m" style="margin-top:8px">Showing the newest 80 of ${rows.length}.</div>` : ""}</div>`;
+}
+function bindCctv(){
+  const rf = $("#cctvrf"); if(rf) rf.onclick = e => { e.preventDefault(); S.cctv = S.cctv || null; loadCctv(); };
+  const f = S.cctvF || {};
+  [["#cctvt", "type"], ["#cctvv", "v"], ["#cctvo", "outlet"]].forEach(([id, k]) => { const el = $(id); if(el) el.onchange = () => { f[k] = el.value; render(); }; });
+  document.querySelectorAll(".cctvok").forEach(b => b.onclick = async () => {
+    b.disabled = true; b.textContent = "Saving…";
+    const review = {by:(S.person && S.person.name) || S.user.email, at:new Date().toISOString()};
+    try{ await db.doc("cctv_checks/" + b.dataset.id).update({review}); const c = S.cctv.find(x => x.id === b.dataset.id); if(c) c.review = review; render(); }
+    catch(e){ b.disabled = false; b.textContent = "✓ Looked at"; alert("Couldn't save: " + (e.message || e)); }
+  });
 }
 
 function peopleHtml(showOpen){

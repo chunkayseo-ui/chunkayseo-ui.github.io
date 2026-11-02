@@ -593,7 +593,7 @@ async function cctvCard(rid, tid){
                    c.sheet && c.sheet.url ? `<a href="${esc(c.sheet.url)}" target="_blank" rel="noopener">🖼 Frame sheet</a>` : ""].filter(Boolean).join("");
     return `<div class="card"><h2>🎥 CCTV check</h2><div style="font-weight:600;color:${col}">${esc(c.verdictText || c.verdict)}</div>
       ${c.frames ? `<div class="note">${esc(c.framesWithPerson)} of ${esc(c.frames)} snapshots (every 30 s, all pool cameras) show a person. Free person detector on the outlet Pi — it can't tell vacuuming from standing, so play the timelapse if in doubt.</div>` : ""}
-      ${links ? `<div style="margin-top:8px;display:flex;gap:16px;flex-wrap:wrap">${links}</div><div class="note" style="margin-top:6px">Opens in Google Drive (Kay's account only).</div>` : ""}</div>`;
+      ${links ? `<div style="margin-top:8px;display:flex;gap:16px;flex-wrap:wrap">${links}</div><div class="note" style="margin-top:6px">Opens in Google Drive (Kay and William only). All checks: hfpools.com/dash#cctv</div>` : ""}</div>`;
   }catch(e){ return ""; }
 }
 async function main(){
