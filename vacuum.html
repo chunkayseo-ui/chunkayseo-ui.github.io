@@ -581,6 +581,21 @@ function vacSectionSummary(spec, doneIds, skipped){
   }
   return out;
 }
+// CCTV check (Kay, 2 Nov 2026): the outlet Pi's free person-detector check of this vacuum (cctv_checks/<round>__<task>).
+// Shown only on links from Kay's own HF Pools Alerts group (&cctv=1) while he is testing -- the branch group's
+// link doesn't show it. The timelapse and frame sheet are private files in Kay's Drive (CCTV > BK > date).
+async function cctvCard(rid, tid){
+  try{
+    const d = await db.doc("cctv_checks/" + rid + "__" + tid).get();
+    if(!d.exists) return `<div class="card"><h2>🎥 CCTV check</h2><div class="note">No CCTV check for this job yet. The outlet's Pi checks a vacuum a minute or two after it is finished.</div></div>`;
+    const c = d.data(), col = {ok:"var(--ok)", check:"var(--warn)", flag:"var(--urgent)"}[c.verdict] || "var(--ink-3)";
+    const links = [c.video && c.video.url ? `<a href="${esc(c.video.url)}" target="_blank" rel="noopener">▶ Play timelapse</a>` : "",
+                   c.sheet && c.sheet.url ? `<a href="${esc(c.sheet.url)}" target="_blank" rel="noopener">🖼 Frame sheet</a>` : ""].filter(Boolean).join("");
+    return `<div class="card"><h2>🎥 CCTV check</h2><div style="font-weight:600;color:${col}">${esc(c.verdictText || c.verdict)}</div>
+      ${c.frames ? `<div class="note">${esc(c.framesWithPerson)} of ${esc(c.frames)} snapshots (every 30 s, all pool cameras) show a person. Free person detector on the outlet Pi — it can't tell vacuuming from standing, so play the timelapse if in doubt.</div>` : ""}
+      ${links ? `<div style="margin-top:8px;display:flex;gap:16px;flex-wrap:wrap">${links}</div><div class="note" style="margin-top:6px">Opens in Google Drive (Kay's account only).</div>` : ""}</div>`;
+  }catch(e){ return ""; }
+}
 async function main(){
   const q = new URLSearchParams(location.search), rid = q.get("r"), tid = q.get("t"), app = document.getElementById("app");
   const fail = m => { app.innerHTML = `<div class="card"><div class="err">${esc(m)}</div></div>`; };
@@ -598,6 +613,7 @@ async function main(){
   // route card for the map
   try{ const res = await fetch(VAC_ROUTE_URL + "?v=" + Math.floor(Date.now() / 3600e3), {cache:"no-cache"}); if(res.ok){ vacMap.html = await res.text(); vacMap.svgs = {}; vacMap.marked = {}; } }catch(e){}
   const sec = v.sections || (spec ? vacSectionSummary(spec, doneIds, skipped) : null);
+  const cctvHtml = q.get("cctv") === "1" ? await cctvCard(rid, tid) : "";
   const partly = !!(sec && (sec.skipped.length + sec.notDone.length));
   const status = !t.doneAt ? `<span class="tag run">In progress</span>` : partly ? `<span class="tag warn">Partly done</span>` : `<span class="tag ok">Done</span>`;
   let mapHtml = "";
@@ -611,6 +627,7 @@ async function main(){
   app.innerHTML = `
     <h1>${spot ? "Spot vacuum" : "Manual vacuum"} <small style="color:var(--accent)">${esc(poolKey)}${t.pool && t.pool !== poolKey ? " · " + esc(t.pool) : ""}</small></h1>
     <div class="meta">${status} <b>${esc(who)}</b> · ${esc(day(t.doneAt || t.startedAt))}${first ? ` · ${esc(clock(first))}${last ? "–" + esc(clock(last)) : ""}` : ""}${mins != null ? ` · ${esc(dur(mins))}` : ""}${v.breakMin ? ` (${esc(dur(v.breakMin))} break)` : ""}</div>
+    ${cctvHtml}
     ${mapHtml ? `<div class="card"><h2>Area covered</h2><div class="map">${mapHtml}</div><div class="legend"><span><i style="background:#16A34A;opacity:.6"></i>vacuumed</span><span><i style="background:#6B7280;opacity:.8"></i>skipped / not done</span><span>P = photo point · S = before starting · E = after vacuuming</span></div></div>`
       : `<div class="card"><div class="note">${spot ? "Spot vacuum by the operations team — visible dirt only, no route sections. Same before/after steps as the facility team." : spec ? "The route map couldn't be loaded right now." : "No route map is set up for this pool yet."}</div></div>`}
     ${sec && sec.total ? `<div class="card"><h2>Sections</h2>
