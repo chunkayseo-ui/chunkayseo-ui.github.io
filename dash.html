@@ -1067,6 +1067,7 @@ function drawCctv(){
       <b>${esc(c.outlet || "")} · ${cctvKind(c)} · ${esc(c.who || "staff")}${c.test ? ' <span class="chip c-mute">trial</span>' : ""}</b>
       <div class="m">${esc(cctvWhen(c))}${c.appMinutes ? " · app " + esc(c.appMinutes) + " min" : ""}</div>
       <div class="m" style="color:var(--ink-2)">${esc((c.verdictText || "").replace(/^\S+\s(OK|Check|Flag)\s—\s/, ""))}</div>
+      ${c.type === "watertest" && (c.fcDrops != null || c.gap) ? `<div class="m">${c.fcDrops != null ? "🧪 " + esc(c.fcDrops) + " drops = FC " + esc(c.fcFromDrops) + " ppm" : ""}${c.fcDrops != null && c.gap ? " · " : ""}${c.gap ? `<span style="color:${c.gap.min > 3 ? "var(--urgent)" : "inherit"}">⏱ sample → test ${esc(c.gap.min)} min</span>` : ""}</div>` : ""}
       ${links.length ? `<div style="display:flex;gap:14px;flex-wrap:wrap;margin-top:5px;font-size:14px">${links.join("")}</div>` : ""}</div>
       <div style="margin-left:auto;text-align:right">${rev}</div></div>`;
   };

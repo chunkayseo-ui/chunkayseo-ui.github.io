@@ -109,9 +109,11 @@ function show(id, j){
     <div class="verdict v-${esc(r.verdict)}">${esc(String(r.text || r.verdict).split(" (")[0])}</div>
     <div class="note">Test ${esc(clock(j.startedAt))}–${esc(clock(j.endedAt))} by ${esc(j.by)} · ${esc(pi.frames || 0)} pictures</div>
     <table>${row("pool","Pool (sample)")}${row("pump room","Pump room")}${row("counter","Counter")}
+      <tr><td>⏱ Sample → test</td><td>${r.gap ? `<span style="color:${r.gap.min > 3 ? "var(--urgent)" : "inherit"}">${esc(r.gap.min)} min (${esc(r.gap.sampleAt)} → ${esc(r.gap.testAt)})</span>` : "<span style='color:var(--ink-3)'>couldn't tell</span>"}</td></tr>
+      <tr><td>🧪 FC drops</td><td>${j.fcDrops != null ? esc(j.fcDrops) + " drops = FC " + esc(j.fcFromDrops) + " ppm" : "<span style='color:var(--urgent)'>missing</span>"}</td></tr>
       ${MEDIA.map(m => { const v = (j.media || {})[m.key]; return `<tr><td>${m.icon} ${esc(m.label)}</td><td>${v && v.url ? `<a href="${esc(v.url)}" target="_blank" rel="noopener">open</a>` : "<span style='color:var(--urgent)'>missing</span>"}</td></tr>`; }).join("")}</table>
     <div class="links">${r.video && r.video.url ? `<a href="${esc(r.video.url)}" target="_blank" rel="noopener">▶ Timelapse</a>` : ""}${r.sheet && r.sheet.url ? `<a href="${esc(r.sheet.url)}" target="_blank" rel="noopener">🖼 Frames</a>` : ""}</div>
-    <div class="note" style="margin-top:6px">Opens in Google Drive (Kay's account only). Also sent to HF Pools Alerts › Watertest Check.</div>
+    <div class="note" style="margin-top:6px">Opens in Google Drive (Kay and William). The timelapse plays at 2x — use the player's speed setting for 3x or 4x. Also sent to HF Pools Alerts › Watertest Check.</div>
     <button class="go" id="again">New water test</button></div>`;
   document.getElementById("again").onclick = () => { store.set("cctvTrialJob", null); if(unsub) unsub(); home(); };
 }
@@ -158,6 +160,8 @@ function renderRunning(id, j){
     <div style="margin-top:10px" id="pistat"></div>
     <div style="margin-top:12px">${MEDIA.map(m => `<div class="task"><div class="t"><b>${m.icon} ${esc(m.label)}</b><span class="s" id="ms-${m.key}">${esc(m.hint)}</span></div>
       ${m.kind === "video" ? `<button class="btn2" id="rv">Record</button>` : `<label class="btn2" style="cursor:pointer">Photo<input type="file" accept="image/*" capture="environment" data-key="${m.key}" hidden></label>`}</div>`).join("")}</div>
+    <div class="task"><div class="t"><b>🧪 FC drops</b><span class="s${j.fcDrops != null ? " ok" : ""}" id="ms-drops">${j.fcDrops != null ? "Saved: " + esc(j.fcDrops) + " drops = FC " + esc(j.fcFromDrops) + " ppm" : "Drops of R-0871 until the colour changes · FC = drops × 0.5"}</span></div>
+      <input id="drops" type="number" inputmode="numeric" min="0" max="40" step="1" value="${j.fcDrops != null ? esc(j.fcDrops) : ""}" style="width:64px;padding:10px;font:inherit;border:1px solid var(--line);border-radius:10px"><button class="btn2" id="dsave">Save</button></div>
     <div id="recbox"></div>
     <button class="stop" id="fin">■ Finish — report sent</button>
     <button class="ghost" id="cancel">Cancel this test (nothing is checked)</button></div>`;
@@ -167,8 +171,18 @@ function renderRunning(id, j){
   document.getElementById("rv").onclick = () => openRecorder(id);
   app.querySelectorAll("input[type=file]").forEach(inp => inp.onchange = async () => { const f = inp.files[0]; inp.value = ""; if(!f) return;
     const m = MEDIA.find(x => x.key === inp.dataset.key); try{ const blob = await shrink(f, m.label); saveMedia(id, m.key, blob, "jpg", "image/jpeg"); }catch(e){ alert("Couldn't read that photo."); } });
+  // FC drops (Kay, 2 Nov 2026): the page works out FC = drops x 0.5 so nobody multiplies by 1 by mistake.
+  document.getElementById("dsave").onclick = async () => {
+    const n = parseInt(document.getElementById("drops").value, 10), st = document.getElementById("ms-drops");
+    if(!(n >= 0 && n <= 40)){ alert("Type the number of drops (0–40)."); return; }
+    st.className = "s"; st.textContent = "Saving…";
+    try{ await db.doc("cctv_jobs/" + id).update({fcDrops: n, fcFromDrops: n * 0.5}); if(curJob){ curJob.fcDrops = n; curJob.fcFromDrops = n * 0.5; }
+      st.className = "s ok"; st.textContent = "Saved: " + n + " drops = FC " + (n * 0.5) + " ppm"; }
+    catch(e){ st.textContent = "Couldn't save — try again"; }
+  };
   document.getElementById("fin").onclick = () => {
     const miss = MEDIA.filter(m => !((curJob && curJob.media) || {})[m.key]).map(m => m.label);
+    if(!curJob || curJob.fcDrops == null) miss.push("FC drops");
     if(miss.length && !confirm("Not saved yet: " + miss.join(", ") + ".\n\nFinish anyway?")) return;
     stopCam(); db.doc("cctv_jobs/" + id).update({status: "done", endedAt: sgIso(new Date())});
   };
