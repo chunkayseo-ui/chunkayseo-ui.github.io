@@ -23,6 +23,10 @@ button:disabled{opacity:.5}
 .links{display:flex;gap:18px;flex-wrap:wrap;margin-top:10px}.links a{color:var(--accent);font-weight:600}
 table{width:100%;border-collapse:collapse;font-size:14px;margin-top:8px}td{padding:5px 0;border-top:1px solid var(--line)}td:last-child{text-align:right}
 .hist div{padding:7px 0;border-top:1px solid var(--line);font-size:14px}
+.task{display:flex;gap:10px;align-items:center;padding:10px 0;border-top:1px solid var(--line)}.task .t{flex:1}.task .t b{display:block}.task .s{font-size:13px;color:var(--ink-3)}
+.task .s.ok{color:var(--ok);font-weight:600}.btn2{width:auto;margin:0;padding:10px 14px;font-size:14px;background:var(--accent);color:#fff;border-radius:10px}
+.rec{background:#000;border-radius:10px;margin-top:10px;overflow:hidden;position:relative}.rec video{width:100%;display:block;max-height:60vh}
+.rec .bar{display:flex;gap:8px;padding:8px;background:#111}.rec .bar button{margin:0;padding:12px;font-size:15px}.rec .lbl{position:absolute;top:8px;left:8px;color:#fff;background:rgba(0,0,0,.55);padding:3px 8px;border-radius:6px;font-size:13px}
 .dot{display:inline-block;width:9px;height:9px;border-radius:50%;background:var(--urgent);margin-right:6px;animation:b 1s infinite}@keyframes b{50%{opacity:.2}}
 </style></head>
 <body><main>
@@ -58,7 +62,7 @@ function home(){
   const name = store.get("cctvTrialName") || "";
   app.innerHTML = `<div class="card"><h2>New water test</h2>
     <label for="nm">Your name</label><input id="nm" value="${esc(name)}" placeholder="e.g. Kay" autocomplete="name">
-    <ol class="steps note"><li>Tap <b>Start</b> at the counter, before taking the sample.</li><li>Take the sample at the pool, test it, check the heat pump and filter gauge in the pump room.</li><li>Send the report in the BK group, then tap <b>Finish</b>.</li></ol>
+    <ol class="steps note"><li>Tap <b>Start</b> at the counter, before taking the sample.</li><li>Take the sample at the pool. At the counter, <b>record the FC test</b> on this page (phone propped up, vial in view, every drop until the colour changes).</li><li>In the pump room, <b>photo the heat pump temperature and the filter gauge</b> on this page.</li><li>Send the report in the BK group, then tap <b>Finish</b>.</li></ol>
     <button class="go" id="start">▶ Start water test</button></div>`;
   document.getElementById("start").onclick = start;
 }
@@ -79,22 +83,20 @@ function watch(id){
   unsub = db.doc("cctv_jobs/" + id).onSnapshot(d => { if(d.exists) show(id, d.data()); else { store.set("cctvTrialJob", null); home(); } });
 }
 function show(id, j){
-  if(tick){ clearInterval(tick); tick = null; }
+  if(tick && !(j.status === "running" && document.getElementById("run-" + id))){ clearInterval(tick); tick = null; }
   const pi = j.pi || {};
   if(j.status === "running"){
+    // Built once per job; snapshots (Pi progress every 10 s, media saved) only update parts, so the camera
+    // preview / an upload in progress is never wiped by a re-render.
+    if(!document.getElementById("run-" + id)) renderRunning(id, j);
     const fresh = pi.lastAt && (Date.now() - new Date(pi.lastAt)) < 30e3;
-    app.innerHTML = `<div class="card"><h2>Water test running</h2>
-      <div class="big" id="tm">0:00</div><div class="note">Started ${esc(clock(j.startedAt))} by ${esc(j.by)}</div>
-      <div style="margin-top:10px">${fresh ? `<span class="dot"></span><b>BK Pi is recording</b> · ${esc(pi.frames || 0)} pictures so far` : `<span class="note">Waiting for the BK Pi to start recording… (about 5 seconds)</span>`}</div>
-      <button class="stop" id="fin">■ Finish — report sent</button>
-      <button class="ghost" id="cancel">Cancel this test (nothing is checked)</button></div>`;
-    const t0 = new Date(j.startedAt).getTime(), tm = document.getElementById("tm");
-    const upd = () => { const s = Math.max(0, Math.floor((Date.now() - t0) / 1000)); tm.textContent = Math.floor(s / 60) + ":" + pad(s % 60); };
-    upd(); tick = setInterval(upd, 1000);
-    document.getElementById("fin").onclick = () => db.doc("cctv_jobs/" + id).update({status: "done", endedAt: sgIso(new Date())});
-    document.getElementById("cancel").onclick = () => { if(confirm("Cancel this test? The Pi stops recording and nothing is checked.")) db.doc("cctv_jobs/" + id).update({status: "cancelled", endedAt: sgIso(new Date())}); };
+    document.getElementById("pistat").innerHTML = fresh ? `<span class="dot"></span><b>BK Pi is recording</b> · ${esc(pi.frames || 0)} pictures so far` : `<span class="note">Waiting for the BK Pi to start recording… (about 5 seconds)</span>`;
+    MEDIA.forEach(m => { const v = (j.media || {})[m.key], el = document.getElementById("ms-" + m.key);
+      if(v && v.url && el && !busy[m.key]){ el.className = "s ok"; el.innerHTML = `✓ saved ${esc(clock(v.at))} · <a href="${esc(v.url)}" target="_blank" rel="noopener">open</a>`; } });
+    curJob = j;
     return;
   }
+  stopCam();
   if(j.status === "cancelled"){ store.set("cctvTrialJob", null); home(); return; }
   const r = j.result;
   if(!r){
@@ -106,11 +108,100 @@ function show(id, j){
   app.innerHTML = `<div class="card"><h2>Result</h2>
     <div class="verdict v-${esc(r.verdict)}">${esc(String(r.text || r.verdict).split(" (")[0])}</div>
     <div class="note">Test ${esc(clock(j.startedAt))}–${esc(clock(j.endedAt))} by ${esc(j.by)} · ${esc(pi.frames || 0)} pictures</div>
-    <table>${row("pool","Pool (sample)")}${row("pump room","Pump room")}${row("counter","Counter")}</table>
+    <table>${row("pool","Pool (sample)")}${row("pump room","Pump room")}${row("counter","Counter")}
+      ${MEDIA.map(m => { const v = (j.media || {})[m.key]; return `<tr><td>${m.icon} ${esc(m.label)}</td><td>${v && v.url ? `<a href="${esc(v.url)}" target="_blank" rel="noopener">open</a>` : "<span style='color:var(--urgent)'>missing</span>"}</td></tr>`; }).join("")}</table>
     <div class="links">${r.video && r.video.url ? `<a href="${esc(r.video.url)}" target="_blank" rel="noopener">▶ Timelapse</a>` : ""}${r.sheet && r.sheet.url ? `<a href="${esc(r.sheet.url)}" target="_blank" rel="noopener">🖼 Frames</a>` : ""}</div>
     <div class="note" style="margin-top:6px">Opens in Google Drive (Kay's account only). Also sent to HF Pools Alerts › Watertest Check.</div>
     <button class="go" id="again">New water test</button></div>`;
   document.getElementById("again").onclick = () => { store.set("cctvTrialJob", null); if(unsub) unsub(); home(); };
+}
+
+/* ---- FC test video + pump-room photos (Kay, 2 Nov 2026) ----
+ * CCTV is too far away to count FC drops or read gauges, so the person records them on this page.
+ * Video: in-page recorder (MediaRecorder, ~1.5 Mbit/s so a 60 s clip is ~10 MB). Photos: phone camera, shrunk and
+ * stamped "BK · what · name · time". Both go through the app's photo relay as kind 'cctv' (private, Kay's Drive >
+ * CCTV > BK > date, never Telegram) and are saved on the job as media.<key> {fileId, url, at}. */
+const MEDIA = [{key:"fcVideo", icon:"🎥", label:"FC test video", kind:"video", hint:"Prop the phone up, vial in view, every drop until the colour changes"},
+               {key:"heatPump", icon:"📷", label:"Heat pump temperature", kind:"photo", hint:"Photo of the heat pump display"},
+               {key:"filter", icon:"📷", label:"Filter pressure gauge", kind:"photo", hint:"Close-up of the gauge needle"}];
+let curJob = null, relay = null, stream = null, recorder = null, chunks = [], recT0 = 0, recTick = null; const busy = {};
+async function relayCfg(){
+  if(relay) return relay;
+  const d = await db.doc("dosing_config/tasks").get(), p = (d.data() || {}).photo || {};
+  if(!p.relayUrl) throw new Error("photo relay isn't set up"); relay = p; return relay;
+}
+function b64(blob){ return new Promise((res, rej) => { const r = new FileReader(); r.onload = () => res(String(r.result).split(",")[1]); r.onerror = rej; r.readAsDataURL(blob); }); }
+async function upload(blob, name, mime){
+  const rc = await relayCfg(), s = sgIso(new Date());
+  const res = await fetch(rc.relayUrl, {method:"POST", headers:{"Content-Type":"text/plain;charset=utf-8"},
+    body: JSON.stringify({key: rc.key || "", kind:"cctv", outlet: OUTLET, date: s.slice(0,10), name, mime, imageBase64: await b64(blob)})});
+  const j = await res.json().catch(() => null);
+  if(!res.ok || !j || !j.ok) throw new Error((j && j.error) || ("HTTP " + res.status));
+  return j;
+}
+async function saveMedia(id, key, blob, ext, mime){
+  const el = document.getElementById("ms-" + key); busy[key] = true; setFinish();
+  el.className = "s"; el.textContent = "Uploading… " + Math.round(blob.size / 1e5) / 10 + " MB — keep this page open";
+  try{
+    const s = sgIso(new Date()), name = `TRIAL_${s.slice(0,10)}_${s.slice(11,16).replace(":","")}_${key}_${(curJob && curJob.by || "").replace(/\W+/g,"")}.${ext}`;
+    const j = await upload(blob, name, mime);
+    await db.doc("cctv_jobs/" + id).update({["media." + key]: {fileId: j.fileId, url: j.url, at: sgIso(new Date())}});
+    el.className = "s ok"; el.innerHTML = `✓ saved · <a href="${esc(j.url)}" target="_blank" rel="noopener">open</a>`;
+  }catch(e){ el.className = "s"; el.innerHTML = `<span style="color:var(--urgent)">Didn't save: ${esc(e.message)} — try again</span>`; }
+  busy[key] = false; setFinish();
+}
+function setFinish(){ const f = document.getElementById("fin"); if(f) f.disabled = Object.values(busy).some(Boolean) || !!recorder; }
+function stopCam(){ if(recTick){ clearInterval(recTick); recTick = null; } if(stream){ stream.getTracks().forEach(t => t.stop()); stream = null; } }
+function renderRunning(id, j){
+  app.innerHTML = `<div class="card" id="run-${esc(id)}"><h2>Water test running</h2>
+    <div class="big" id="tm">0:00</div><div class="note">Started ${esc(clock(j.startedAt))} by ${esc(j.by)}</div>
+    <div style="margin-top:10px" id="pistat"></div>
+    <div style="margin-top:12px">${MEDIA.map(m => `<div class="task"><div class="t"><b>${m.icon} ${esc(m.label)}</b><span class="s" id="ms-${m.key}">${esc(m.hint)}</span></div>
+      ${m.kind === "video" ? `<button class="btn2" id="rv">Record</button>` : `<label class="btn2" style="cursor:pointer">Photo<input type="file" accept="image/*" capture="environment" data-key="${m.key}" hidden></label>`}</div>`).join("")}</div>
+    <div id="recbox"></div>
+    <button class="stop" id="fin">■ Finish — report sent</button>
+    <button class="ghost" id="cancel">Cancel this test (nothing is checked)</button></div>`;
+  const t0 = new Date(j.startedAt).getTime(), tm = document.getElementById("tm");
+  const upd = () => { const s = Math.max(0, Math.floor((Date.now() - t0) / 1000)); tm.textContent = Math.floor(s / 60) + ":" + pad(s % 60); };
+  upd(); tick = setInterval(upd, 1000);
+  document.getElementById("rv").onclick = () => openRecorder(id);
+  app.querySelectorAll("input[type=file]").forEach(inp => inp.onchange = async () => { const f = inp.files[0]; inp.value = ""; if(!f) return;
+    const m = MEDIA.find(x => x.key === inp.dataset.key); try{ const blob = await shrink(f, m.label); saveMedia(id, m.key, blob, "jpg", "image/jpeg"); }catch(e){ alert("Couldn't read that photo."); } });
+  document.getElementById("fin").onclick = () => {
+    const miss = MEDIA.filter(m => !((curJob && curJob.media) || {})[m.key]).map(m => m.label);
+    if(miss.length && !confirm("Not saved yet: " + miss.join(", ") + ".\n\nFinish anyway?")) return;
+    stopCam(); db.doc("cctv_jobs/" + id).update({status: "done", endedAt: sgIso(new Date())});
+  };
+  document.getElementById("cancel").onclick = () => { if(confirm("Cancel this test? The Pi stops recording and nothing is checked.")){ stopCam(); db.doc("cctv_jobs/" + id).update({status: "cancelled", endedAt: sgIso(new Date())}); } };
+}
+async function openRecorder(id){
+  const box = document.getElementById("recbox");
+  try{ stream = await navigator.mediaDevices.getUserMedia({video:{facingMode:{ideal:"environment"}, width:{ideal:1280}, height:{ideal:720}}, audio:false}); }
+  catch(e){ alert("Camera not available: " + e.message + "\n\nAllow camera access for this page and try again."); return; }
+  box.innerHTML = `<div class="rec"><video id="pv" playsinline muted autoplay></video><div class="lbl" id="rl">Ready — vial in view?</div>
+    <div class="bar"><button class="go" id="rs">● Start recording</button><button class="ghost" id="rx" style="color:#ccc;width:auto">Close</button></div></div>`;
+  const pv = document.getElementById("pv"); pv.srcObject = stream; pv.play().catch(() => {});
+  document.getElementById("rx").onclick = () => { if(recorder) return; stopCam(); box.innerHTML = ""; };
+  document.getElementById("rs").onclick = () => {
+    const rl = document.getElementById("rl"), rs = document.getElementById("rs");
+    if(!recorder){
+      const type = ["video/mp4;codecs=avc1", "video/mp4", "video/webm;codecs=vp8", "video/webm"].find(t => window.MediaRecorder && MediaRecorder.isTypeSupported(t)) || "";
+      chunks = []; recorder = new MediaRecorder(stream, Object.assign({videoBitsPerSecond: 1500000}, type ? {mimeType: type} : {}));
+      recorder.ondataavailable = e => { if(e.data && e.data.size) chunks.push(e.data); };
+      recorder.onstop = () => { const t = recorder.mimeType || type || "video/mp4", blob = new Blob(chunks, {type: t}); recorder = null; stopCam(); box.innerHTML = "";
+        saveMedia(id, "fcVideo", blob, /webm/.test(t) ? "webm" : "mp4", "video/mp4"); };
+      recorder.start(1000); recT0 = Date.now(); rs.className = "stop"; rs.textContent = "■ Stop & save"; setFinish();
+      recTick = setInterval(() => { const s = Math.floor((Date.now() - recT0) / 1000); rl.innerHTML = `<span class="dot"></span>REC ${Math.floor(s / 60)}:${pad(s % 60)}`; if(s >= 120 && recorder) recorder.stop(); }, 500);
+    } else { clearInterval(recTick); recTick = null; recorder.stop(); }
+  };
+}
+async function shrink(file, what){
+  const img = await createImageBitmap(file, {imageOrientation: "from-image"}).catch(() => new Promise((res, rej) => { const i = new Image(); i.onload = () => res(i); i.onerror = rej; i.src = URL.createObjectURL(file); }));
+  const sc = Math.min(1, 1600 / Math.max(img.width, img.height)), w = Math.round(img.width * sc), h = Math.round(img.height * sc);
+  const c = document.createElement("canvas"); c.width = w; c.height = h; const g = c.getContext("2d"); g.drawImage(img, 0, 0, w, h);
+  const txt = `BK · ${what} · ${(curJob && curJob.by) || ""} · ${new Date().toLocaleString("en-SG", {timeZone: "Asia/Singapore"})}`;
+  g.font = `${Math.round(w / 34)}px sans-serif`; const th = Math.round(w / 34) + 14; g.fillStyle = "rgba(0,0,0,.6)"; g.fillRect(0, h - th, w, th); g.fillStyle = "#fff"; g.fillText(txt, 8, h - 9);
+  return await new Promise(res => c.toBlob(res, "image/jpeg", 0.85));
 }
 async function history(){
   const el = document.getElementById("hist");
