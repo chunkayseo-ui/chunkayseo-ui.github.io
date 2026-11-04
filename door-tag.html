@@ -58,6 +58,7 @@ const ampm = t => { const [h, m] = t.split(":").map(Number); return (h % 12 || 1
 const nm = document.getElementById("nm"), dt = document.getElementById("dt"), app = document.getElementById("app");
 nm.value = store.get("doorTagName") || ""; nm.onchange = () => store.set("doorTagName", nm.value.trim());
 let evs = [], cur = 0, ans = {};
+const guess = d => d === "in" ? "coming in" : d === "out" ? "leaving" : "not sure";
 
 async function loadDates(){
   const snap = await db.collection("door_events").where("outlet", "==", OUTLET).get();
@@ -77,7 +78,7 @@ function prog(){
 }
 function list(){
   prog();
-  document.getElementById("list").innerHTML = evs.map((e, i) => `<div data-i="${i}"><span>${ampm(e.time)} · Pi: ${e.dir === "in" ? "coming in" : "leaving"}</span><span class="${e.tag ? "done" : "todo"}">${e.tag ? "✓ " + label(e.tag) : "to do"}</span></div>`).join("");
+  document.getElementById("list").innerHTML = evs.map((e, i) => `<div data-i="${i}"><span>${ampm(e.time)} · Pi: ${guess(e.dir)}</span><span class="${e.tag ? "done" : "todo"}">${e.tag ? "✓ " + label(e.tag) : "to do"}</span></div>`).join("");
   document.querySelectorAll(".list div").forEach(d => d.onclick = () => { cur = +d.dataset.i; show(); window.scrollTo(0, 0); });
 }
 function label(t){ return {in: "came in", out: "leaving", staff: "staff", none: "nobody"}[t.who] + (t.who === "in" ? (t.scan === "yes" ? ", scanned" : t.scan === "no" ? ", NOT scanned" : ", can't see") : ""); }
@@ -89,7 +90,7 @@ function show(){
   ans = e.tag ? {...e.tag} : {count: e.n || 1};
   const fid = e.clip && e.clip.fileId;
   app.innerHTML = `<div class="card">
-    <div class="row" style="justify-content:space-between"><b style="font-size:18px">${ampm(e.time)}</b><span class="guess">Pi thinks: ${e.dir === "in" ? "coming in" : "leaving"}${e.n > 1 ? " · " + e.n + " people" : ""}</span></div>
+    <div class="row" style="justify-content:space-between"><b style="font-size:18px">${ampm(e.time)}</b><span class="guess">Pi thinks: ${guess(e.dir)}${e.n > 1 ? " · " + e.n + " people" : ""}</span></div>
     <div class="vid">${fid ? `<iframe src="https://drive.google.com/file/d/${esc(fid)}/preview" allow="autoplay"></iframe>` : ""}</div>
     <div class="note" style="margin-top:4px">Not playing? <a href="${esc(e.clip && e.clip.url)}" target="_blank" rel="noopener">Open in Drive</a> (needs access to the CCTV folder).</div>
     <h2>1 · What happened at the door?</h2>${opt("who", [["in", "Customer came in"], ["out", "Customer leaving"], ["staff", "Staff / coach"], ["none", "Nobody / other"]])}
