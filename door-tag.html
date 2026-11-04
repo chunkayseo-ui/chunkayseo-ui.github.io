@@ -18,7 +18,7 @@ input,select{font:inherit;padding:9px 10px;border:1px solid var(--line);border-r
 .opts{display:grid;grid-template-columns:1fr 1fr;gap:8px}
 .opts button{font:600 15px "IBM Plex Sans",sans-serif;padding:13px 8px;border:1px solid var(--line);border-radius:10px;background:#fff;color:var(--ink-2);cursor:pointer}
 .opts button.on{background:var(--accent);border-color:var(--accent);color:#fff}
-.opts.three{grid-template-columns:1fr 1fr 1fr}
+.opts.three{grid-template-columns:1fr 1fr 1fr}.opts.four{grid-template-columns:1fr 1fr 1fr 1fr}.opts.four button{padding:12px 4px;font-size:14px}
 .go{font:600 17px "IBM Plex Sans",sans-serif;border:0;border-radius:12px;padding:15px;width:100%;margin-top:14px;background:var(--accent);color:#fff;cursor:pointer}
 .go:disabled{opacity:.45}
 .nav{display:flex;justify-content:space-between;margin-top:8px}.nav button{background:none;border:0;color:var(--accent);font:600 14px "IBM Plex Sans",sans-serif;cursor:pointer;padding:6px}
@@ -43,7 +43,7 @@ a{color:var(--accent)}
 /* Door check tagging (BK trial, Nov 2026). The BK Pi (door_track.py) follows people at the glass door on the Counter camera,
  * guesses "coming in" / "leaving", cuts a short clip per event (private, Kay's Drive: CCTV > BK > date) and writes
  * door_events/<id> {outlet, date, time, dir, n, clip{fileId,url}}. This page saves the human answer as door_events/<id>.tag
- * {who: in|out|staff|none, count, scan: yes|no|unsure, spray: yes|no|unsure, by, at}. Clips play only for Google accounts
+ * {who: in|out|loiter|coach_in|staff|none, count (people, not students), scan: all|some|none|unsure, scanN, spray, sprayN, by, at}. Clips play only for Google accounts
  * the CCTV folder is shared with. */
 firebase.initializeApp({
   apiKey: "AIzaSyANFCZbvRGO9aMRtG9MF_qONO3FL85CzSo", authDomain: "maintenance-board-f931a.firebaseapp.com",
@@ -81,36 +81,55 @@ function list(){
   document.getElementById("list").innerHTML = evs.map((e, i) => `<div data-i="${i}"><span>${ampm(e.time)} · Pi: ${guess(e.dir)}</span><span class="${e.tag ? "done" : "todo"}">${e.tag ? "✓ " + label(e.tag) : "to do"}</span></div>`).join("");
   document.querySelectorAll(".list div").forEach(d => d.onclick = () => { cur = +d.dataset.i; show(); window.scrollTo(0, 0); });
 }
-function label(t){ return {in: "came in", out: "leaving", staff: "staff", none: "nobody"}[t.who] + (t.who === "in" ? (t.scan === "yes" ? ", scanned" : t.scan === "no" ? ", NOT scanned" : ", can't see") : ""); }
-function opt(group, items, three){
-  return `<div class="opts${three ? " three" : ""}" data-g="${group}">` + items.map(([v, t]) => `<button type="button" data-v="${v}" class="${ans[group] === v ? "on" : ""}">${t}</button>`).join("") + `</div>`;
+const WHO = {in: "came in", out: "leaving", loiter: "hanging around", coach_in: "coach came in", staff: "staff", none: "nobody"};
+const entering = w => w === "in" || w === "coach_in";
+function part(kind, n, c){ return kind === "all" ? "all" : kind === "none" ? "none" : kind === "some" ? `${n} of ${c}` : kind === "yes" ? "yes" : kind === "no" ? "NO" : "can't see"; }
+function label(t){ return (WHO[t.who] || t.who) + (entering(t.who) ? ` · ${t.count || 1} people · temp ${part(t.scan, t.scanN, t.count)}` : ""); }
+function opt(group, items, cls){
+  return `<div class="opts${cls ? " " + cls : ""}" data-g="${group}">` + items.map(([v, t]) => `<button type="button" data-v="${v}" class="${ans[group] === v ? "on" : ""}">${t}</button>`).join("") + `</div>`;
 }
 function show(){
   const e = evs[cur]; if(!e){ app.innerHTML = ""; return; }
   ans = e.tag ? {...e.tag} : {count: e.n || 1};
+  if(ans.scan === "yes") ans.scan = "all"; if(ans.scan === "no") ans.scan = "none";
+  if(ans.spray === "yes") ans.spray = "all"; if(ans.spray === "no") ans.spray = "none";
   const fid = e.clip && e.clip.fileId;
   app.innerHTML = `<div class="card">
     <div class="row" style="justify-content:space-between"><b style="font-size:18px">${ampm(e.time)}</b><span class="guess">Pi thinks: ${guess(e.dir)}${e.n > 1 ? " · " + e.n + " people" : ""}</span></div>
     <div class="vid">${fid ? `<iframe src="https://drive.google.com/file/d/${esc(fid)}/preview" allow="autoplay"></iframe>` : ""}</div>
     <div class="note" style="margin-top:4px">Not playing? <a href="${esc(e.clip && e.clip.url)}" target="_blank" rel="noopener">Open in Drive</a> (needs access to the CCTV folder).</div>
-    <h2>1 · What happened at the door?</h2>${opt("who", [["in", "Customer came in"], ["out", "Customer leaving"], ["staff", "Staff / coach"], ["none", "Nobody / other"]])}
+    <h2>1 · What happened at the door?</h2>${opt("who", [["in", "Customer came in"], ["out", "Customer leaving"], ["loiter", "Customer hanging around"], ["coach_in", "Coach came in"], ["staff", "Staff moving around"], ["none", "Nobody / other"]])}
     <div id="more"></div>
     <button class="go" id="save">Save & next</button>
     <div class="nav"><button id="prev">‹ Previous</button><button id="skip">Skip ›</button></div></div>`;
+  const stepper = (id, val) => `<div class="stepper"><button type="button" data-s="${id}" data-d="-1">−</button><b id="${id}">${val}</b><button type="button" data-s="${id}" data-d="1">+</button></div>`;
+  const how = (g, title) => `<h2>${title}</h2>${opt(g, [["all", "All"], ["some", "Some"], ["none", "None"], ["unsure", "Can't see"]], "four")}` +
+    (ans[g] === "some" ? `<div class="note" style="margin:8px 0 4px">How many of the ${ans.count || 1}?</div>${stepper(g + "N", ans[g + "N"] || 1)}` : "");
   const more = () => {
-    document.getElementById("more").innerHTML = ans.who !== "in" ? "" :
-      `<h2>How many customers came in?</h2><div class="stepper"><button type="button" id="mn">−</button><b id="cnt">${ans.count || 1}</b><button type="button" id="pl">+</button></div>
-       <h2>2 · Temperature checked?</h2>${opt("scan", [["yes", "Yes"], ["no", "No"], ["unsure", "Can't see"]], 1)}
-       <h2>3 · Sanitiser sprayed?</h2>${opt("spray", [["yes", "Yes"], ["no", "No"], ["unsure", "Can't see"]], 1)}`;
-    if(ans.who === "in"){
-      document.getElementById("mn").onclick = () => { ans.count = Math.max(1, (ans.count || 1) - 1); document.getElementById("cnt").textContent = ans.count; };
-      document.getElementById("pl").onclick = () => { ans.count = (ans.count || 1) + 1; document.getElementById("cnt").textContent = ans.count; };
-    }
-    app.querySelectorAll(".opts").forEach(g => g.querySelectorAll("button").forEach(b => b.onclick = () => { ans[g.dataset.g] = b.dataset.v; if(g.dataset.g === "who") more(); else g.querySelectorAll("button").forEach(x => x.classList.toggle("on", x === b)); check(); }));
+    const c = ans.count || 1;
+    if(ans.scanN > c - 1) ans.scanN = Math.max(1, c - 1); if(ans.sprayN > c - 1) ans.sprayN = Math.max(1, c - 1);
+    document.getElementById("more").innerHTML = !entering(ans.who) ? "" :
+      `<h2>How many people came in? <span class="note" style="text-transform:none;letter-spacing:0">(everyone: adults + children)</span></h2>${stepper("count", c)}` +
+      how("scan", "2 · How many were temperature checked?") + how("spray", "3 · How many got sanitiser spray?");
+    app.querySelectorAll("[data-s]").forEach(b => b.onclick = () => {
+      const k = b.dataset.s, d = +b.dataset.d, c = ans.count || 1;
+      if(k === "count") ans.count = Math.max(1, c + d);
+      else ans[k] = Math.min(Math.max(1, (ans[k] || 1) + d), Math.max(1, c - 1));
+      more();
+    });
+    app.querySelectorAll(".opts").forEach(g => g.querySelectorAll("button").forEach(b => b.onclick = () => {
+      ans[g.dataset.g] = b.dataset.v;
+      if(g.dataset.g === "scan" || g.dataset.g === "spray"){ if(b.dataset.v === "some" && !ans[g.dataset.g + "N"]) ans[g.dataset.g + "N"] = 1; }
+      more();
+    }));
     app.querySelector('[data-g="who"]').querySelectorAll("button").forEach(x => x.classList.toggle("on", x.dataset.v === ans.who));
     check();
   };
-  const check = () => { document.getElementById("save").disabled = !ans.who || (ans.who === "in" && (!ans.scan || !ans.spray)); };
+  const check = () => {
+    const ok = !!ans.who && (!entering(ans.who) || (ans.scan && ans.spray && (ans.count || 1) >= 1 &&
+      !((ans.scan === "some" || ans.spray === "some") && (ans.count || 1) < 2)));
+    document.getElementById("save").disabled = !ok;
+  };
   more();
   document.getElementById("save").onclick = save;
   document.getElementById("prev").onclick = () => { if(cur > 0){ cur--; show(); } };
@@ -120,7 +139,10 @@ async function save(){
   const by = nm.value.trim(); if(!by){ nm.focus(); nm.placeholder = "Name first"; return; }
   store.set("doorTagName", by);
   const tag = {who: ans.who, by, at: new Date().toISOString()};
-  if(ans.who === "in"){ tag.count = ans.count || 1; tag.scan = ans.scan; tag.spray = ans.spray; }
+  if(entering(ans.who)){
+    const c = ans.count || 1, n = (k) => ans[k] === "all" ? c : ans[k] === "none" ? 0 : ans[k] === "some" ? Math.min(ans[k + "N"] || 1, c) : null;
+    tag.count = c; tag.scan = ans.scan; tag.scanN = n("scan"); tag.spray = ans.spray; tag.sprayN = n("spray");
+  }
   const btn = document.getElementById("save"); btn.disabled = true; btn.textContent = "Saving…";
   try{ await db.collection("door_events").doc(evs[cur].id).update({tag}); evs[cur].tag = tag; }
   catch(err){ btn.disabled = false; btn.textContent = "Save & next"; alert("Could not save: " + err.message); return; }
