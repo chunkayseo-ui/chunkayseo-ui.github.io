@@ -1,0 +1,130 @@
+<!doctype html>
+<html lang="en"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Door check tagging</title>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700&family=IBM+Plex+Sans:wght@400;600&display=swap" rel="stylesheet">
+<style>
+:root{--ground:#EEF3F3;--surface:#fff;--line:#C7D6D6;--ink:#0A1417;--ink-2:#33474D;--ink-3:#5B7378;--accent:#00676F;--ok:#256B4C;--ok-soft:#DDEEE5;--warn:#8A590D;--warn-soft:#F6EAD4;--urgent:#B23A2E;--urgent-soft:#F8DEDA}
+*{box-sizing:border-box}body{margin:0;background:var(--ground);color:var(--ink);font:15px/1.45 "IBM Plex Sans",system-ui,sans-serif}
+main{max-width:620px;margin:0 auto;padding:18px 16px 40px}
+h1{font:700 26px/1.05 "Barlow Condensed",sans-serif;text-transform:uppercase;letter-spacing:.02em;margin:0 0 4px}
+h2{font:700 15px/1 "Barlow Condensed",sans-serif;text-transform:uppercase;letter-spacing:.06em;color:var(--ink-2);margin:14px 0 8px}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:14px;margin-top:14px}
+.note{color:var(--ink-3);font-size:13px}
+input,select{font:inherit;padding:9px 10px;border:1px solid var(--line);border-radius:10px;background:#fff}
+.row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.vid{position:relative;width:100%;padding-top:100%;background:#000;border-radius:10px;overflow:hidden;margin-top:8px}
+.vid iframe{position:absolute;inset:0;width:100%;height:100%;border:0}
+.opts{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.opts button{font:600 15px "IBM Plex Sans",sans-serif;padding:13px 8px;border:1px solid var(--line);border-radius:10px;background:#fff;color:var(--ink-2);cursor:pointer}
+.opts button.on{background:var(--accent);border-color:var(--accent);color:#fff}
+.opts.three{grid-template-columns:1fr 1fr 1fr}
+.go{font:600 17px "IBM Plex Sans",sans-serif;border:0;border-radius:12px;padding:15px;width:100%;margin-top:14px;background:var(--accent);color:#fff;cursor:pointer}
+.go:disabled{opacity:.45}
+.nav{display:flex;justify-content:space-between;margin-top:8px}.nav button{background:none;border:0;color:var(--accent);font:600 14px "IBM Plex Sans",sans-serif;cursor:pointer;padding:6px}
+.guess{display:inline-block;padding:2px 8px;border-radius:99px;font-size:13px;font-weight:600;background:var(--warn-soft);color:var(--warn)}
+.bar{height:8px;background:var(--line);border-radius:99px;overflow:hidden;margin-top:6px}.bar i{display:block;height:100%;background:var(--accent)}
+.list div{display:flex;justify-content:space-between;padding:7px 0;border-top:1px solid var(--line);font-size:14px;cursor:pointer}
+.list .done{color:var(--ok);font-weight:600}.list .todo{color:var(--ink-3)}
+.stepper{display:flex;align-items:center;gap:10px}.stepper button{width:40px;height:40px;border-radius:10px;border:1px solid var(--line);background:#fff;font:600 20px sans-serif;cursor:pointer}.stepper b{font-size:20px;min-width:24px;text-align:center}
+a{color:var(--accent)}
+</style></head>
+<body><main>
+<h1>Door check · tagging</h1>
+<div class="note">Teaching the BK Pi. For each short clip, say what really happened at the door. The Pi uses your answers to learn, and to measure how often it is right before it runs on its own.</div>
+<div class="card"><div class="row"><label>Your name <input id="nm" size="10" placeholder="e.g. Kay"></label><label>Date <select id="dt"></select></label></div>
+<div id="prog" class="note" style="margin-top:8px"></div><div class="bar"><i id="pbar" style="width:0"></i></div></div>
+<div id="app"><div class="card note">Loading…</div></div>
+<div class="card"><h2>All clips</h2><div id="list" class="list note">Loading…</div></div>
+</main>
+<script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore-compat.js"></script>
+<script>
+/* Door check tagging (BK trial, Nov 2026). The BK Pi (door_track.py) follows people at the glass door on the Counter camera,
+ * guesses "coming in" / "leaving", cuts a short clip per event (private, Kay's Drive: CCTV > BK > date) and writes
+ * door_events/<id> {outlet, date, time, dir, n, clip{fileId,url}}. This page saves the human answer as door_events/<id>.tag
+ * {who: in|out|staff|none, count, scan: yes|no|unsure, spray: yes|no|unsure, by, at}. Clips play only for Google accounts
+ * the CCTV folder is shared with. */
+firebase.initializeApp({
+  apiKey: "AIzaSyANFCZbvRGO9aMRtG9MF_qONO3FL85CzSo", authDomain: "maintenance-board-f931a.firebaseapp.com",
+  projectId: "maintenance-board-f931a", storageBucket: "maintenance-board-f931a.firebasestorage.app",
+  messagingSenderId: "169864970579", appId: "1:169864970579:web:bfb7490d0aebcfed17e1a6"
+});
+const db = firebase.firestore();
+const OUTLET = (new URLSearchParams(location.search).get("outlet") || "BK").toUpperCase();
+const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const store = { get(k){ try{ return localStorage.getItem(k); }catch(e){ return null; } }, set(k, v){ try{ localStorage.setItem(k, v); }catch(e){} } };
+const ampm = t => { const [h, m] = t.split(":").map(Number); return (h % 12 || 12) + ":" + String(m).padStart(2, "0") + (h < 12 ? " am" : " pm"); };
+const nm = document.getElementById("nm"), dt = document.getElementById("dt"), app = document.getElementById("app");
+nm.value = store.get("doorTagName") || ""; nm.onchange = () => store.set("doorTagName", nm.value.trim());
+let evs = [], cur = 0, ans = {};
+
+async function loadDates(){
+  const snap = await db.collection("door_events").where("outlet", "==", OUTLET).get();
+  const dates = [...new Set(snap.docs.map(d => d.data().date).filter(Boolean))].sort().reverse();
+  if(!dates.length){ app.innerHTML = `<div class="card note">No clips yet for ${esc(OUTLET)}.</div>`; document.getElementById("list").textContent = ""; return; }
+  dt.innerHTML = dates.map(d => `<option>${d}</option>`).join(""); dt.onchange = load; load();
+}
+async function load(){
+  const snap = await db.collection("door_events").where("date", "==", dt.value).get();
+  evs = snap.docs.map(d => ({id: d.id, ...d.data()})).filter(e => e.outlet === OUTLET && !e.test).sort((a, b) => a.time < b.time ? -1 : 1);
+  cur = evs.findIndex(e => !e.tag); if(cur < 0) cur = 0; show(); list();
+}
+function prog(){
+  const n = evs.filter(e => e.tag).length;
+  document.getElementById("prog").textContent = `${n} of ${evs.length} clips answered`;
+  document.getElementById("pbar").style.width = (evs.length ? 100 * n / evs.length : 0) + "%";
+}
+function list(){
+  prog();
+  document.getElementById("list").innerHTML = evs.map((e, i) => `<div data-i="${i}"><span>${ampm(e.time)} · Pi: ${e.dir === "in" ? "coming in" : "leaving"}</span><span class="${e.tag ? "done" : "todo"}">${e.tag ? "✓ " + label(e.tag) : "to do"}</span></div>`).join("");
+  document.querySelectorAll(".list div").forEach(d => d.onclick = () => { cur = +d.dataset.i; show(); window.scrollTo(0, 0); });
+}
+function label(t){ return {in: "came in", out: "leaving", staff: "staff", none: "nobody"}[t.who] + (t.who === "in" ? (t.scan === "yes" ? ", scanned" : t.scan === "no" ? ", NOT scanned" : ", can't see") : ""); }
+function opt(group, items, three){
+  return `<div class="opts${three ? " three" : ""}" data-g="${group}">` + items.map(([v, t]) => `<button type="button" data-v="${v}" class="${ans[group] === v ? "on" : ""}">${t}</button>`).join("") + `</div>`;
+}
+function show(){
+  const e = evs[cur]; if(!e){ app.innerHTML = ""; return; }
+  ans = e.tag ? {...e.tag} : {count: e.n || 1};
+  const fid = e.clip && e.clip.fileId;
+  app.innerHTML = `<div class="card">
+    <div class="row" style="justify-content:space-between"><b style="font-size:18px">${ampm(e.time)}</b><span class="guess">Pi thinks: ${e.dir === "in" ? "coming in" : "leaving"}${e.n > 1 ? " · " + e.n + " people" : ""}</span></div>
+    <div class="vid">${fid ? `<iframe src="https://drive.google.com/file/d/${esc(fid)}/preview" allow="autoplay"></iframe>` : ""}</div>
+    <div class="note" style="margin-top:4px">Not playing? <a href="${esc(e.clip && e.clip.url)}" target="_blank" rel="noopener">Open in Drive</a> (needs access to the CCTV folder).</div>
+    <h2>1 · What happened at the door?</h2>${opt("who", [["in", "Customer came in"], ["out", "Customer leaving"], ["staff", "Staff / coach"], ["none", "Nobody / other"]])}
+    <div id="more"></div>
+    <button class="go" id="save">Save & next</button>
+    <div class="nav"><button id="prev">‹ Previous</button><button id="skip">Skip ›</button></div></div>`;
+  const more = () => {
+    document.getElementById("more").innerHTML = ans.who !== "in" ? "" :
+      `<h2>How many customers came in?</h2><div class="stepper"><button type="button" id="mn">−</button><b id="cnt">${ans.count || 1}</b><button type="button" id="pl">+</button></div>
+       <h2>2 · Temperature checked?</h2>${opt("scan", [["yes", "Yes"], ["no", "No"], ["unsure", "Can't see"]], 1)}
+       <h2>3 · Sanitiser sprayed?</h2>${opt("spray", [["yes", "Yes"], ["no", "No"], ["unsure", "Can't see"]], 1)}`;
+    if(ans.who === "in"){
+      document.getElementById("mn").onclick = () => { ans.count = Math.max(1, (ans.count || 1) - 1); document.getElementById("cnt").textContent = ans.count; };
+      document.getElementById("pl").onclick = () => { ans.count = (ans.count || 1) + 1; document.getElementById("cnt").textContent = ans.count; };
+    }
+    app.querySelectorAll(".opts").forEach(g => g.querySelectorAll("button").forEach(b => b.onclick = () => { ans[g.dataset.g] = b.dataset.v; if(g.dataset.g === "who") more(); else g.querySelectorAll("button").forEach(x => x.classList.toggle("on", x === b)); check(); }));
+    app.querySelector('[data-g="who"]').querySelectorAll("button").forEach(x => x.classList.toggle("on", x.dataset.v === ans.who));
+    check();
+  };
+  const check = () => { document.getElementById("save").disabled = !ans.who || (ans.who === "in" && (!ans.scan || !ans.spray)); };
+  more();
+  document.getElementById("save").onclick = save;
+  document.getElementById("prev").onclick = () => { if(cur > 0){ cur--; show(); } };
+  document.getElementById("skip").onclick = () => { if(cur < evs.length - 1){ cur++; show(); } };
+}
+async function save(){
+  const by = nm.value.trim(); if(!by){ nm.focus(); nm.placeholder = "Name first"; return; }
+  store.set("doorTagName", by);
+  const tag = {who: ans.who, by, at: new Date().toISOString()};
+  if(ans.who === "in"){ tag.count = ans.count || 1; tag.scan = ans.scan; tag.spray = ans.spray; }
+  const btn = document.getElementById("save"); btn.disabled = true; btn.textContent = "Saving…";
+  try{ await db.collection("door_events").doc(evs[cur].id).update({tag}); evs[cur].tag = tag; }
+  catch(err){ btn.disabled = false; btn.textContent = "Save & next"; alert("Could not save: " + err.message); return; }
+  list(); const nx = evs.findIndex((e, i) => i > cur && !e.tag); cur = nx >= 0 ? nx : Math.min(cur + 1, evs.length - 1); show();
+}
+loadDates().catch(err => { app.innerHTML = `<div class="card note">Could not load: ${esc(err.message)}</div>`; });
+</script>
+</body></html>
