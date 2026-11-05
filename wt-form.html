@@ -169,7 +169,7 @@ const fcOf = () => num(S.fcDrops) ? Number(S.fcDrops) * 0.5 : null;
 const fmt = v => { const n = Number(v); return Number.isInteger(n) ? String(n) : String(n); };
 function reportText(){
   const onoff = v => String(v).toUpperCase();
-  return [`${CFG.title} Report`, `${S.session} Report`, "",
+  return [`${S.session} Report`, "",
     `Water Clarity: ${S.clarity}`,
     `Free Chlorine: ${fmt(fcOf())}ppm`,
     `PH: ${S.ph}`,
