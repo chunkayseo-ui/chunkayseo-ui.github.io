@@ -46,6 +46,23 @@ a.tile:hover{border-color:var(--accent)}
 .c-info{background:var(--travel-soft);color:var(--travel)}
 .c-mute{background:var(--surface-2);color:var(--ink-3);border:1px solid var(--line)}
 .att b{display:block;font-weight:600}
+.cctvcam{border:1px solid var(--accent);background:var(--surface);color:var(--accent);border-radius:8px;padding:6px 12px;font:inherit;font-size:14px;font-weight:600;cursor:pointer;min-height:36px}
+.wtpics{display:flex;gap:6px;flex-wrap:wrap;margin-top:6px}.wtpics a{display:block;line-height:0}.wtpics img{width:52px;height:52px;object-fit:cover;border-radius:6px;background:var(--surface-2);border:1px solid var(--line)}
+#cctvplayer{position:fixed;inset:0;z-index:60;background:rgba(10,20,23,.9);display:none;align-items:center;justify-content:center;padding:12px}
+#cctvplayer.on{display:flex}
+#cctvplayer .box{background:#0A1417;color:#fff;border-radius:12px;width:min(960px,100%);max-height:100%;overflow:auto;padding:12px}
+#cctvplayer .hd{display:flex;justify-content:space-between;align-items:center;gap:10px;font-weight:600}
+#cctvplayer button{font:inherit;cursor:pointer}
+#cctvplayer .x{min-width:44px;min-height:44px;border-radius:8px;border:1px solid rgba(255,255,255,.35);background:transparent;color:#fff}
+#cctvplayer .parts{display:flex;gap:6px;flex-wrap:wrap;margin:10px 0}
+#cctvplayer .parts button{border:1px solid rgba(255,255,255,.35);background:transparent;color:#fff;border-radius:99px;padding:6px 12px;font-size:13px}
+#cctvplayer .parts button.on{background:#fff;color:#0A1417}
+#cctvplayer .vid{position:relative;width:100%;aspect-ratio:16/9;background:#000;border-radius:8px;overflow:hidden}
+#cctvplayer iframe{position:absolute;inset:0;width:100%;height:100%;border:0}
+#cctvplayer .ft{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-top:10px;flex-wrap:wrap}
+#cctvplayer .ft button{min-height:40px;border-radius:8px;border:1px solid rgba(255,255,255,.35);background:transparent;color:#fff;padding:0 14px}
+#cctvplayer .ft button:disabled{opacity:.35}
+#cctvplayer a{color:#9fe3e8}
 .att .m{font-size:13px;color:var(--ink-3)}
 .att .go{margin-left:auto;font-size:13px;color:var(--accent);white-space:nowrap}
 .empty{font-size:14px;color:var(--ok);padding:6px 0}
@@ -1027,6 +1044,35 @@ function draw(){
  * with William (view only), so the Play links work for both. "Needs a look" = Check or Flag in the
  * last 3 days that hasn't been ticked "Looked at" (cctv_checks/<id>.review {by, at}). */
 const CCTV_V = {ok:{chip:"c-ok", t:"✅ OK"}, check:{chip:"c-warn", t:"⚠️ Check"}, flag:{chip:"c-urg", t:"🚩 Flag"}, noframes:{chip:"c-mute", t:"No frames"}};
+const CCTV_CAMS = [["pool1", "Pool"], ["counter", "Counter"], ["pump1", "Pump 1"], ["pump2", "Pump 2"]];
+const WT_PIC = {sample: "Water sample", tubes: "Tubes", fcPink: "FC pink", fcClear: "FC clear", ph: "pH colour", panel: "Control panel", heatPump: "Heat pump", filter1: "Filter 1", filter2: "Filter 2", filter3: "Filter 3", meter: "Water meter"};
+/* One player per camera (Kay, 9 Nov 2026). The Pi uploads each camera in 90-second parts (Tengah 120 s) because the
+ * photo relay can't take big files; the player shows them as Part 1, 2, 3… with their clock times and a Next button,
+ * playing each part from Drive in place. "Open in Drive" is there if the browser won't play it inside the page. */
+function openCctvPlayer(id, cam, idx){
+  const c = (S.cctv || []).find(x => x.id === id); if(!c) return;
+  const parts = ((c.footage || {})[cam] || []).slice().sort((a, b) => (a.part || 0) - (b.part || 0)); if(!parts.length) return;
+  const i = Math.max(0, Math.min(parts.length - 1, idx || 0)), p = parts[i];
+  const sec = c.outlet === "TENGAH" ? 120 : 90, t0 = c.start ? new Date(c.start).getTime() : null;
+  const at = n => t0 ? clock(new Date(t0 + n * sec * 1000).toISOString()) : "";
+  const fid = p.fileId || ((p.url || "").match(/\/d\/([^/]+)/) || [])[1];
+  const label = (CCTV_CAMS.find(x => x[0] === cam) || [cam, cam])[1];
+  let el = document.getElementById("cctvplayer");
+  if(!el){ el = document.createElement("div"); el.id = "cctvplayer"; el.setAttribute("role", "dialog"); el.setAttribute("aria-modal", "true"); document.body.appendChild(el);
+    el.addEventListener("click", e => { if(e.target === el) closeCctvPlayer(); }); }
+  el.innerHTML = `<div class="box"><div class="hd"><span>▶ ${esc(label)} · ${esc(c.outlet || "")} ${esc(cctvKind(c).toLowerCase())} · ${esc(c.who || "")} · ${esc(cctvWhen(c))}</span><button class="x" type="button" id="cpx" aria-label="Close">✕</button></div>
+    <div class="parts">${parts.map((q, n) => `<button type="button" data-n="${n}" class="${n === i ? "on" : ""}">Part ${n + 1}${t0 ? " · " + at(n) : ""}</button>`).join("")}</div>
+    <div class="vid">${fid ? `<iframe src="https://drive.google.com/file/d/${encodeURIComponent(fid)}/preview" allow="autoplay; fullscreen" allowfullscreen title="${esc(label)} part ${i + 1}"></iframe>` : ""}</div>
+    <div class="ft"><button type="button" id="cpprev" ${i ? "" : "disabled"}>◀ Previous</button>
+      <span style="font-size:13px">Part ${i + 1} of ${parts.length}${t0 ? " · " + at(i) + "–" + at(i + 1) : ""} · <a href="${esc(p.url || "")}" target="_blank" rel="noopener">Open in Drive</a></span>
+      <button type="button" id="cpnext" ${i < parts.length - 1 ? "" : "disabled"}>Next part ▶</button></div></div>`;
+  el.className = "on";
+  el.querySelectorAll(".parts button").forEach(b => b.onclick = () => openCctvPlayer(id, cam, +b.dataset.n));
+  document.getElementById("cpprev").onclick = () => openCctvPlayer(id, cam, i - 1);
+  document.getElementById("cpnext").onclick = () => openCctvPlayer(id, cam, i + 1);
+  document.getElementById("cpx").onclick = closeCctvPlayer;
+}
+function closeCctvPlayer(){ const el = document.getElementById("cctvplayer"); if(el){ el.className = ""; el.innerHTML = ""; } }
 const cctvKind = c => c.type === "watertest" ? "Water test" : c.kind === "ops-spot" ? "Spot vacuum" : "Vacuum";
 const cctvWhen = c => { const a = c.start ? new Date(c.start) : new Date(c.at), b = c.end || c.reportAt;
   return DOW[a.getDay()] + " " + a.getDate() + " " + a.toLocaleDateString("en-SG", {month:"short"}) + " · " + clock(a.toISOString()) + (b ? "–" + clock(b) : ""); };
@@ -1040,6 +1086,13 @@ async function loadCctv(){
     const s = await db.collection("cctv_checks").orderBy("at", "desc").limit(150).get();
     const rows = []; s.forEach(d => { if(!d.id.startsWith("TEST__")) rows.push(Object.assign({id:d.id}, d.data())); });
     S.cctv = rows; S.cctvErr = false; S.cctvAt = new Date();
+    // Water tests sent from the form (wt-form.html) carry the Pi job id: fetch them so the row shows the
+    // form's own photos and FC/pH instead of the old trial page's video/photo slots (Kay, 9 Nov 2026).
+    const ids = [...new Set(rows.filter(c => c.type === "watertest" && c.jobId).map(c => c.jobId))];
+    S.cctvForm = S.cctvForm || {};
+    for(let i = 0; i < ids.length; i += 10){
+      try{ const q = await db.collection("water_tests").where("cctvJob", "in", ids.slice(i, i + 10)).get(); q.forEach(d => { const x = d.data(); S.cctvForm[x.cctvJob] = x; }); }catch(e){ console.warn(e); }
+    }
   }catch(e){ console.warn(e); S.cctvErr = true; }
   S.cctvLoading = false; render();
 }
@@ -1057,19 +1110,23 @@ function drawCctv(){
   const item = c => {
     const v = CCTV_V[c.verdict] || {chip:"c-mute", t:c.verdict || "?"}, m = c.media || {};
     const job = c.roundId && c.taskId ? `/vacuum?r=${encodeURIComponent(c.roundId)}&t=${encodeURIComponent(c.taskId)}&cctv=1` : "";
-    const media = c.type === "watertest" && c.session === "trial" ? [["fcVideo", "🎥 FC video"], ["heatPump", "📷 Heat pump"], ["filter", "📷 Filter gauge"]]
+    const form = c.type === "watertest" && c.jobId ? (S.cctvForm || {})[c.jobId] : null;
+    const isTest = form ? !!form.test : !!c.test;
+    const media = c.type === "watertest" && c.session === "trial" && !form ? [["fcVideo", "🎥 FC video"], ["heatPump", "📷 Heat pump"], ["filter", "📷 Filter gauge"]]
       .map(([k, l]) => m[k] && m[k].url ? link(m[k].url, l) : `<span style="color:var(--urgent)">${l} missing</span>`) : [];
     const links = [c.video && c.video.url ? link(c.video.url, "▶ Play timelapse") : "", c.video2x && c.video2x.url ? link(c.video2x.url, "▶ 2x speed (recorded)") : "", !c.video && c.sheet && c.sheet.url ? link(c.sheet.url, "🖼 Frames") : "",
-      ...Object.entries(c.footage || {}).flatMap(([cam, parts]) => parts.map(p => link(p.url, "🎞 " + ({counter: "Counter", pool1: "Pool", pump1: "Pump 1", pump2: "Pump 2"}[cam] || cam) + (parts.length > 1 ? " " + p.part : "")))),
+      ...CCTV_CAMS.filter(([cam]) => ((c.footage || {})[cam] || []).length).map(([cam, l]) => `<button type="button" class="cctvcam" data-id="${esc(c.id)}" data-cam="${cam}">▶ ${l}</button>`),
       ...media, job ? `<a href="${job}" target="_blank" rel="noopener" style="color:var(--accent)">Job & photos</a>` : ""].filter(Boolean);
     const rev = c.review ? `<span class="m">✓ looked at by ${esc(c.review.by)} ${esc(clock(c.review.at))}</span>`
       : (c.verdict === "check" || c.verdict === "flag") ? `<button class="cctvok" data-id="${esc(c.id)}" style="border:1px solid var(--line);background:var(--surface-2);border-radius:6px;padding:4px 10px;font:inherit;font-size:13px;cursor:pointer">✓ Looked at</button>` : "";
     return `<div class="att"><span class="chip ${v.chip}">${v.t}</span><div style="min-width:0;flex:1">
-      <b>${esc(c.outlet || "")} · ${cctvKind(c)} · ${esc(c.who || "staff")}${c.test ? ' <span class="chip c-mute">trial</span>' : ""}</b>
+      <b>${esc(c.outlet || "")} · ${cctvKind(c)} · ${esc(c.who || "staff")}${isTest ? ' <span class="chip c-mute">test</span>' : ""}</b>
       <div class="m">${esc(cctvWhen(c))}${c.appMinutes ? " · app " + esc(c.appMinutes) + " min" : ""}</div>
       <div class="m" style="color:var(--ink-2)">${esc((c.verdictText || "").replace(/^\S+\s(OK|Check|Flag)\s—\s/, ""))}</div>
       ${c.type === "watertest" && (c.fcDrops != null || c.gap) ? `<div class="m">${c.fcDrops != null ? "🧪 " + esc(c.fcDrops) + " drops = FC " + esc(c.fcFromDrops) + " ppm" : ""}${c.fcDrops != null && c.gap ? " · " : ""}${c.gap ? `<span style="color:${c.gap.min > 3 ? "var(--urgent)" : "inherit"}">⏱ sample → test ${esc(c.gap.min)} min</span>` : ""}</div>` : ""}
-      ${links.length ? `<div style="display:flex;gap:14px;flex-wrap:wrap;margin-top:5px;font-size:14px">${links.join("")}</div>` : ""}</div>
+      ${form ? `<div class="m">🧪 FC ${esc(form.fc)} ppm (${esc(form.fcDrops)} drops) · pH ${esc(form.ph)} · ${esc(form.clarity || "")}${form.temp ? " · " + esc(form.temp) + "°C" : ""} · ${esc(form.session || "")} test sent ${esc(clock(form.submittedAt))}</div>
+        <div class="wtpics">${Object.entries(form.photos || {}).filter(([, p]) => p && p.fileId).map(([k, p]) => `<a href="${esc(p.url || "https://drive.google.com/file/d/" + p.fileId + "/view")}" target="_blank" rel="noopener" title="${esc(WT_PIC[k] || k)}"><img src="https://drive.google.com/thumbnail?id=${encodeURIComponent(p.fileId)}&sz=w200" alt="${esc(WT_PIC[k] || k)}" loading="lazy"></a>`).join("")}</div>` : ""}
+      ${links.length ? `<div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-top:6px;font-size:14px">${links.join("")}</div>` : ""}</div>
       <div style="margin-left:auto;text-align:right">${rev}</div></div>`;
   };
   return `<div class="tiles">
@@ -1088,6 +1145,7 @@ function drawCctv(){
 }
 function bindCctv(){
   const rf = $("#cctvrf"); if(rf) rf.onclick = e => { e.preventDefault(); S.cctv = S.cctv || null; loadCctv(); };
+  document.querySelectorAll(".cctvcam").forEach(b => b.onclick = () => openCctvPlayer(b.dataset.id, b.dataset.cam, 0));
   const f = S.cctvF || {};
   [["#cctvt", "type"], ["#cctvv", "v"], ["#cctvo", "outlet"]].forEach(([id, k]) => { const el = $(id); if(el) el.onchange = () => { f[k] = el.value; render(); }; });
   document.querySelectorAll(".cctvok").forEach(b => b.onclick = async () => {
