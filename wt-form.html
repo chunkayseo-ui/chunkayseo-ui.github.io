@@ -50,7 +50,7 @@ pre{white-space:pre-wrap;background:#F6F9F9;border:1px solid var(--line);border-
  * No login: the tester types their name (remembered on the phone). Each photo is stamped (outlet · session · step ·
  * name · time) and uploaded through the tracker's photo relay (dosing_config/tasks.photo, kind "job") to Drive.
  * Send writes water_tests/{OUTLET}_{yyyymmdd}_{Session}_{HHMMSS}: {outlet, pool, date, session, clarity, fcDrops, fc, ph,
- * temp, chlorinator, pump, heatPump, filters[], waterMeter, tester, photos{step:{fileId,url,at}}, startedAt, submittedAt,
+ * temp, chlorinator, pump, heatPump, filters[], tester, photos{step:{fileId,url,at}}, startedAt, submittedAt,
  * reportText, status:"submitted", test}. The Pool Telegram Logger (DayReports.gs, appDayReports_) posts reportText to the
  * branch topic, logs FC/pH/temp into the Pool Water Test Records sheet and sets status "posted" (+ messageId) or "error".
  * Night tests stay in the tracker's "Water Test and Night Report" job. Only outlets in OUTLETS can use the form. */
@@ -86,8 +86,8 @@ const STEPS = [
   {id: "ph", t: "pH test", d: "5 drops of R-0004 into the 44 ml tube, swirl, then compare the colour.", kind: "ph", photos: [["ph", "pH colour"]]},
   {id: "panel", t: "Control panel", d: "In the pump room. Photo of the control panel, then say what is ON.", kind: "panel", photos: [["panel", "Control panel"]]},
   {id: "heat", t: "Heat pump", d: "Photo of the heat pump display and key in the reading.", kind: "heat", photos: [["heatPump", "Heat pump display"]]},
-  {id: "filters", t: "Filter gauges", d: "One photo per gauge and key in each reading.", kind: "filters"},
-  {id: "meter", t: "Water meter", d: "Photo of the water meter and key in the reading.", kind: "meter", photos: [["meter", "Water meter"]]}
+  {id: "filters", t: "Filter gauges", d: "One photo per gauge and key in each reading.", kind: "filters"}
+  // Water meter step removed (Kay, 9 Nov 2026: simplify the steps)
 ];
 const filterPhotos = () => Array.from({length: CFG.filters}, (_, i) => ["filter" + (i + 1), "Filter gauge " + (i + 1)]);
 
@@ -219,7 +219,6 @@ function reportText(){
     `Heat pump: ${Number(S.heatPump).toFixed(1)}`,
     `Pool Temperature: ${Number(S.temp).toFixed(1)}`,
     `Filters: ${S.filters.map(x => fmt(x)).join("/")}`,
-    `Water Meter: ${S.waterMeter}`,
     `Tester: ${S.name.trim().toUpperCase()}`].join("\n");
 }
 
@@ -287,7 +286,7 @@ async function submit(){
   const now = sgNow(), id = `${OUT}_${S.date.replace(/-/g, "")}_${S.session}_${pad(now.getUTCHours())}${pad(now.getUTCMinutes())}${pad(now.getUTCSeconds())}`;
   const photos = {}; Object.keys(S.photos).forEach(k => { const p = S.photos[k]; photos[k] = {fileId: p.fileId, url: p.url, at: p.at}; });
   const doc = {outlet: OUT, pool: OUT, date: S.date, session: S.session, clarity: S.clarity, fcDrops: Number(S.fcDrops), fc: fcOf(), ph: Number(S.ph),
-    temp: Number(S.temp), chlorinator: S.chlorinator, pump: S.pump, heatPump: Number(S.heatPump), filters: S.filters.map(Number), waterMeter: S.waterMeter,
+    temp: Number(S.temp), chlorinator: S.chlorinator, pump: S.pump, heatPump: Number(S.heatPump), filters: S.filters.map(Number),
     tester: S.name.trim(), photos, startedAt: S.startedAt, submittedAt: new Date().toISOString(), reportText: reportText(), status: "submitted",
     src: "wt-form v1", ...(S.cctvJob ? {cctvJob: S.cctvJob} : {}), ...(TEST ? {test: true} : {})};
   try{ await db.collection("water_tests").doc(id).set(doc); endPi("done"); }
