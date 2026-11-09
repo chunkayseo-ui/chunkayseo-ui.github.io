@@ -1046,30 +1046,21 @@ function draw(){
 const CCTV_V = {ok:{chip:"c-ok", t:"✅ OK"}, check:{chip:"c-warn", t:"⚠️ Check"}, flag:{chip:"c-urg", t:"🚩 Flag"}, noframes:{chip:"c-mute", t:"No frames"}};
 const CCTV_CAMS = [["pool1", "Pool"], ["counter", "Counter"], ["pump1", "Pump 1"], ["pump2", "Pump 2"]];
 const WT_PIC = {sample: "Water sample", tubes: "Tubes", fcPink: "FC pink", fcClear: "FC clear", ph: "pH colour", panel: "Control panel", heatPump: "Heat pump", filter1: "Filter 1", filter2: "Filter 2", filter3: "Filter 3", meter: "Water meter"};
-/* One player per camera (Kay, 9 Nov 2026). The Pi uploads each camera in 90-second parts (Tengah 120 s) because the
- * photo relay can't take big files; the player shows them as Part 1, 2, 3… with their clock times and a Next button,
- * playing each part from Drive in place. "Open in Drive" is there if the browser won't play it inside the page. */
-function openCctvPlayer(id, cam, idx){
+/* One button per camera (Kay, 9 Nov 2026). The Pi uploads each camera in 90-second parts (Tengah 120 s) because the
+ * photo relay can't take big files. The videos stay private in Kay's Drive, so Drive won't play them inside this page:
+ * the button opens a panel with the camera's parts in order, each opening in Drive (signed in as Kay or William). */
+function openCctvPlayer(id, cam){
   const c = (S.cctv || []).find(x => x.id === id); if(!c) return;
   const parts = ((c.footage || {})[cam] || []).slice().sort((a, b) => (a.part || 0) - (b.part || 0)); if(!parts.length) return;
-  const i = Math.max(0, Math.min(parts.length - 1, idx || 0)), p = parts[i];
-  const sec = c.outlet === "TENGAH" ? 120 : 90, t0 = c.start ? new Date(c.start).getTime() : null;
-  const at = n => t0 ? clock(new Date(t0 + n * sec * 1000).toISOString()) : "";
-  const fid = p.fileId || ((p.url || "").match(/\/d\/([^/]+)/) || [])[1];
   const label = (CCTV_CAMS.find(x => x[0] === cam) || [cam, cam])[1];
+  const mins = c.outlet === "TENGAH" ? "2 min" : "1½ min";
   let el = document.getElementById("cctvplayer");
   if(!el){ el = document.createElement("div"); el.id = "cctvplayer"; el.setAttribute("role", "dialog"); el.setAttribute("aria-modal", "true"); document.body.appendChild(el);
     el.addEventListener("click", e => { if(e.target === el) closeCctvPlayer(); }); }
-  el.innerHTML = `<div class="box"><div class="hd"><span>▶ ${esc(label)} · ${esc(c.outlet || "")} ${esc(cctvKind(c).toLowerCase())} · ${esc(c.who || "")} · ${esc(cctvWhen(c))}</span><button class="x" type="button" id="cpx" aria-label="Close">✕</button></div>
-    <div class="parts">${parts.map((q, n) => `<button type="button" data-n="${n}" class="${n === i ? "on" : ""}">Part ${n + 1}${t0 ? " · " + at(n) : ""}</button>`).join("")}</div>
-    <div class="vid">${fid ? `<iframe src="https://drive.google.com/file/d/${encodeURIComponent(fid)}/preview" allow="autoplay; fullscreen" allowfullscreen title="${esc(label)} part ${i + 1}"></iframe>` : ""}</div>
-    <div class="ft"><button type="button" id="cpprev" ${i ? "" : "disabled"}>◀ Previous</button>
-      <span style="font-size:13px">Part ${i + 1} of ${parts.length}${t0 ? " · " + at(i) + "–" + at(i + 1) : ""} · <a href="${esc(p.url || "")}" target="_blank" rel="noopener">Open in Drive</a></span>
-      <button type="button" id="cpnext" ${i < parts.length - 1 ? "" : "disabled"}>Next part ▶</button></div></div>`;
+  el.innerHTML = `<div class="box" style="max-width:560px"><div class="hd"><span>▶ ${esc(label)} camera · ${esc(c.outlet || "")} ${esc(cctvKind(c).toLowerCase())} · ${esc(c.who || "")}<br><span style="font-weight:400;font-size:13px;opacity:.8">${esc(cctvWhen(c))} · ${parts.length} part${parts.length > 1 ? "s" : ""}, about ${mins} each, in order</span></span><button class="x" type="button" id="cpx" aria-label="Close">✕</button></div>
+    <div class="parts" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(110px,1fr));gap:8px;margin-top:14px">${parts.map((q, n) => `<a href="${esc(q.url || "https://drive.google.com/file/d/" + q.fileId + "/view")}" target="_blank" rel="noopener" style="display:flex;align-items:center;justify-content:center;min-height:48px;border:1px solid rgba(255,255,255,.35);border-radius:10px;color:#fff;text-decoration:none;font-weight:600">▶ Part ${n + 1}</a>`).join("")}</div>
+    <div style="font-size:13px;opacity:.8;margin-top:12px">Each part opens in Google Drive in a new tab. The clock in the video shows the real time.</div></div>`;
   el.className = "on";
-  el.querySelectorAll(".parts button").forEach(b => b.onclick = () => openCctvPlayer(id, cam, +b.dataset.n));
-  document.getElementById("cpprev").onclick = () => openCctvPlayer(id, cam, i - 1);
-  document.getElementById("cpnext").onclick = () => openCctvPlayer(id, cam, i + 1);
   document.getElementById("cpx").onclick = closeCctvPlayer;
 }
 function closeCctvPlayer(){ const el = document.getElementById("cctvplayer"); if(el){ el.className = ""; el.innerHTML = ""; } }
@@ -1145,7 +1136,7 @@ function drawCctv(){
 }
 function bindCctv(){
   const rf = $("#cctvrf"); if(rf) rf.onclick = e => { e.preventDefault(); S.cctv = S.cctv || null; loadCctv(); };
-  document.querySelectorAll(".cctvcam").forEach(b => b.onclick = () => openCctvPlayer(b.dataset.id, b.dataset.cam, 0));
+  document.querySelectorAll(".cctvcam").forEach(b => b.onclick = () => openCctvPlayer(b.dataset.id, b.dataset.cam));
   const f = S.cctvF || {};
   [["#cctvt", "type"], ["#cctvv", "v"], ["#cctvo", "outlet"]].forEach(([id, k]) => { const el = $(id); if(el) el.onchange = () => { f[k] = el.value; render(); }; });
   document.querySelectorAll(".cctvok").forEach(b => b.onclick = async () => {
