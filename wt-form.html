@@ -5,7 +5,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700&family=IBM+Plex+Sans:wght@400;600&display=swap" rel="stylesheet">
 <style>
 :root{--ground:#EEF3F3;--surface:#fff;--line:#C7D6D6;--ink:#0A1417;--ink-2:#33474D;--ink-3:#5B7378;--accent:#00676F;--ok:#256B4C;--ok-soft:#DDEEE5;--warn:#8A590D;--warn-soft:#F6EAD4;--urgent:#B23A2E;--urgent-soft:#F8DEDA}
-*{box-sizing:border-box}body{margin:0;background:var(--ground);color:var(--ink);font:15px/1.45 "IBM Plex Sans",system-ui,sans-serif}
+*{box-sizing:border-box}html,body{overflow-x:hidden;max-width:100%}body{margin:0;background:var(--ground);color:var(--ink);font:15px/1.45 "IBM Plex Sans",system-ui,sans-serif}
 main{max-width:560px;margin:0 auto;padding:18px 16px 60px}
 h1{font:700 26px/1.05 "Barlow Condensed",sans-serif;text-transform:uppercase;letter-spacing:.02em;margin:0 0 4px}
 h2{font:700 15px/1.2 "Barlow Condensed",sans-serif;text-transform:uppercase;letter-spacing:.05em;color:var(--ink-2);margin:0 0 8px}
@@ -14,15 +14,25 @@ h2{font:700 15px/1.2 "Barlow Condensed",sans-serif;text-transform:uppercase;lett
 .card.locked{opacity:.45;pointer-events:none}
 .note{color:var(--ink-3);font-size:13px}
 .num{display:inline-block;min-width:22px;height:22px;border-radius:50%;background:var(--accent);color:#fff;text-align:center;font:700 13px/22px "IBM Plex Sans";margin-right:6px}
-.opts{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:6px}.opts.two{grid-template-columns:1fr 1fr}.opts.four{grid-template-columns:repeat(4,1fr)}
-.opts button{font:600 15px "IBM Plex Sans",sans-serif;padding:12px 6px;border:1px solid var(--line);border-radius:10px;background:#fff;color:var(--ink-2);cursor:pointer}
+.opts{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin-top:6px}.opts.two{grid-template-columns:repeat(2,minmax(0,1fr))}.opts.four{grid-template-columns:repeat(4,minmax(0,1fr))}
+.opts button{min-width:0;overflow-wrap:anywhere;font:600 15px "IBM Plex Sans",sans-serif;padding:12px 6px;border:1px solid var(--line);border-radius:10px;background:#fff;color:var(--ink-2);cursor:pointer}
 .opts button.on{background:var(--accent);border-color:var(--accent);color:#fff}
 label{display:block;font-size:13px;color:var(--ink-2);margin:10px 0 4px}
 input[type=text],input[type=number],input:not([type]){width:100%;font:inherit;font-size:17px;padding:10px 12px;border:1px solid var(--line);border-radius:10px}
 .row{display:flex;gap:8px}.row>*{flex:1}
 .shot{display:flex;align-items:center;gap:10px;margin-top:8px;padding:8px;border:1px dashed var(--line);border-radius:10px}
-.shot img{width:64px;height:64px;object-fit:cover;border-radius:8px;background:#ddd}
-.shot .t{flex:1;font-size:14px}.shot .t b{display:block}
+.shot img{width:64px;height:64px;object-fit:cover;border-radius:8px;background:#ddd;display:block}
+.zoombtn{padding:0;border:0;background:none;cursor:zoom-in;flex:none;position:relative;border-radius:8px}
+.zoombtn::after{content:"";position:absolute;right:3px;bottom:3px;width:18px;height:18px;border-radius:50%;background:rgba(0,0,0,.6) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='3' stroke-linecap='round'%3E%3Ccircle cx='10' cy='10' r='6'/%3E%3Cpath d='M15 15l5 5'/%3E%3C/svg%3E") center/12px no-repeat}
+#zoom{position:fixed;inset:0;z-index:50;background:rgba(0,0,0,.92);display:none;flex-direction:column}
+#zoom.on{display:flex}
+#zoom .zbar{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:10px 12px;color:#fff;font:600 15px "IBM Plex Sans",sans-serif}
+#zoom .zbar button{min-height:44px;min-width:44px;border-radius:10px;border:1px solid rgba(255,255,255,.4);background:rgba(255,255,255,.12);color:#fff;font:600 15px "IBM Plex Sans",sans-serif;padding:0 14px;cursor:pointer}
+#zoom .zbox{flex:1;overflow:auto;-webkit-overflow-scrolling:touch;touch-action:pan-x pan-y pinch-zoom}
+#zoom .zbox img{display:block;width:100%;height:auto;margin:auto}
+#zoom.big .zbox img{width:250%;max-width:none}
+#zoom .zhint{color:#cfd8d8;font-size:13px;text-align:center;padding:8px 12px 14px}
+.shot .t{flex:1;min-width:0;font-size:14px;overflow-wrap:anywhere}.shot .t b{display:block}
 .shot .st{font-size:12px;color:var(--ink-3)}.shot .st.ok{color:var(--ok);font-weight:600}.shot .st.bad{color:var(--urgent);font-weight:600}
 .cam{position:relative;overflow:hidden;font:600 14px "IBM Plex Sans";background:var(--accent);color:#fff;border-radius:10px;padding:10px 14px;cursor:pointer;white-space:nowrap}
 .cam.redo{background:#fff;color:var(--accent);border:1px solid var(--accent)}
@@ -34,7 +44,7 @@ pre{white-space:pre-wrap;background:#F6F9F9;border:1px solid var(--line);border-
 .banner{background:var(--warn-soft);color:var(--warn);border-radius:10px;padding:10px 12px;margin-top:10px;font-weight:600;font-size:14px}
 .err{background:var(--urgent-soft);color:var(--urgent);border-radius:10px;padding:10px 12px;margin-top:10px;font-size:14px}
 .okbox{background:var(--ok-soft);color:var(--ok);border-radius:10px;padding:12px;margin-top:10px;font-weight:600}
-.hist div{padding:7px 0;border-top:1px solid var(--line);font-size:14px;display:flex;justify-content:space-between;gap:8px}
+.hist div{padding:7px 0;border-top:1px solid var(--line);font-size:14px;display:flex;flex-wrap:wrap;justify-content:space-between;gap:2px 8px}
 .ghost{background:none;border:0;color:var(--ink-3);font:14px "IBM Plex Sans";cursor:pointer;padding:8px;margin-top:6px;width:100%}
 </style></head>
 <body><main>
@@ -223,9 +233,25 @@ function reportText(){
 }
 
 /* ---------- render ---------- */
+const driveImg = (id, w) => "https://drive.google.com/thumbnail?id=" + encodeURIComponent(id) + "&sz=w" + (w || 1600);
+// Tap a photo: it opens full screen so the numbers on a gauge or display can be read before typing them.
+// Tap the picture (or the Zoom button) to blow it up 2.5x and drag around; pinching works too.
+function openZoom(pid, label){
+  const p = S.photos[pid]; if(!p) return;
+  let z = document.getElementById("zoom");
+  if(!z){ z = document.createElement("div"); z.id = "zoom"; z.setAttribute("role", "dialog"); z.setAttribute("aria-modal", "true"); document.body.appendChild(z); }
+  const src = p.dataUrl || (p.fileId ? driveImg(p.fileId, 1600) : p.thumb);
+  z.className = "on";
+  z.innerHTML = `<div class="zbar"><span>${esc(label)}</span><span style="display:flex;gap:8px"><button type="button" id="zbig">Zoom</button><button type="button" id="zclose" aria-label="Close">✕</button></span></div>
+    <div class="zbox"><img src="${esc(src)}" alt="${esc(label)} photo"></div><div class="zhint">Tap the photo or Zoom to make it bigger, then drag to move around.</div>`;
+  const toggle = () => { z.classList.toggle("big"); document.getElementById("zbig").textContent = z.classList.contains("big") ? "Fit" : "Zoom"; };
+  z.querySelector(".zbox img").onclick = toggle; document.getElementById("zbig").onclick = toggle;
+  document.getElementById("zclose").onclick = () => { z.className = ""; z.innerHTML = ""; };
+}
 function shotRow(pid, label){
   const p = S.photos[pid];
-  const img = p && (p.dataUrl || p.thumb) ? `<img src="${esc(p.dataUrl || p.thumb)}" alt="">` : `<img alt="">`;
+  const has = p && (p.dataUrl || p.thumb || p.fileId);
+  const img = has ? `<button type="button" class="zoombtn" data-zoom="${pid}" data-zlabel="${esc(label)}" aria-label="See ${esc(label)} photo bigger"><img src="${esc(p.dataUrl || p.thumb || driveImg(p.fileId, 200))}" alt=""></button>` : `<img alt="">`;
   const st = !p ? `<span class="st">No photo yet</span>` : p.status === "done" ? `<span class="st ok">Saved ✓</span>` :
              p.status === "failed" ? `<span class="st bad">Not saved — ${esc(p.error || "")} Take it again.</span>` : `<span class="st">Saving…</span>`;
   return `<div class="shot">${img}<div class="t"><b>📷 ${esc(label)}</b>${st}</div>
@@ -274,6 +300,7 @@ function render(){
   app.querySelectorAll("button[data-f]").forEach(b => b.onclick = () => { S[b.dataset.f] = b.dataset.v; if(b.dataset.f !== "session") startPi(); msg = ""; save(); render(); });
   app.querySelectorAll("input[data-in]").forEach(inp => { inp.oninput = () => { S[inp.dataset.in] = inp.value.trim(); startPi(); save(); refreshSoft(inp); }; inp.onchange = () => render(); });
   app.querySelectorAll("input[data-filter]").forEach(inp => { inp.oninput = () => { S.filters[+inp.dataset.filter] = inp.value.trim(); save(); }; inp.onchange = () => render(); });
+  app.querySelectorAll("[data-zoom]").forEach(b => b.onclick = () => openZoom(b.dataset.zoom, b.dataset.zlabel));
   app.querySelectorAll("input[type=file]").forEach(inp => inp.onchange = () => { const f = inp.files && inp.files[0]; if(f){ msg = ""; takePhoto(f, inp.dataset.pid, inp.dataset.label); } });
   const send = document.getElementById("send"); if(send) send.onclick = submit;
   document.getElementById("reset").onclick = () => { if(confirm("Clear this water test and start again?")){ endPi("cancelled"); S = newDraft(); save(); msg = ""; render(); } };
