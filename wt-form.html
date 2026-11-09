@@ -256,7 +256,7 @@ function render(){
   if(posting){ return renderPosting(); }
   const firstOpen = STEPS.findIndex(st => !stepDone(st));
   const allDone = firstOpen < 0 && S.name.trim();
-  let h = (TEST ? `<div class="banner">TEST MODE — the report is posted with a TEST line and is not written to the records.</div>` : "") +
+  let h = (OUT === "BK" ? `<a href="tasks.html?outlet=${OUT}" style="display:inline-flex;min-height:40px;align-items:center;font-weight:600;color:var(--accent);text-decoration:none">← Today's tasks</a>` : "") + (TEST ? `<div class="banner">TEST MODE — the report is posted with a TEST line and is not written to the records.</div>` : "") +
     `<div class="card"><label style="margin-top:0">Your name</label><input data-name value="${esc(S.name)}" placeholder="e.g. Cessy" autocomplete="name">
      <label>Which test?</label>${opts("session", ["Morning", "Afternoon"], "two")}
      ${PI_OUTLETS.includes(OUT) ? `<div class="note" style="margin-top:10px">${S.cctvJob ? "📹 <b>The CCTV is recording this test</b> — pool, counter and pump room — until you tap Send." : "📹 The CCTV starts recording when you answer step 1 at the pool."}</div>` : ""}</div>` +

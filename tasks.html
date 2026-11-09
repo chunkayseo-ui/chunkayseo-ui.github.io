@@ -1,0 +1,264 @@
+<!doctype html>
+<html lang="en"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Today's tasks</title>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{--ground:#EEF3F3;--surface:#fff;--line:#C7D6D6;--ink:#0A1417;--ink-2:#33474D;--ink-3:#4F656A;--accent:#00676F;--ok:#256B4C;--ok-soft:#E3F1E9;--ok-line:#9CCBB1;--warn:#7A4E0B;--warn-soft:#FFF8EC;--warn-line:#D9A54A;--urgent:#B23A2E;--urgent-soft:#F8DEDA}
+*{box-sizing:border-box}
+body{margin:0;background:var(--ground);color:var(--ink);font:15px/1.45 "IBM Plex Sans",system-ui,sans-serif}
+main{max-width:560px;margin:0 auto;padding:18px 16px 60px}
+h1{margin:12px 0 2px;font:700 34px/1 "Barlow Condensed",sans-serif;text-transform:uppercase;letter-spacing:.02em}
+.top{display:flex;justify-content:space-between;align-items:center;gap:10px}
+.eyebrow{font:600 13px/1 "IBM Plex Sans",sans-serif;color:var(--ink-3);letter-spacing:.04em;text-transform:uppercase}
+.who{font:600 14px "IBM Plex Sans",sans-serif;padding:8px 12px;min-height:40px;border-radius:99px;border:1px solid var(--line);background:#fff;color:var(--ink);cursor:pointer}
+.date{font-size:14px;color:var(--ink-3)}
+.card{background:#fff;border:1px solid var(--line);border-radius:14px;padding:14px;margin-top:14px}
+.bar{margin-top:10px;height:10px;border-radius:99px;background:#E3EEEE;overflow:hidden}.bar i{display:block;height:100%;background:var(--accent);border-radius:99px}
+.h2{margin:22px 0 10px;font:700 17px/1 "Barlow Condensed",sans-serif;letter-spacing:.06em;text-transform:uppercase;color:var(--ink-2)}
+.grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+@media (min-width:520px){.grid{grid-template-columns:repeat(3,minmax(0,1fr))}}
+.tile{display:flex;flex-direction:column;gap:8px;min-height:132px;padding:14px;border-radius:14px;background:#fff;border:1px solid var(--line);text-decoration:none;color:var(--ink);text-align:left;font:inherit;cursor:pointer;width:100%}
+.tile.done{background:var(--ok-soft);border-color:var(--ok-line)}
+.tile.part{background:var(--warn-soft);border-color:var(--warn-line)}
+.ico{width:36px;height:36px;border-radius:10px;display:flex;align-items:center;justify-content:center;background:#E3EEEE;color:var(--accent)}
+.done .ico{background:var(--ok);color:#fff}
+.t{font:600 15px/1.25 "IBM Plex Sans",sans-serif}
+.s{font:500 13px/1.35 "IBM Plex Sans",sans-serif;color:var(--ink-3)}
+.done .s{color:#1F5A3F}.part .s{color:var(--warn)}
+.back{display:inline-flex;align-items:center;gap:6px;min-height:44px;font:600 15px "IBM Plex Sans",sans-serif;color:var(--accent);background:none;border:0;padding:0;cursor:pointer}
+.instr{padding:12px 14px;border-radius:12px;background:#fff;border:1px solid var(--line);font-size:14px;color:var(--ink-2);margin-top:12px}
+.photo{position:relative;margin-top:14px;min-height:260px;border-radius:14px;overflow:hidden;background:#C9D6D6;display:flex;align-items:center;justify-content:center;color:var(--ink-2)}
+.photo img{width:100%;display:block}
+.status{margin-top:10px;font:600 14px "IBM Plex Sans",sans-serif}
+.status.ok{color:var(--ok)}.status.err{color:var(--urgent)}.status.wait{color:var(--ink-3)}
+.btns{display:flex;gap:10px;margin-top:16px}
+.btn{flex:1;min-height:52px;border-radius:12px;border:1px solid var(--line);background:#fff;color:var(--ink);font:600 16px "IBM Plex Sans",sans-serif;cursor:pointer;display:flex;align-items:center;justify-content:center;text-decoration:none;position:relative;overflow:hidden}
+.btn.primary{flex:2;background:var(--accent);border-color:var(--accent);color:#fff}
+.btn:disabled{opacity:.45}
+.btn input[type=file]{position:absolute;inset:0;opacity:0;cursor:pointer}
+label.f{display:block;font:600 14px "IBM Plex Sans",sans-serif;margin:16px 0 6px}
+input.num,input.name{width:100%;font:600 22px "IBM Plex Sans",sans-serif;padding:12px 14px;border-radius:12px;border:1px solid var(--line);background:#fff;color:var(--ink)}
+input.name{font-size:17px;font-weight:400}
+.cmp{margin-top:10px;padding:12px 14px;border-radius:12px;background:#fff;border:1px solid var(--line);display:flex;justify-content:space-between;font-size:14px;color:var(--ink-2)}
+.err{background:var(--urgent-soft);color:var(--urgent);border-radius:10px;padding:10px 12px;margin-top:12px;font-size:14px}
+.foot{margin:22px 4px 0;font-size:13px;color:var(--ink-3)}
+</style></head>
+<body><main id="app"><p class="date">Loading…</p></main>
+<script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore-compat.js"></script>
+<script>
+/* Branch daily tasks (Kay, 9 Nov 2026). hfpools.com/tasks.html?outlet=BK
+ * Tiles for what branch staff do every day: morning + afternoon water test (they open wt-form.html; done comes from
+ * water_tests), the water meter (stamped photo + reading) and the opening tasks (one stamped photo each = done).
+ * No login: the name is remembered on the phone (same "wtFormName" as the water test form).
+ * Every photo goes through the tracker's photo relay to Drive and is written to branch_tasks/{OUTLET}_{yyyy-mm-dd}
+ * the moment it uploads (Kay: stamped photos are always saved to the database straight away).
+ * Opening task names are placeholders until Operations sends the real list: edit OPENING below. */
+firebase.initializeApp({
+  apiKey: "AIzaSyANFCZbvRGO9aMRtG9MF_qONO3FL85CzSo", authDomain: "maintenance-board-f931a.firebaseapp.com",
+  projectId: "maintenance-board-f931a", storageBucket: "maintenance-board-f931a.firebasestorage.app",
+  messagingSenderId: "169864970579", appId: "1:169864970579:web:bfb7490d0aebcfed17e1a6"
+});
+const db = firebase.firestore();
+const OUTLETS = {BK: {title: "Buangkok"}};
+// [id, name, what to do]. Replace with the list from Operations.
+const OPENING = [
+  ["open1", "Opening task 1", ""], ["open2", "Opening task 2", ""], ["open3", "Opening task 3", ""],
+  ["open4", "Opening task 4", ""], ["open5", "Opening task 5", ""], ["open6", "Opening task 6", ""]
+];
+const P = new URLSearchParams(location.search);
+const OUT = (P.get("outlet") || "BK").toUpperCase(), CFG = OUTLETS[OUT];
+const MON = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"], DAYS = ["Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"];
+const pad = n => String(n).padStart(2, "0");
+const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const sgNow = () => new Date(Date.now() + 8 * 3600e3);
+const dayKey = d => d.toISOString().slice(0, 10);
+const TODAY = dayKey(sgNow()), YDAY = dayKey(new Date(sgNow().getTime() - 86400e3));
+const clock = iso => { if(!iso) return ""; const d = new Date(new Date(iso).getTime() + 8 * 3600e3); let h = d.getUTCHours(); const ap = h < 12 ? "am" : "pm"; h = h % 12 || 12; return h + ":" + pad(d.getUTCMinutes()) + " " + ap; };
+const store = { get(k){ try{ return localStorage.getItem(k); }catch(e){ return null; } }, set(k, v){ try{ localStorage.setItem(k, v); }catch(e){} } };
+const app = document.getElementById("app");
+const ICON = {
+  drop: '<path d="M12 3s6 6.5 6 11a6 6 0 0 1-12 0c0-4.5 6-11 6-11z"></path>',
+  meter: '<circle cx="12" cy="13" r="8"></circle><path d="M12 13l4-3"></path><path d="M12 3v2"></path>',
+  cam: '<path d="M4 8h3l2-3h6l2 3h3v11H4z"></path><circle cx="12" cy="13" r="3.5"></circle>',
+  check: '<path d="M5 12.5l4.5 4.5L19 7.5"></path>',
+  back: '<path d="M15 5l-7 7 7 7"></path>'
+};
+const svg = (k, size) => `<svg width="${size || 20}" height="${size || 20}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${ICON[k]}</svg>`;
+
+let S = {name: store.get("wtFormName") || "", view: "home", task: null, day: {}, yMeter: null, wt: [], local: {}, msg: "", askName: false, relay: null};
+const docRef = () => db.collection("branch_tasks").doc(OUT + "_" + TODAY);
+
+/* ---------- photos: shrink + stamp, then the relay ---------- */
+async function loadImg(file){
+  try{ return await createImageBitmap(file, {imageOrientation: "from-image"}); }
+  catch(e){ return await new Promise((res, rej) => { const img = new Image(); img.onload = () => res(img); img.onerror = rej; img.src = URL.createObjectURL(file); }); }
+}
+async function prepare(file, lines){
+  const img = await loadImg(file);
+  const sc = Math.min(1, 1600 / Math.max(img.width, img.height)), W = Math.round(img.width * sc), H = Math.round(img.height * sc);
+  const c = document.createElement("canvas"); c.width = W; c.height = H; const g = c.getContext("2d"); g.drawImage(img, 0, 0, W, H);
+  const fs = Math.max(14, Math.round(W / 40)), p = Math.round(fs * .6), bandH = p * 2 + lines.length * Math.round(fs * 1.3);
+  g.fillStyle = "rgba(0,0,0,0.55)"; g.fillRect(0, H - bandH, W, bandH); g.fillStyle = "#fff"; g.font = `600 ${fs}px monospace`; g.textBaseline = "top";
+  lines.forEach((ln, i) => g.fillText(ln, p, H - bandH + p + i * Math.round(fs * 1.3)));
+  const dataUrl = c.toDataURL("image/jpeg", 0.82);
+  return {dataUrl, base64: dataUrl.split(",")[1]};
+}
+async function upload(payload){
+  let last;
+  for(let i = 0; i < 3; i++){
+    try{
+      if(!S.relay) throw Object.assign(new Error("The photo relay isn't set up. Tell Kay."), {fatal: true});
+      const res = await fetch(S.relay.relayUrl, {method: "POST", headers: {"Content-Type": "text/plain;charset=utf-8"}, body: JSON.stringify(Object.assign({key: S.relay.key || ""}, payload))});
+      if(!res.ok) throw new Error("The photo relay was busy (HTTP " + res.status + ").");
+      const j = await res.json(); if(!j || !j.ok) throw Object.assign(new Error(String((j && j.error) || "The photo relay refused the photo.")), {fatal: true});
+      return j;
+    }catch(e){ last = e; if(e.fatal) throw e; if(i < 2) await new Promise(r => setTimeout(r, 900 * Math.pow(2, i))); }
+  }
+  throw last;
+}
+async function takePhoto(id, label, file){
+  if(!S.name.trim()){ S.askName = true; S.msg = "Type your name first."; render(); return; }
+  const L = S.local[id] = {status: "preparing"}; render();
+  const n = sgNow(), takenAt = new Date().toISOString();
+  let prep;
+  try{ prep = await prepare(file, [`${OUT} · ${label}`.slice(0, 60), `${S.name.trim()} · ${n.getUTCDate()} ${MON[n.getUTCMonth()]} ${n.getUTCFullYear()} · ${pad(n.getUTCHours())}:${pad(n.getUTCMinutes())}`]); }
+  catch(e){ delete S.local[id]; S.msg = "Couldn't read that photo. Try again."; render(); return; }
+  Object.assign(L, {status: "uploading", dataUrl: prep.dataUrl}); render();
+  try{
+    const r = await upload({kind: "job", outlet: OUT, pool: OUT, job: `Daily tasks · ${label}`, person: S.name.trim(), takenAt, date: TODAY, tool: "none", wantReading: false, imageBase64: prep.base64, photoNo: 1});
+    const photo = {fileId: r.fileId, url: r.url, thumb: r.thumb || null, at: takenAt};
+    // Straight into the database: for an opening task the photo IS the job done; the meter still needs its reading.
+    const rec = id === "meter" ? {photo, photoBy: S.name.trim()} : {photo, by: S.name.trim(), at: takenAt, done: true};
+    await docRef().set({outlet: OUT, date: TODAY, updatedAt: new Date().toISOString(), tasks: {[id]: rec}}, {merge: true});
+    L.status = "done";
+  }catch(e){ L.status = "failed"; L.error = e.message; }
+  render();
+}
+async function saveMeter(){
+  const v = (document.getElementById("reading") || {}).value || "";
+  if(!/^\d+(\.\d+)?$/.test(v.trim())){ S.msg = "Type the number on the meter."; render(); return; }
+  if(!S.name.trim()){ S.askName = true; S.msg = "Type your name first."; render(); return; }
+  const at = new Date().toISOString();
+  try{
+    await docRef().set({outlet: OUT, date: TODAY, updatedAt: at, tasks: {meter: {reading: v.trim(), by: S.name.trim(), at, done: true}}}, {merge: true});
+    S.view = "home"; S.msg = ""; render();
+  }catch(e){ S.msg = "Couldn't save — check the signal and try again."; render(); }
+}
+
+/* ---------- state for the tiles ---------- */
+const T = id => ((S.day.tasks || {})[id]) || {};
+function wtFor(session){
+  return S.wt.filter(d => d.date === TODAY && d.session === session && !d.test).sort((a, b) => a.submittedAt < b.submittedAt ? 1 : -1)[0] || null;
+}
+function tiles(){
+  const out = [];
+  ["Morning", "Afternoon"].forEach(sess => {
+    const w = wtFor(sess);
+    out.push({group: "Water", id: "wt" + sess, label: sess + " water test", icon: w ? "check" : "drop", done: !!w,
+      sub: w ? `✓ ${clock(w.submittedAt)} · ${esc(w.tester)}<br>FC ${esc(w.fc)} · pH ${esc(w.ph)}` : "Start the test",
+      href: `wt-form.html?outlet=${OUT}`});
+  });
+  const m = T("meter");
+  out.push({group: "Water", id: "meter", label: "Water meter", icon: m.done ? "check" : "meter", done: !!m.done, part: !m.done && !!m.photo,
+    sub: m.done ? `✓ ${clock(m.at)} · ${esc(m.by)}<br>Reading ${esc(m.reading)}` : m.photo ? "Photo saved · add the reading" : "Photo + reading"});
+  OPENING.forEach(([id, label]) => { const t = T(id);
+    out.push({group: "Opening", id, label, icon: t.done ? "check" : "cam", done: !!t.done, sub: t.done ? `✓ ${clock(t.at)} · ${esc(t.by)}` : "Take photo"}); });
+  return out;
+}
+
+/* ---------- views ---------- */
+function nameBox(){
+  return `<div class="card"><label class="f" style="margin-top:0" for="nm">Your name</label>
+    <input class="name" id="nm" value="${esc(S.name)}" placeholder="e.g. Cessy" autocomplete="name"></div>`;
+}
+function home(){
+  const list = tiles(), done = list.filter(x => x.done).length, next = list.find(x => !x.done);
+  const n = sgNow();
+  let h = `<div class="top"><span class="eyebrow">HF Pools · ${esc(CFG.title)}</span><button class="who" id="who" type="button">${S.name ? esc(S.name) + " ▾" : "Your name ▾"}</button></div>
+    <h1>Today's tasks</h1><div class="date">${DAYS[n.getUTCDay()]}, ${n.getUTCDate()} ${MON[n.getUTCMonth()]} ${n.getUTCFullYear()}</div>`;
+  if(S.askName || !S.name) h += nameBox();
+  if(S.msg) h += `<div class="err">${esc(S.msg)}</div>`;
+  h += `<div class="card"><div class="top"><span style="font:700 22px/1 'Barlow Condensed',sans-serif">${done} of ${list.length} done</span>
+    <span class="date" style="font-size:13px">${next ? "Next: " + esc(next.label) : "All done ✓"}</span></div>
+    <div class="bar"><i style="width:${Math.round(done / list.length * 100)}%"></i></div></div>`;
+  ["Water", "Opening"].forEach(g => {
+    h += `<div class="h2">${g}</div><div class="grid">`;
+    list.filter(x => x.group === g).forEach(x => {
+      const inner = `<span class="ico">${svg(x.icon)}</span><span class="t">${esc(x.label)}</span><span class="s">${x.sub}</span>`;
+      const cls = "tile" + (x.done ? " done" : x.part ? " part" : "");
+      h += x.href ? `<a class="${cls}" href="${x.href}">${inner}</a>` : `<button type="button" class="${cls}" data-open="${x.id}">${inner}</button>`;
+    });
+    h += `</div>`;
+  });
+  h += `<p class="foot">Tap a tile and take the photo. The outlet, task, your name and the time are stamped on it, and the tile turns green.</p>`;
+  return h;
+}
+function photoBlock(id, label, saved){
+  const L = S.local[id];
+  const src = (L && L.dataUrl) || (saved && (saved.thumb || "https://drive.google.com/thumbnail?id=" + encodeURIComponent(saved.fileId) + "&sz=w800"));
+  const pic = src ? `<img src="${esc(src)}" alt="${esc(label)} photo">` : `<span style="display:flex;flex-direction:column;align-items:center;gap:8px">${svg("cam", 40)}<span>No photo yet</span></span>`;
+  const st = L && L.status === "preparing" ? `<div class="status wait">Preparing the photo…</div>`
+    : L && L.status === "uploading" ? `<div class="status wait">Saving the photo…</div>`
+    : L && L.status === "failed" ? `<div class="status err">Not saved — ${esc(L.error || "")} Take it again.</div>`
+    : saved ? `<div class="status ok">${svg("check", 18)} Photo saved · ${clock(saved.at)}</div>` : "";
+  return `<div class="photo">${pic}</div>${st}`;
+}
+function camBtn(id, label, has, primary){
+  return `<label class="btn${primary ? " primary" : ""}">${has ? "Retake photo" : "📷 Take photo"}<input type="file" accept="image/*" capture="environment" data-cam="${id}" data-label="${esc(label)}"></label>`;
+}
+function taskView(){
+  const [id, label, what] = OPENING.find(x => x[0] === S.task) || [];
+  const t = T(id), i = OPENING.findIndex(x => x[0] === id);
+  const nextOpen = OPENING.slice(i + 1).find(x => !T(x[0]).done);
+  const busy = S.local[id] && /preparing|uploading/.test(S.local[id].status);
+  return `<button class="back" id="back" type="button">${svg("back", 18)} All tasks</button>
+    <div class="eyebrow" style="margin-top:6px">Opening · ${i + 1} of ${OPENING.length}</div><h1>${esc(label)}</h1>
+    ${S.msg ? `<div class="err">${esc(S.msg)}</div>` : ""}${S.askName || !S.name ? nameBox() : ""}
+    <div class="instr">${what ? esc(what) : "Do the task, then take a photo to show it's done."}</div>
+    ${photoBlock(id, label, t.photo)}
+    <div class="btns">${camBtn(id, label, !!t.photo, !t.done)}
+      ${t.done && !busy ? `<button class="btn primary" type="button" id="${nextOpen ? "next" : "back2"}" data-next="${nextOpen ? nextOpen[0] : ""}">${nextOpen ? "Done — next task" : "Back to all tasks"}</button>` : ""}</div>`;
+}
+function meterView(){
+  const m = T("meter");
+  const y = S.yMeter, cur = m.reading;
+  const diff = y != null && cur != null && cur !== "" && !isNaN(Number(cur)) && !isNaN(Number(y)) ? Number(cur) - Number(y) : null;
+  return `<button class="back" id="back" type="button">${svg("back", 18)} All tasks</button>
+    <div class="eyebrow" style="margin-top:6px">Water · once a day</div><h1>Water meter</h1>
+    ${S.msg ? `<div class="err">${esc(S.msg)}</div>` : ""}${S.askName || !S.name ? nameBox() : ""}
+    ${photoBlock("meter", "Water meter", m.photo)}
+    <div class="btns">${camBtn("meter", "Water meter", !!m.photo, !m.photo)}</div>
+    <label class="f" for="reading">Meter reading</label>
+    <input class="num" id="reading" type="text" inputmode="decimal" value="${esc(cur || "")}" placeholder="Number on the meter">
+    <div class="cmp"><span>Yesterday ${y != null ? esc(y) : "—"}</span><span style="font-weight:600;color:var(--ink)">${diff != null ? "Used today " + (diff >= 0 ? "+" : "") + Math.round(diff * 100) / 100 : ""}</span></div>
+    <div class="btns"><button class="btn primary" type="button" id="savemeter" ${m.photo ? "" : "disabled"}>${m.photo ? "Save reading" : "Take the photo first"}</button></div>`;
+}
+function render(){
+  if(!CFG){ app.innerHTML = `<div class="card">This page isn't set up for ${esc(OUT)} yet.</div>`; return; }
+  const ae = document.activeElement, keepId = ae && (ae.id === "reading" || ae.id === "nm") ? ae.id : null, keep = keepId ? ae.value : null;
+  app.innerHTML = S.view === "task" ? taskView() : S.view === "meter" ? meterView() : home();
+  if(keepId){ const r = document.getElementById(keepId); if(r){ r.value = keep; r.focus(); } }
+  const nm = document.getElementById("nm");
+  if(nm){ nm.oninput = () => { S.name = nm.value; store.set("wtFormName", nm.value.trim()); };
+          nm.onchange = () => { if(S.name.trim()){ S.askName = false; S.msg = ""; } render(); }; }
+  const who = document.getElementById("who"); if(who) who.onclick = () => { S.askName = !S.askName; render(); };
+  const back = document.getElementById("back"); if(back) back.onclick = () => { S.view = "home"; S.msg = ""; render(); window.scrollTo(0, 0); };
+  const back2 = document.getElementById("back2"); if(back2) back2.onclick = () => { S.view = "home"; render(); window.scrollTo(0, 0); };
+  const nx = document.getElementById("next"); if(nx) nx.onclick = () => { S.task = nx.dataset.next; S.msg = ""; render(); window.scrollTo(0, 0); };
+  app.querySelectorAll("[data-open]").forEach(b => b.onclick = () => { const id = b.dataset.open; S.msg = ""; if(id === "meter") S.view = "meter"; else { S.view = "task"; S.task = id; } render(); window.scrollTo(0, 0); });
+  app.querySelectorAll("input[data-cam]").forEach(inp => inp.onchange = () => { const f = inp.files && inp.files[0]; if(f){ S.msg = ""; takePhoto(inp.dataset.cam, inp.dataset.label, f); } });
+  const sm = document.getElementById("savemeter"); if(sm) sm.onclick = saveMeter;
+}
+
+/* ---------- start ---------- */
+(async () => {
+  render();
+  try{ const d = await db.doc("dosing_config/tasks").get(); const c = (d.exists && d.data()) || {}; S.relay = c.photo && c.photo.relayUrl ? c.photo : null; }catch(e){}
+  try{ const y = await db.collection("branch_tasks").doc(OUT + "_" + YDAY).get(); const m = y.exists && ((y.data().tasks || {}).meter); S.yMeter = m && m.reading != null ? m.reading : null; }catch(e){}
+  docRef().onSnapshot(s => { S.day = s.data() || {}; render(); }, () => {});
+  db.collection("water_tests").where("outlet", "==", OUT).onSnapshot(q => { S.wt = q.docs.map(d => d.data()); render(); }, () => {});
+})();
+</script>
+</body></html>
