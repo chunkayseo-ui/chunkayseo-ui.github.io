@@ -79,12 +79,12 @@ document.getElementById("title").textContent = (CFG ? CFG.title + " · " : "") +
 const STEPS = [
   {id: "clarity", t: "Water clarity", kind: "clarity"},
   {id: "temp", t: "Pool temperature", d: "Thermometer in the pool water.", kind: "temp"},
-  {id: "sample", t: "Take the water sample at the sample point", d: "Elbow deep, at the marked sample point — not near a skimmer or return jet.", photos: [["sample", "Water sample"]]},
-  {id: "tubes", t: "Fill the comparator tubes", d: "10 ml tube (FC) and 44 ml tube (pH).", photos: [["tubes", "Tubes filled 10 ml + 44 ml"]]},
+  {id: "sample", t: "Take the water sample at the sample point", d: "Elbow deep, at the marked sample point — not near a skimmer or return jet. Then go straight to the counter for the test.", photos: [["sample", "Water sample"]]},
+  {id: "tubes", t: "Fill the comparator tubes", d: "At the counter. 10 ml tube (FC) and 44 ml tube (pH).", photos: [["tubes", "Tubes filled 10 ml + 44 ml"]]},
   {id: "fcpink", t: "FC test: add the powder", d: "2 dips of R-0870 into the 10 ml tube, swirl. It turns pink.", photos: [["fcPink", "FC pink after R-0870"]]},
   {id: "fcdrops", t: "FC test: count the drops", d: "Add R-0871 one drop at a time, swirling, until the water turns clear. Key in how many drops.", kind: "drops", photos: [["fcClear", "FC clear result"]]},
   {id: "ph", t: "pH test", d: "5 drops of R-0004 into the 44 ml tube, swirl, then compare the colour.", kind: "ph", photos: [["ph", "pH colour"]]},
-  {id: "panel", t: "Control panel", d: "Photo of the control panel, then say what is ON.", kind: "panel", photos: [["panel", "Control panel"]]},
+  {id: "panel", t: "Control panel", d: "In the pump room. Photo of the control panel, then say what is ON.", kind: "panel", photos: [["panel", "Control panel"]]},
   {id: "heat", t: "Heat pump", d: "Photo of the heat pump display and key in the reading.", kind: "heat", photos: [["heatPump", "Heat pump display"]]},
   {id: "filters", t: "Filter gauges", d: "One photo per gauge and key in each reading.", kind: "filters"},
   {id: "meter", t: "Water meter", d: "Photo of the water meter and key in the reading.", kind: "meter", photos: [["meter", "Water meter"]]}
@@ -114,6 +114,22 @@ function saveRemote(wait){
     db.collection("photo_drafts").doc(RKEY()).set({page: "wt-form", outlet: OUT, date: c.date, session: c.session, tester: (c.name || "").trim(),
       photos: Object.keys(c.photos || {}).length, draft: JSON.stringify(c), updatedAt: new Date().toISOString()}).catch(() => {});
   }, wait || 0);
+}
+/* CCTV (Kay, 9 Nov 2026): at outlets with a Pi, the test is recorded from the moment the tester starts step 1 at the
+ * pool (water clarity), through the sample at the pool, the test at the counter and the readings in the pump room, until
+ * Send. The form writes cctv_jobs/{OUTLET}_{yyyymmddTHHMMSS}_wt {kind:"watertest", status:"running"}; the Pi's jobwatch
+ * records the counter, pool and pump-room cameras, then posts its check to HF Pools Alerts › Watertest Check.
+ * Send marks the job "done"; Start again marks it "cancelled" (the Pi throws the video away). */
+const PI_OUTLETS = ["BK"];
+function startPi(){
+  if(!S || S.cctvJob || !PI_OUTLETS.includes(OUT) || !S.name.trim()) return;
+  const n = sgNow(), id = `${OUT}_${n.getUTCFullYear()}${pad(n.getUTCMonth() + 1)}${pad(n.getUTCDate())}T${pad(n.getUTCHours())}${pad(n.getUTCMinutes())}${pad(n.getUTCSeconds())}_wt`;
+  S.cctvJob = id; S.cctvAt = new Date().toISOString();
+  db.collection("cctv_jobs").doc(id).set({outlet: OUT, kind: "watertest", by: S.name.trim(), status: "running", startedAt: S.cctvAt, src: "wt-form", test: !!TEST}).catch(() => {});
+}
+function endPi(status){
+  if(!S || !S.cctvJob) return;
+  db.collection("cctv_jobs").doc(S.cctvJob).set({status, endedAt: new Date().toISOString()}, {merge: true}).catch(() => {});
 }
 const savedPhotos = d => Object.values((d && d.photos) || {}).filter(p => p && p.status === "done").length;
 async function loadRemote(){
@@ -159,6 +175,7 @@ async function takePhoto(file, pid, label){
   if(!S.name.trim()){ alertBox("Type your name at the top first."); return; }
   const n = sgNow(), takenAt = new Date().toISOString();
   if(!S.startedAt) S.startedAt = takenAt;
+  startPi();
   const ph = S.photos[pid] = {status: "preparing", at: takenAt}; render();
   let prep;
   try{ prep = await prepare(file, [`${OUT} · ${S.session} water test · ${label}`.slice(0, 60), `${S.name.trim()} · ${n.getUTCDate()} ${MONTH[n.getUTCMonth()]} ${n.getUTCFullYear()} ${pad(n.getUTCHours())}:${pad(n.getUTCMinutes())}`]); }
@@ -242,7 +259,8 @@ function render(){
   const allDone = firstOpen < 0 && S.name.trim();
   let h = (TEST ? `<div class="banner">TEST MODE — the report is posted with a TEST line and is not written to the records.</div>` : "") +
     `<div class="card"><label style="margin-top:0">Your name</label><input data-name value="${esc(S.name)}" placeholder="e.g. Cessy" autocomplete="name">
-     <label>Which test?</label>${opts("session", ["Morning", "Afternoon"], "two")}</div>` +
+     <label>Which test?</label>${opts("session", ["Morning", "Afternoon"], "two")}
+     ${PI_OUTLETS.includes(OUT) ? `<div class="note" style="margin-top:10px">${S.cctvJob ? "📹 <b>The CCTV is recording this test</b> — pool, counter and pump room — until you tap Send." : "📹 The CCTV starts recording when you answer step 1 at the pool."}</div>` : ""}</div>` +
     (msg ? `<div class="err">${esc(msg)}</div>` : "");
   STEPS.forEach((st, i) => {
     const done = stepDone(st), locked = firstOpen >= 0 && i > firstOpen;
@@ -254,12 +272,12 @@ function render(){
   app.innerHTML = h;
   app.querySelector("[data-name]").oninput = e => { S.name = e.target.value; store.set("wtFormName", S.name.trim()); save(); };
   app.querySelector("[data-name]").onchange = () => render();
-  app.querySelectorAll("button[data-f]").forEach(b => b.onclick = () => { S[b.dataset.f] = b.dataset.v; msg = ""; save(); render(); });
-  app.querySelectorAll("input[data-in]").forEach(inp => { inp.oninput = () => { S[inp.dataset.in] = inp.value.trim(); save(); refreshSoft(inp); }; inp.onchange = () => render(); });
+  app.querySelectorAll("button[data-f]").forEach(b => b.onclick = () => { S[b.dataset.f] = b.dataset.v; if(b.dataset.f !== "session") startPi(); msg = ""; save(); render(); });
+  app.querySelectorAll("input[data-in]").forEach(inp => { inp.oninput = () => { S[inp.dataset.in] = inp.value.trim(); startPi(); save(); refreshSoft(inp); }; inp.onchange = () => render(); });
   app.querySelectorAll("input[data-filter]").forEach(inp => { inp.oninput = () => { S.filters[+inp.dataset.filter] = inp.value.trim(); save(); }; inp.onchange = () => render(); });
   app.querySelectorAll("input[type=file]").forEach(inp => inp.onchange = () => { const f = inp.files && inp.files[0]; if(f){ msg = ""; takePhoto(f, inp.dataset.pid, inp.dataset.label); } });
   const send = document.getElementById("send"); if(send) send.onclick = submit;
-  document.getElementById("reset").onclick = () => { if(confirm("Clear this water test and start again?")){ S = newDraft(); save(); msg = ""; render(); } };
+  document.getElementById("reset").onclick = () => { if(confirm("Clear this water test and start again?")){ endPi("cancelled"); S = newDraft(); save(); msg = ""; render(); } };
 }
 function refreshSoft(inp){ if(inp.dataset.in === "fcDrops"){ const b = inp.parentElement.querySelector(".fc b"); if(b) b.textContent = fcOf() == null ? "—" : fmt(fcOf()) + " ppm"; } }
 
@@ -271,8 +289,8 @@ async function submit(){
   const doc = {outlet: OUT, pool: OUT, date: S.date, session: S.session, clarity: S.clarity, fcDrops: Number(S.fcDrops), fc: fcOf(), ph: Number(S.ph),
     temp: Number(S.temp), chlorinator: S.chlorinator, pump: S.pump, heatPump: Number(S.heatPump), filters: S.filters.map(Number), waterMeter: S.waterMeter,
     tester: S.name.trim(), photos, startedAt: S.startedAt, submittedAt: new Date().toISOString(), reportText: reportText(), status: "submitted",
-    src: "wt-form v1", ...(TEST ? {test: true} : {})};
-  try{ await db.collection("water_tests").doc(id).set(doc); }
+    src: "wt-form v1", ...(S.cctvJob ? {cctvJob: S.cctvJob} : {}), ...(TEST ? {test: true} : {})};
+  try{ await db.collection("water_tests").doc(id).set(doc); endPi("done"); }
   catch(e){ btn.disabled = false; btn.textContent = "Send report"; alertBox("Couldn't send — check the signal and try again. (" + e.message + ")"); return; }
   posting = {id, text: doc.reportText, status: "submitted"};
   S = newDraft(); save(); render(); history();
