@@ -99,7 +99,31 @@ function newDraft(){
 }
 const DKEY = () => "wtForm_" + OUT + (TEST ? "_test" : "");
 function load(){ try{ const d = JSON.parse(store.get(DKEY()) || "null"); if(d && d.date === todayKey()) return d; }catch(e){} return newDraft(); }
-function save(){ store.set(DKEY(), JSON.stringify(S, (k, v) => k === "dataUrl" ? undefined : v)); }
+function save(){ store.set(DKEY(), JSON.stringify(S, (k, v) => k === "dataUrl" ? undefined : v)); saveRemote(1500); }
+/* A copy of the test so far is also kept in the database (photo_drafts/wtform_{OUTLET}_{date}), written the moment each
+ * photo is saved -- so a page that reloads behind the camera, or a phone whose storage is full, gets the photos back
+ * instead of asking for them again (Kay, 9 Nov 2026: every stamped-photo job works like this). */
+const RKEY = () => `wtform_${OUT}_${todayKey()}${TEST ? "_test" : ""}`;
+let remoteT = null;
+function saveRemote(wait){
+  clearTimeout(remoteT);
+  remoteT = setTimeout(() => {
+    if(!S) return;
+    const c = JSON.parse(JSON.stringify(S, (k, v) => k === "dataUrl" ? undefined : v));
+    Object.keys(c.photos || {}).forEach(k => { if(c.photos[k].status !== "done") delete c.photos[k]; });
+    db.collection("photo_drafts").doc(RKEY()).set({page: "wt-form", outlet: OUT, date: c.date, session: c.session, tester: (c.name || "").trim(),
+      photos: Object.keys(c.photos || {}).length, draft: JSON.stringify(c), updatedAt: new Date().toISOString()}).catch(() => {});
+  }, wait || 0);
+}
+const savedPhotos = d => Object.values((d && d.photos) || {}).filter(p => p && p.status === "done").length;
+async function loadRemote(){
+  try{
+    const d = await db.collection("photo_drafts").doc(RKEY()).get(); if(!d.exists) return;
+    const x = d.data(), r = JSON.parse(x.draft || "null");
+    if(!r || r.date !== todayKey() || Date.now() - new Date(x.updatedAt).getTime() > 4 * 3600e3) return;
+    if(savedPhotos(r) > savedPhotos(S)){ S = r; msg = "Picked up where you left off — the photos already saved are back."; }
+  }catch(e){}
+}
 
 /* ---------- photos (same relay as the tracker) ---------- */
 async function loadImg(file){
@@ -144,7 +168,7 @@ async function takePhoto(file, pid, label){
     const r = await upload({kind: "job", outlet: OUT, pool: OUT, job: `Water test (${S.session}) · ${label}`, person: S.name.trim() + (TEST ? " (test)" : ""), takenAt, date: S.date, tool: "none", wantReading: false, imageBase64: prep.base64, photoNo: Object.keys(S.photos).length});
     Object.assign(ph, {status: "done", fileId: r.fileId, url: r.url, thumb: r.thumb || null});
   }catch(e){ ph.status = "failed"; ph.error = e.message; }
-  save(); render();
+  save(); saveRemote(0); render();
 }
 
 /* ---------- step completion ---------- */
@@ -274,7 +298,7 @@ async function history(){
 }
 (async () => {
   try{ const d = await db.doc("dosing_config/tasks").get(); const c = (d.exists && d.data()) || {}; relayCfg = c.photo && c.photo.relayUrl ? c.photo : null; }catch(e){}
-  S = load(); if(CFG && S.filters.length !== CFG.filters) S.filters = Array(CFG.filters).fill("");
+  S = load(); await loadRemote(); if(CFG && S.filters.length !== CFG.filters) S.filters = Array(CFG.filters).fill("");
   Object.values(S.photos).forEach(p => { if(p.status !== "done") { p.status = "failed"; p.error = "page was closed"; } });
   render(); history();
 })();

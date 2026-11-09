@@ -114,7 +114,24 @@ const EXTRA = {
 const S = {user:null, me:null, cert:null, cfg:{}, steps:null, pool:"", job:null, busy:false, err:"", history:[]};
 const DRAFT_KEY = "hf-ops-job";
 try{ const d = JSON.parse(localStorage.getItem(DRAFT_KEY) || "null"); if(d && d.date === todayKey()) S.job = d; }catch(e){}
-function saveDraft(){ try{ S.job ? localStorage.setItem(DRAFT_KEY, JSON.stringify(S.job)) : localStorage.removeItem(DRAFT_KEY); }catch(e){} }
+function saveDraft(){ try{ S.job ? localStorage.setItem(DRAFT_KEY, JSON.stringify(S.job)) : localStorage.removeItem(DRAFT_KEY); }catch(e){} saveRemote(); }
+/* The job so far is also kept in the database (photo_drafts/opsvac_{login}), written every time a photo is saved or a
+ * step moves on -- so a reload behind the camera or a full phone doesn't lose the photos (Kay, 9 Nov 2026). */
+function saveRemote(){
+  if(!S.user) return;
+  let job = null;
+  if(S.job){ job = JSON.parse(JSON.stringify(S.job, (k, v) => k === "dataUrl" ? undefined : v));
+    Object.keys(job.photos || {}).forEach(k => { if(job.photos[k].status !== "done") delete job.photos[k]; }); }
+  db.collection("photo_drafts").doc("opsvac_" + S.user.uid).set({page: "ops-vacuum", job: job ? JSON.stringify(job) : null, updatedAt: new Date().toISOString()}).catch(() => {});
+}
+async function loadRemote(){
+  try{
+    const d = await db.collection("photo_drafts").doc("opsvac_" + S.user.uid).get(); if(!d.exists || !d.data().job) return;
+    const j = JSON.parse(d.data().job);
+    const n = o => Object.values((o && o.photos) || {}).filter(p => p && p.status === "done").length;
+    if(j && j.date === todayKey() && !j.saved && (!S.job || (!S.job.saved && n(j) > n(S.job)))){ S.job = j; try{ localStorage.setItem(DRAFT_KEY, JSON.stringify(j)); }catch(e){} }
+  }catch(e){}
+}
 
 /* ---------- who is allowed ---------- */
 async function loadMe(){
@@ -354,6 +371,7 @@ auth.onAuthStateChanged(async u => {
   S.user = u; if(!u){ loginView(); return; }
   $("#app").innerHTML = `<p class="note">Checking your certification…</p>`;
   await loadMe();
+  await loadRemote();
   if(certified()){
     await loadCfg();
     try{ S.steps = await loadSteps(S.pool); }catch(e){ S.steps = {before:[], after:[]}; S.err = "Couldn't load the steps for " + S.pool + ": " + e.message; }
